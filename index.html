@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>抽卡模拟器</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="app-version" content="2026.03.05.1">
+  <link rel="stylesheet" href="style.css?v=2026.03.05.1">
+  <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="header-top-row">
+        <div class="header-left-tools header-title-row">
+          <div class="title-version-group">
+            <h2>国服端游抽卡模拟器</h2>
+            <span id="appVersionText" class="app-version-text">
+              版本号：<span id="appVersionValue">2026.03.05.1</span>
+              <span class="visit-sep"> | 总访问：</span>
+              <span id="busuanzi_container_site_pv">
+                <span id="busuanzi_value_site_pv">0</span>
+              </span>
+            </span>
+          </div>
+          <span class="producer-highlight">制作人：欧皇战队 真正man阿瑞斯</span>
+        </div>
+        <div class="mode-panel">
+          <label for="modeSwitchSelect">模式</label>
+          <select id="modeSwitchSelect">
+            <option value="unlimited">无限制模式</option>
+            <option value="real">金币模式</option>
+          </select>
+          <div id="realModeInfo" class="real-mode-info hidden">
+            <span>剩余金币：<span id="remainingGoldTop">0</span></span>
+            <button id="btnRechargeToggle" class="recharge-plus" title="充值">+</button>
+            <span>总花费金币：<span id="globalSpentGoldTop">0</span></span>
+            <span>总充值数：<span id="totalRechargeTop">0</span>￥</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-subtitle pool-row">
+        <span class="pool-name-line">当前卡池：<span id="poolNameText">新载锦绣狂欢赠礼</span></span>
+        <div id="poolSwitchPanel" class="pool-switch-panel">
+          <select id="poolTypeChoice">
+            <option value="carnival_gift">狂欢赠礼</option>
+            <option value="exchange_guarantee">兑换保底</option>
+            <option value="chain_bundle">连锁礼包</option>
+            <option value="season_carryover">赛季累抽继承</option>
+          </select>
+          <select id="poolSwitchChoice"></select>
+        </div>
+        <div class="pool-skin-panel">
+          <label for="skinModeSelect">肤色</label>
+          <select id="skinModeSelect">
+            <option value="light">亮色</option>
+            <option value="dark">深色</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="left-panel">
+        <section class="pool-detail-card card">
+          <details id="usageGuide" class="pool-detail-toggle" open>
+            <summary>使用说明</summary>
+            <div class="pool-detail-content">
+              <div class="usage-text">
+                该模拟器仅参考游戏内公示概率，不包含暗箱概率。模拟器抽卡结果不代表真实抽卡结果，仅供娱乐，莫较真~<br>
+                给卡压抑的朋友们在这里抽过瘾就行了，请多多享受踢球的乐趣，游戏里要攒住金币哦~
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="pool-detail-card card">
+          <details id="poolDetail" class="pool-detail-toggle">
+            <summary>
+              <span>卡池详情</span>
+            </summary>
+            <div class="pool-detail-content">
+              <section class="config-panel">
+                <h3 id="probabilitySectionTitle">当前卡池概率</h3>
+                <table class="prob-table">
+                  <thead>
+                    <tr>
+                      <th id="probabilityColName">卡牌类型</th>
+                      <th id="probabilityColValue">概率</th>
+                    </tr>
+                  </thead>
+                  <tbody id="probabilityTableBody">
+                    <!-- 将由 JS 填充 -->
+                  </tbody>
+                </table>
+                <div class="empowered-info">
+                  <strong id="empoweredNamesTitle">增能卡名单（概率平分）：</strong>
+                  <span id="empoweredNames"></span>
+                </div>
+              </section>
+
+              <section class="milestones-panel">
+                <h3>累抽奖励档位</h3>
+                <table class="milestone-table">
+                  <thead>
+                    <tr>
+                      <th>累计抽数</th>
+                      <th>奖励内容</th>
+                    </tr>
+                  </thead>
+                  <tbody id="milestoneTableBody">
+                    <!-- JS 填充展示当前配置的累抽奖励 -->
+                  </tbody>
+                </table>
+              </section>
+            </div>
+          </details>
+        </section>
+      </section>
+
+      <section class="right-panel">
+        <section class="stats-panel card">
+          <h3>抽卡统计</h3>
+          <div class="cost-summary">
+            <div class="cost-item">
+              <span class="cost-label">花费金币</span>
+              <span class="cost-value" id="costGold">0</span>
+            </div>
+            <div class="cost-item">
+              <span class="cost-label">花费钻石</span>
+              <span class="cost-value" id="costDiamond">0</span>
+            </div>
+          </div>
+          <div class="luck-score-card">
+            <span class="luck-score-label">手气评分</span>
+            <span class="luck-score-value" id="luckScoreText">等待抽卡</span>
+          </div>
+          <details id="statsFold" class="stats-fold">
+            <summary>详细统计</summary>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <span class="stat-label">总抽数</span>
+                <span class="stat-value" id="statTotalPulls">0</span>
+              </div>
+              <div class="stat-item" id="statBadgeItem">
+                <span class="stat-label">徽章</span>
+                <span class="stat-value" id="statBadges">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">增能卡</span>
+                <span class="stat-value highlight" id="statEmpowered">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">精选卡</span>
+                <span class="stat-value" id="statSelected">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">普卡</span>
+                <span class="stat-value" id="statNormal">0</span>
+              </div>
+            </div>
+
+            <h4>增能卡明细</h4>
+            <table class="empowered-table">
+              <thead>
+                <tr>
+                  <th>增能卡</th>
+                  <th>已抽出次数</th>
+                </tr>
+              </thead>
+              <tbody id="empoweredStatsBody">
+                <!-- JS 填充 -->
+              </tbody>
+            </table>
+
+            <div class="empowered-detail-panel">
+              <div class="hint-text small" id="empoweredDetailHint">
+                点击上表中任意一行，可查看该增能卡的出卡记录。
+              </div>
+              <div id="empoweredDetailContent" class="empowered-detail-content"></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="draw-panel card">
+          <div class="draw-panel-head">
+            <h3>抽卡操作</h3>
+            <div class="draw-anim-mode">
+              <label for="animationModeSelect">动画模式</label>
+              <select id="animationModeSelect">
+                <option value="favored_only">仅心仪动画</option>
+                <option value="all_empowered" selected>出货都动画</option>
+                <option value="none">无动画</option>
+              </select>
+            </div>
+          </div>
+          <div id="pityTrackerPanel" class="pity-tracker">
+            <div class="pity-tracker-title">保底追踪</div>
+            <div class="hint-text small" id="pityTrackerText">暂无追踪数据</div>
+            <div class="pity-track">
+              <div id="pityTrackerFill" class="pity-track-fill"></div>
+            </div>
+          </div>
+          <div id="normalDrawPanel">
+          <div class="draw-buttons">
+            <button id="btnSingle">单抽</button>
+            <button id="btnTen">十连抽</button>
+            <button id="btnFifty">弄50抽！</button>
+          </div>
+          <div class="draw-buttons quick-buttons">
+            <button id="btnQuick60" data-draw-count="60">一键抽 60</button>
+            <button id="btnQuick250" data-draw-count="250">一键抽 250</button>
+            <button id="btnQuick420" data-draw-count="420">一键抽 420</button>
+            <button id="btnQuick470" data-draw-count="470">一键抽 470</button>
+            <button id="btnQuick520" data-draw-count="520">一键抽 520</button>
+          </div>
+          <div class="select-row favored-row">
+            <div class="favored-head">
+              <label for="favEmpoweredChoice">心仪球员：</label>
+              <button id="btnFavSelectAll" class="small-button">一键全选</button>
+            </div>
+            <select id="favEmpoweredChoice" multiple size="5" class="hidden"></select>
+            <div id="favEmpoweredTags" class="fav-tags"></div>
+            <button id="btnAutoToFav">一键抽到心仪球员</button>
+            <span id="favExpectedInfo" class="hint-text small"></span>
+          </div>
+          <div class="draw-actions-footer">
+            <button id="btnReset" class="danger">一键重置</button>
+            <span class="total-pulls-label">当前总抽数：<span id="totalPulls">0</span></span>
+            <span class="total-pulls-label">已重置：<span id="poolResetCount">0</span> 次</span>
+          </div>
+          <div id="seasonRoundInfo" class="hint-text small hidden">当前轮次进度：0 / 500</div>
+          </div>
+
+          <div id="chainDrawPanel" class="hidden">
+            <div class="hint-text small">当前档位：<span id="chainTierStatus">第 0 档（未开始）</span></div>
+            <div id="chainTierProgressBar" class="chain-progress"></div>
+            <div class="chain-progress-track"><div id="chainTierProgressFill" class="chain-progress-fill"></div></div>
+            <div class="draw-buttons">
+              <button id="btnChainNext">抽下一档</button>
+            </div>
+            <div class="draw-buttons quick-buttons">
+              <button data-chain-target-tier="1">抽到第1档</button>
+              <button data-chain-target-tier="2">抽到第2档</button>
+              <button data-chain-target-tier="3">抽到第3档</button>
+              <button data-chain-target-tier="4">抽到第4档</button>
+              <button data-chain-target-tier="5">抽到第5档</button>
+              <button data-chain-target-tier="6">抽到第6档</button>
+              <button data-chain-target-tier="7">拉满七档！</button>
+            </div>
+            <div class="select-row favored-row">
+              <div class="favored-head">
+                <label for="chainFavEmpoweredChoice">心仪球员：</label>
+                <button id="btnChainFavSelectAll" class="small-button">一键全选</button>
+              </div>
+              <select id="chainFavEmpoweredChoice" multiple size="5" class="hidden"></select>
+              <div id="chainFavEmpoweredTags" class="fav-tags"></div>
+              <span id="chainFavExpectedInfo" class="hint-text small"></span>
+            </div>
+            <div class="draw-actions-footer">
+              <button id="btnResetChain" class="danger">一键重置</button>
+              <span class="total-pulls-label">当前总抽数：<span id="totalPullsChain">0</span></span>
+              <span class="total-pulls-label">已重置：<span id="poolResetCountChain">0</span> 次</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="exchangePanel" class="card hidden">
+          <h3>徽章兑换</h3>
+          <div class="hint-text small">当前徽章：<span id="badgeCountDisplay">0</span></div>
+          <div class="select-row">
+            <label for="exchangeSpecificChoice">6 徽章：10% 特定增能球员卡</label>
+            <select id="exchangeSpecificChoice"></select>
+            <button id="btnExchangeSpecific10">兑换</button>
+          </div>
+          <div class="draw-buttons">
+            <button id="btnExchangeRandomEmpowered">25 徽章兑换随机增能卡必得券</button>
+            <button id="btnExchangeDBSelect">42 徽章兑换德布劳内自选</button>
+            <button id="btnExchangeAnySelect">47 徽章兑换任意增能卡自选</button>
+            <button id="btnExchangeAnySelectSkin">52 徽章兑换任意自选 + 维埃拉皮肤</button>
+          </div>
+        </section>
+
+        <section class="rewards-panel card">
+          <div class="rewards-panel-head">
+            <h3 id="rewardsTitle">待开启累抽奖励 / 自选包</h3>
+            <div class="rewards-controls">
+              <label for="rewardOpenModeSelect">开包模式</label>
+              <select id="rewardOpenModeSelect">
+                <option value="manual" selected>手动开启</option>
+                <option value="auto">自动开启</option>
+              </select>
+            </div>
+          </div>
+          <div class="rewards-header-row">
+            <div id="noRewardsHint" class="hint-text">当前没有未开启的奖励。</div>
+            <button id="btnOpenAllRewards" class="small-button">一键开启全部</button>
+          </div>
+          <ul id="rewardsList" class="rewards-list">
+            <!-- 奖励列表 -->
+          </ul>
+
+          <div id="selectRewardContainer" class="select-reward-panel hidden">
+            <h4>自选增能卡开包</h4>
+            <div class="select-row">
+              <label for="selectRewardChoice">选择一名增能球员：</label>
+              <select id="selectRewardChoice"></select>
+              <button id="btnConfirmSelect">确认领取</button>
+            </div>
+            <div class="hint-text small">
+              如有多个自选包，将依次消耗（当前剩余：<span id="selectRewardCount">0</span> 个）。
+            </div>
+          </div>
+        </section>
+
+        <section class="results-panel card">
+          <div class="results-head">
+            <h3>最近出卡记录</h3>
+            <button id="btnReplayMoments" class="small-button">回放出货节点</button>
+          </div>
+          <div id="momentPreview" class="hint-text small moment-preview"></div>
+          <ul id="resultsList" class="results-list">
+            <!-- 最近抽卡结果 -->
+          </ul>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="rechargeModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-text">这里充了游戏里就不能充了哦~</div>
+      <div class="modal-actions">
+        <button id="btnRechargeCancel" class="small-button">算了，不送钱了</button>
+        <button class="small-button" data-recharge-gold="6667" data-recharge-rmb="328">小充328~</button>
+        <button class="small-button" data-recharge-gold="13333" data-recharge-rmb="648">大充648！</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="insufficientGoldModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-text">朋友，金币够吗就抽？</div>
+      <div class="modal-actions">
+        <button id="btnInsufficientCancel" class="small-button">算了，收手了~</button>
+        <button id="btnInsufficientRecharge" class="small-button">扶我起来！我还能充！</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="realModeInitModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-text">请输入游戏内剩余金币数量</div>
+      <input id="realModeGoldInput" class="modal-input" type="number" min="0" step="1" placeholder="例如：12000">
+      <div class="modal-actions">
+        <button id="btnRealModeInitCancel" class="small-button">先不切换</button>
+        <button id="btnRealModeInitConfirm" class="small-button">确认切换</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="favHitModal" class="modal-overlay hidden">
+    <div class="modal-card fav-hit-card">
+      <div class="modal-text fav-hit-title">出货啦！</div>
+      <div class="fav-hit-lines">
+        <div id="favHitLine1" class="modal-text fav-hit-line"></div>
+        <div id="favHitLine2" class="modal-text fav-hit-line"></div>
+        <div id="favHitLine3" class="modal-text fav-hit-line"></div>
+      </div>
+      <div class="modal-actions">
+        <button id="btnFavHitClose" class="small-button">太爽了！</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="momentReplayModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-text">出货节点回放</div>
+      <div id="momentReplayText" class="modal-text replay-text">暂无可回放内容</div>
+      <div class="modal-actions">
+        <button id="btnMomentReplayClose" class="small-button">收起回放</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="badgeInsufficientModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div id="badgeInsufficientText" class="modal-text">徽章不足</div>
+      <div class="modal-actions">
+        <button id="btnBadgeInsufficientClose" class="small-button">好吧</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cinematicDemoModal" class="modal-overlay hidden">
+    <div class="cinematic-page-lasers" aria-hidden="true">
+      <span class="page-laser-line left-1"></span>
+      <span class="page-laser-line left-2"></span>
+      <span class="page-laser-line left-3"></span>
+      <span class="page-laser-line right-1"></span>
+      <span class="page-laser-line right-2"></span>
+      <span class="page-laser-line right-3"></span>
+      <span class="page-laser-sweep"></span>
+      <svg class="cinematic-stadium-rings" viewBox="0 0 1200 700" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="cinematicRainbow" gradientUnits="userSpaceOnUse" spreadMethod="repeat" x1="-1200" y1="0" x2="1200" y2="0">
+            <stop offset="0%" stop-color="#ff2d95"/>
+            <stop offset="14%" stop-color="#ff8a00"/>
+            <stop offset="28%" stop-color="#ffe600"/>
+            <stop offset="42%" stop-color="#00d26a"/>
+            <stop offset="58%" stop-color="#00c8ff"/>
+            <stop offset="72%" stop-color="#2f6bff"/>
+            <stop offset="86%" stop-color="#9b3dff"/>
+            <stop offset="100%" stop-color="#ff2d95"/>
+            <animate attributeName="x1" from="-1200" to="1200" dur="12s" repeatCount="indefinite"/>
+            <animate attributeName="x2" from="1200" to="3600" dur="12s" repeatCount="indefinite"/>
+          </linearGradient>
+        </defs>
+        <path class="c-ring c-top" d="M -220 172 Q 600 372 1420 172"/>
+        <path class="c-ring c-top-inner" d="M -210 190 Q 600 364 1410 190"/>
+        <path class="c-ring c-top-inner" d="M -200 208 Q 600 355 1400 208"/>
+        <path class="c-ring c-top-inner" d="M -190 226 Q 600 346 1390 226"/>
+        <path class="c-ring c-top-inner" d="M -180 244 Q 600 337 1380 244"/>
+        <path class="c-ring c-top-inner" d="M -170 262 Q 600 328 1370 262"/>
+        <path class="c-ring c-mid" d="M -180 356 Q 600 492 1380 356"/>
+        <path class="c-ring c-low" d="M -160 396 Q 600 522 1360 396"/>
+      </svg>
+    </div>
+    <div class="cinematic-stage">
+      <div class="cinematic-bg"></div>
+      <div id="cinematicTypeDisplay" class="cinematic-type-display">
+        <img id="cinematicTypeDisplayImage" class="cinematic-type-display-image" alt="类型展示图" src="" />
+      </div>
+      <div class="cinematic-card-wrap">
+        <div class="cinematic-card">
+          <img
+            id="cinematicPlayerImage"
+            class="cinematic-player-image"
+            alt="球员图片"
+            src=""
+          />
+          <img
+            id="cinematicPeekImage"
+            class="cinematic-peek-image"
+            alt="球员左上预览"
+            src=""
+          />
+          <div class="cinematic-peek-laser" aria-hidden="true">
+            <span class="cinematic-laser-beam beam-main"></span>
+            <span class="cinematic-laser-beam beam-left"></span>
+            <span class="cinematic-laser-beam beam-right"></span>
+            <span class="cinematic-laser-impact"></span>
+          </div>
+          <div class="cinematic-peek-shell" aria-hidden="true">
+            <svg class="cinematic-shell-svg" viewBox="0 0 300 450" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="cinematicShellGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#dcfce7"/>
+                  <stop offset="28%" stop-color="#86efac"/>
+                  <stop offset="62%" stop-color="#22c55e"/>
+                  <stop offset="100%" stop-color="#14532d"/>
+                </linearGradient>
+              </defs>
+              <path class="cinematic-shell-line" d="M52 38 L134 20 L190 72 L174 148 L104 174 L44 124 Z"/>
+              <path class="cinematic-shell-line" d="M142 22 L228 36 L268 98 L252 170 L182 198 L122 148 Z"/>
+              <path class="cinematic-shell-line" d="M42 136 L118 110 L178 160 L162 232 L94 258 L36 210 Z"/>
+              <path class="cinematic-shell-line" d="M126 146 L214 128 L270 182 L252 258 L184 286 L114 234 Z"/>
+              <path class="cinematic-shell-line" d="M54 242 L136 220 L196 272 L178 344 L108 372 L44 320 Z"/>
+              <path class="cinematic-shell-line" d="M144 252 L232 236 L276 298 L258 372 L190 402 L126 344 Z"/>
+              <path class="cinematic-shell-line" d="M88 340 L174 320 L236 372 L216 434 L146 448 L78 404 Z"/>
+            </svg>
+          </div>
+          <div class="cinematic-peek-clock" aria-hidden="true">
+            <svg class="cinematic-clock-svg" viewBox="0 0 300 450" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="cinematicClockOrange" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#fff7d6"/>
+                  <stop offset="24%" stop-color="#fde68a"/>
+                  <stop offset="56%" stop-color="#f59e0b"/>
+                  <stop offset="100%" stop-color="#b45309"/>
+                </linearGradient>
+              </defs>
+              <g class="clock-ring-group ring-a">
+                <circle class="clock-ring" cx="150" cy="220" r="118"></circle>
+                <circle class="clock-ring" cx="150" cy="220" r="84"></circle>
+              </g>
+              <g class="clock-ring-group ring-b">
+                <circle class="clock-ring" cx="150" cy="220" r="102"></circle>
+                <circle class="clock-ring" cx="150" cy="220" r="66"></circle>
+              </g>
+              <g class="clock-gear-group gear-a" transform="translate(150 220)">
+                <polygon class="clock-gear" points="0,-56 10,-42 30,-46 34,-26 54,-20 46,0 54,20 34,26 30,46 10,42 0,56 -10,42 -30,46 -34,26 -54,20 -46,0 -54,-20 -34,-26 -30,-46 -10,-42"></polygon>
+              </g>
+              <g class="clock-gear-group gear-b" transform="translate(210 168)">
+                <polygon class="clock-gear small" points="0,-28 6,-20 16,-22 18,-12 28,-10 22,0 28,10 18,12 16,22 6,20 0,28 -6,20 -16,22 -18,12 -28,10 -22,0 -28,-10 -18,-12 -16,-22 -6,-20"></polygon>
+              </g>
+              <g class="clock-gear-group gear-c" transform="translate(92 286)">
+                <polygon class="clock-gear small" points="0,-24 5,-18 14,-20 16,-10 24,-8 20,0 24,8 16,10 14,20 5,18 0,24 -5,18 -14,20 -16,10 -24,8 -20,0 -24,-8 -16,-10 -14,-20 -5,-18"></polygon>
+              </g>
+              <g class="clock-pointer-group" transform="translate(150 220)">
+                <g class="clock-hand hour-hand">
+                  <path class="clock-pointer-shape hour" d="M0 0 L-4 -6 L-3 -36 L0 -48 L3 -36 L4 -6 Z"></path>
+                  <path class="clock-pointer-tip hour" d="M0 -58 L-5.6 -52 L0 -42 L5.6 -52 Z"></path>
+                </g>
+                <g class="clock-hand minute-hand">
+                  <path class="clock-pointer-shape minute" d="M0 0 L-3.2 -7 L-2.6 -52 L0 -66 L2.6 -52 L3.2 -7 Z"></path>
+                  <path class="clock-pointer-tip minute" d="M0 -79 L-5.4 -71 L0 -60 L5.4 -71 Z"></path>
+                </g>
+                <g class="clock-hand second-hand">
+                  <path class="clock-pointer-shape second" d="M0 0 L-2.4 -8 L-1.8 -64 L0 -82 L1.8 -64 L2.4 -8 Z"></path>
+                  <path class="clock-pointer-tip second" d="M0 -98 L-5.2 -88 L0 -76 L5.2 -88 Z"></path>
+                </g>
+                <circle class="clock-pointer-core" cx="0" cy="0" r="6.2"></circle>
+              </g>
+            </svg>
+          </div>
+          <div class="cinematic-peek-border"></div>
+          <div class="cinematic-particles" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div id="cinematicTearMask" class="cinematic-tear-mask"></div>
+        </div>
+        <div id="cinematicOwnedInfo" class="cinematic-owned-info">首次获得</div>
+      </div>
+      <div class="cinematic-lines">
+        <div id="cinematicLine1" class="cinematic-line line1"></div>
+        <div id="cinematicLine2" class="cinematic-line line2"></div>
+        <div id="cinematicLine3" class="cinematic-line line3"></div>
+        <div id="cinematicLine4" class="cinematic-line line4"></div>
+        <div id="cinematicLine5" class="cinematic-line line5"></div>
+        <div id="cinematicLine6" class="cinematic-line line6"></div>
+      </div>
+      <div class="cinematic-actions">
+        <button id="btnCinematicReplay" class="small-button">回看动画</button>
+        <button id="btnCinematicClose" class="small-button">确认出货！</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="lightningLabModal" class="modal-overlay hidden">
+    <div class="lightning-lab-card">
+      <div class="modal-text">七色灯带流光预览</div>
+      <div id="lightningLabStage" class="lightning-lab-stage stadium-preview-stage">
+        <div class="stadium-sky-glow"></div>
+        <div class="stadium-field-fog"></div>
+        <svg class="stadium-rings" viewBox="0 0 1200 700" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="stadiumRainbow" gradientUnits="userSpaceOnUse" spreadMethod="repeat" x1="-1200" y1="0" x2="1200" y2="0">
+              <stop offset="0%" stop-color="#ff2d95"/>
+              <stop offset="14%" stop-color="#ff8a00"/>
+              <stop offset="28%" stop-color="#ffe600"/>
+              <stop offset="42%" stop-color="#00d26a"/>
+              <stop offset="58%" stop-color="#00c8ff"/>
+              <stop offset="72%" stop-color="#2f6bff"/>
+              <stop offset="86%" stop-color="#9b3dff"/>
+              <stop offset="100%" stop-color="#ff2d95"/>
+              <animate attributeName="x1" from="-1200" to="1200" dur="12s" repeatCount="indefinite"/>
+              <animate attributeName="x2" from="1200" to="3600" dur="12s" repeatCount="indefinite"/>
+            </linearGradient>
+          </defs>
+          <path class="ring top-aura" d="M -220 172 Q 600 372 1420 172"/>
+          <path class="ring top-core" d="M -220 172 Q 600 372 1420 172"/>
+          <path class="ring top-inner" d="M -210 188 Q 600 364 1410 188"/>
+          <path class="ring top-inner" d="M -202 202 Q 600 356 1402 202"/>
+          <path class="ring top-inner" d="M -194 216 Q 600 348 1394 216"/>
+          <path class="ring top-inner" d="M -186 230 Q 600 340 1386 230"/>
+          <path class="ring top-inner" d="M -178 244 Q 600 332 1378 244"/>
+          <path class="ring top-inner" d="M -170 258 Q 600 324 1370 258"/>
+          <path class="ring top-inner" d="M -162 272 Q 600 316 1362 272"/>
+          <path class="ring top-inner" d="M -154 286 Q 600 308 1354 286"/>
+          <path class="ring top-inner" d="M -146 300 Q 600 300 1346 300"/>
+          <path class="ring mid-aura" d="M -180 356 Q 600 494 1380 356"/>
+          <path class="ring mid-core" d="M -180 356 Q 600 494 1380 356"/>
+          <path class="ring low-aura" d="M -160 410 Q 600 538 1360 410"/>
+          <path class="ring low-core" d="M -160 410 Q 600 538 1360 410"/>
+        </svg>
+      </div>
+      <div class="modal-actions">
+        <button id="btnLightningReplay" class="small-button">再来一发</button>
+        <button id="btnLightningClose" class="small-button">收起预览</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="turtleLabModal" class="modal-overlay hidden">
+    <div class="lightning-lab-card turtle-lab-card">
+      <div class="modal-text">绿色龟壳特效预览</div>
+      <div id="turtleLabStage" class="lightning-lab-stage turtle-lab-stage">
+        <div class="turtle-bg-glow"></div>
+        <div class="turtle-scan-lines"></div>
+        <svg class="turtle-shell-svg" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <defs>
+            <linearGradient id="turtleLineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#dcfce7"/>
+              <stop offset="30%" stop-color="#86efac"/>
+              <stop offset="65%" stop-color="#22c55e"/>
+              <stop offset="100%" stop-color="#14532d"/>
+            </linearGradient>
+          </defs>
+          <g class="shell-cells">
+            <path class="shell-line" d="M84 116 L230 74 L344 154 L314 302 L196 348 L76 264 Z"/>
+            <path class="shell-line" d="M238 72 L390 48 L496 132 L468 276 L336 320 L212 240 Z"/>
+            <path class="shell-line" d="M392 54 L548 34 L652 114 L628 254 L488 296 L366 224 Z"/>
+            <path class="shell-line" d="M550 40 L702 30 L796 106 L774 238 L642 280 L522 212 Z"/>
+            <path class="shell-line" d="M714 42 L852 58 L928 142 L908 258 L786 292 L676 226 Z"/>
+
+            <path class="shell-line" d="M122 252 L252 208 L356 284 L330 420 L218 462 L110 392 Z"/>
+            <path class="shell-line" d="M274 216 L416 182 L516 260 L488 392 L372 432 L246 364 Z"/>
+            <path class="shell-line" d="M430 188 L576 162 L676 238 L648 368 L532 410 L404 344 Z"/>
+            <path class="shell-line" d="M588 168 L732 150 L834 224 L808 350 L696 392 L560 324 Z"/>
+            <path class="shell-line" d="M742 164 L878 178 L954 254 L930 364 L818 402 L700 338 Z"/>
+
+            <path class="shell-line" d="M166 394 L296 350 L392 424 L366 546 L252 584 L146 520 Z"/>
+            <path class="shell-line" d="M320 360 L460 324 L562 396 L534 520 L422 560 L292 494 Z"/>
+            <path class="shell-line" d="M480 334 L624 306 L726 374 L700 498 L584 538 L454 474 Z"/>
+            <path class="shell-line" d="M638 316 L780 296 L874 360 L850 478 L736 516 L608 452 Z"/>
+          </g>
+        </svg>
+      </div>
+      <div class="modal-actions">
+        <button id="btnTurtleReplay" class="small-button">再来一发</button>
+        <button id="btnTurtleClose" class="small-button">收起预览</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js?v=2026.03.05.1"></script>
+</body>
+</html>
