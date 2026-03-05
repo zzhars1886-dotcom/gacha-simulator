@@ -2291,7 +2291,8 @@ button.danger {
   padding: 4px 6px;
   border-radius: 4px;
   margin-bottom: 2px;
-  background: rgba(15, 23, 42, 0.7);
+  background: rgba(88, 35, 126, 0.48);
+  border: 1px solid rgba(233, 175, 255, 0.28);
 }
 
 .reward-label {
@@ -2744,12 +2745,16 @@ body.theme-dark .cost-item,
 body.theme-dark .luck-score-card,
 body.theme-dark .stat-item,
 body.theme-dark .results-list li,
-body.theme-dark .rewards-list li,
 body.theme-dark .pity-tracker,
 body.theme-dark .fav-tags,
 body.theme-dark .empowered-detail-content {
   background: rgba(10, 24, 74, 0.72);
   border-color: rgba(148, 163, 184, 0.28);
+}
+
+body.theme-dark .rewards-list li {
+  background: rgba(10, 24, 74, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.28);
 }
 
 body.theme-dark .fav-tag-item {
