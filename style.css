@@ -2105,12 +2105,59 @@ button.danger {
 
   #cinematicDemoModal .cinematic-page-lasers .c-top {
     stroke-width: 78;
-    opacity: 0.5;
+    opacity: 0.42;
+    filter: none;
   }
 
   #cinematicDemoModal .cinematic-page-lasers .c-top-inner {
     stroke-width: 6;
-    opacity: 0.86;
+    opacity: 0.62;
+    filter: none;
+  }
+
+  #cinematicDemoModal .cinematic-page-lasers .c-mid {
+    stroke-width: 12;
+    opacity: 0.5;
+    filter: none;
+  }
+
+  #cinematicDemoModal .cinematic-page-lasers .c-low {
+    stroke-width: 8;
+    opacity: 0.42;
+    filter: none;
+  }
+
+  /* 第二阶段特效降亮（移动端） */
+  .cinematic-stage.play.peek-fx-st .cinematic-peek-laser {
+    opacity: 0.62;
+  }
+
+  .cinematic-stage.play.peek-fx-st .cinematic-peek-laser .cinematic-laser-beam {
+    filter:
+      drop-shadow(0 0 4px rgba(255, 255, 255, 0.55))
+      drop-shadow(0 0 10px rgba(216, 180, 254, 0.32));
+    opacity: 0.75;
+  }
+
+  .cinematic-stage.play.peek-fx-st .cinematic-peek-laser .cinematic-laser-impact {
+    opacity: 0.65;
+    filter: blur(0.6px);
+  }
+
+  .cinematic-stage.play.peek-fx-epic .cinematic-shell-line {
+    opacity: 0.58;
+    filter:
+      drop-shadow(0 0 3px rgba(220, 252, 231, 0.42))
+      drop-shadow(0 0 7px rgba(74, 222, 128, 0.32));
+  }
+
+  .cinematic-stage.play.peek-fx-bt .clock-ring,
+  .cinematic-stage.play.peek-fx-bt .clock-gear,
+  .cinematic-stage.play.peek-fx-bt .clock-pointer-shape {
+    opacity: 0.62;
+    filter:
+      drop-shadow(0 0 3px rgba(255, 247, 214, 0.4))
+      drop-shadow(0 0 8px rgba(251, 191, 36, 0.34));
   }
 }
 
