@@ -756,20 +756,27 @@ function calcSeasonWithGiftExpected(startProgress, empoweredCount, flags) {
 }
 
 function calcExchangeWithGiftExpected(pool) {
+  const cfg = getExchangeConfig();
   const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
   const n = Math.max(1, (pool.empoweredCards || []).length);
-  const capAny = 250; // 等效 25 徽章随机增能券
-  const capSpecificByTarget = (targetName) => getFavoredProgressCap(pool, [targetName]);
+  const capAny = cfg.fixedSelect42 ? 420 : 470;
+  const capSpecificByTarget = (targetName) => {
+    if (!targetName) return null;
+    if (cfg.fixedSelect42 && targetName === cfg.fixedSelect42) return 420;
+    const select47Pool =
+      Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0
+        ? cfg.select47Players
+        : (pool.empoweredCards || []);
+    return select47Pool.includes(targetName) ? 470 : null;
+  };
 
-  const calcExpectedWithGuarantees = (pBase, cap, includeRandomAt250) => {
+  const calcExpectedWithGuarantees = (pBase, cap) => {
+    if (!cap || cap <= 0) return pBase > 0 ? (1 / pBase) : 0;
     let expected = 0;
     let survival = 1;
     for (let draw = 1; draw <= cap; draw += 1) {
       expected += survival;
       let missFactor = 1 - clamp01(pBase);
-      if (includeRandomAt250 && draw === 250) {
-        missFactor *= 1 - (1 / n);
-      }
       if (draw === cap) {
         missFactor = 0; // cap 抽触发自选保底
       }
@@ -778,13 +785,13 @@ function calcExchangeWithGiftExpected(pool) {
     return expected;
   };
 
-  const calcAnyExpected = () => calcExpectedWithGuarantees(pAny, capAny, false);
+  const calcAnyExpected = () => calcExpectedWithGuarantees(pAny, capAny);
 
   const calcSpecificExpected = (targetName) => {
     if (!targetName) return 0;
     const pSpecific = pAny / n;
     const capSpecific = capSpecificByTarget(targetName);
-    return calcExpectedWithGuarantees(pSpecific, capSpecific, true);
+    return calcExpectedWithGuarantees(pSpecific, capSpecific);
   };
 
   const refTarget = (pool.empoweredCards || [])[0] || "";
@@ -799,15 +806,23 @@ function calcExchangeSpecificHitCDF(pool, drawCount, targetName) {
   if (drawCount <= 0 || !targetName) return 0;
   const allNames = pool.empoweredCards || [];
   if (!allNames.includes(targetName)) return 0;
-
+  const cfg = getExchangeConfig();
   const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
   const n = Math.max(1, allNames.length);
   const pSpecific = pAny / n;
-  const cap = getFavoredProgressCap(pool, [targetName]);
-  if (drawCount >= cap) return 1;
+  let cap = null;
+  if (cfg.fixedSelect42 && targetName === cfg.fixedSelect42) {
+    cap = 420;
+  } else {
+    const select47Pool =
+      Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0
+        ? cfg.select47Players
+        : (pool.empoweredCards || []);
+    if (select47Pool.includes(targetName)) cap = 470;
+  }
+  if (cap && drawCount >= cap) return 1;
   const baseNoHit = (1 - pSpecific) ** drawCount;
-  const randomVoucherNoHit = drawCount >= 250 ? (1 - (1 / n)) : 1;
-  return clamp01(1 - baseNoHit * randomVoucherNoHit);
+  return clamp01(1 - baseNoHit);
 }
 
 function calcExchangeEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
@@ -817,8 +832,9 @@ function calcExchangeEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
   if (drawCount <= 0) return 0;
 
   const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
-  const cap = getFavoredProgressCap(pool, [(pool.empoweredCards || [])[0] || ""]);
-  const fixedGain = (drawCount >= 250 ? 1 : 0) + (drawCount >= cap ? 1 : 0);
+  const cfg = getExchangeConfig();
+  const cap = cfg.fixedSelect42 ? 420 : 470;
+  const fixedGain = drawCount >= cap ? 1 : 0;
   const needFromBase = Math.max(0, targetCount - fixedGain);
   return calcBinomialAtLeast(drawCount, pAny, needFromBase);
 }
@@ -834,20 +850,20 @@ function calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, target
   const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
   const n = Math.max(1, allNames.length);
   const pSpecific = pAny / n;
-  const cap = getFavoredProgressCap(pool, [targetName]);
-  const fixedGain = (drawCount >= cap ? 1 : 0);
-  const randomVoucherHitP = drawCount >= 250 ? (1 / n) : 0;
-  let cdf = 0;
-  if (randomVoucherHitP > 0) {
-    const needWhenHit = Math.max(0, targetCount - fixedGain - 1);
-    const needWhenMiss = Math.max(0, targetCount - fixedGain);
-    cdf =
-      randomVoucherHitP * calcBinomialAtLeast(drawCount, pSpecific, needWhenHit) +
-      (1 - randomVoucherHitP) * calcBinomialAtLeast(drawCount, pSpecific, needWhenMiss);
+  const cfg = getExchangeConfig();
+  let cap = null;
+  if (cfg.fixedSelect42 && targetName === cfg.fixedSelect42) {
+    cap = 420;
   } else {
-    const need = Math.max(0, targetCount - fixedGain);
-    cdf = calcBinomialAtLeast(drawCount, pSpecific, need);
+    const select47Pool =
+      Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0
+        ? cfg.select47Players
+        : (pool.empoweredCards || []);
+    if (select47Pool.includes(targetName)) cap = 470;
   }
+  const fixedGain = cap && drawCount >= cap ? 1 : 0;
+  const need = Math.max(0, targetCount - fixedGain);
+  const cdf = calcBinomialAtLeast(drawCount, pSpecific, need);
   return clamp01(cdf);
 }
 
@@ -1374,6 +1390,15 @@ function getFavoredProgressCap(pool = getCurrentPool(), selectedNames = []) {
   return 500;
 }
 
+function getExchangeSelectPoolForCap(pool, capDraw) {
+  const cfg = getExchangeConfig();
+  if (cfg.fixedSelect42 && capDraw === 420) return [cfg.fixedSelect42];
+  if (Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0) {
+    return cfg.select47Players.slice();
+  }
+  return (pool.empoweredCards || []).slice();
+}
+
 function calcChainFavoredSetMetricsExact(pool, selectedNames) {
   const tiers = (pool.chainTiers || [])
     .slice()
@@ -1792,14 +1817,13 @@ function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
       });
       next = progressed;
     } else if (pool.progressionType === "exchange_badge") {
-      if (draw === 250) {
-        next = applyRandomEmpowered(next, 1, pool.empoweredCards || [], true);
-      }
       if (draw === cap) {
+        const selectPool = getExchangeSelectPoolForCap(pool, cap);
         const afterSelect = new Map();
         next.forEach((prob, key) => {
           const { mask } = parseKey(key);
           const missingBits = Object.keys(bitOf)
+            .filter((name) => selectPool.includes(name))
             .map((name) => bitOf[name])
             .filter((bit) => (mask & bit) === 0);
           if (missingBits.length > 0) {
@@ -2267,11 +2291,12 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
       }
     } else if (pool.progressionType === "exchange_badge") {
       const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
+      const cap = getExchangeConfig().fixedSelect42 ? 420 : 470;
+      const selectPool = getExchangeSelectPoolForCap(pool, cap);
       for (let draw = 1; draw <= progressCount; draw += 1) {
         if (Math.random() < pAny) addRandomName(got, pool.empoweredCards || []);
-        if (draw === 250) addRandomName(got, pool.empoweredCards || []);
-        if (draw === getFavoredProgressCap(pool, [])) {
-          addSelectNamePreferNew(got, pool.empoweredCards || []);
+        if (draw === cap) {
+          addSelectNamePreferNew(got, selectPool);
         }
       }
     } else {
@@ -3866,6 +3891,9 @@ function canExchangeToFavored(targetName) {
   const cfg = getExchangeConfig();
   if (cfg.fixedSelect42 && targetName === cfg.fixedSelect42) {
     return state.badges >= 42;
+  }
+  if (Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0) {
+    return cfg.select47Players.includes(targetName) && state.badges >= 47;
   }
   return state.badges >= 47;
 }
