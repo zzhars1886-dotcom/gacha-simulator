@@ -248,6 +248,29 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  rock_blade_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "磐石利刃兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.005 },
+      { type: "selected", label: "精选卡", probability: 0.008 },
+      { type: "star5", label: "五星普卡", probability: 0.024 },
+      { type: "star4", label: "四星普卡", probability: 0.363 },
+      { type: "star3", label: "三星普卡", probability: 0.6 },
+    ],
+    empoweredCards: ["贝肯鲍尔", "苏亚雷斯", "内斯塔", "比利亚", "弗兰", "特维斯", "西多夫"],
+    exchangeConfig: {
+      specificPlayers: ["贝肯鲍尔", "苏亚雷斯", "内斯塔"],
+      fixedSelect42: null,
+      select47Players: ["贝肯鲍尔", "苏亚雷斯", "内斯塔"], // 47 徽章仅可自选主菜
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["贝肯鲍尔", "苏亚雷斯", "内斯塔"],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   genius_chain_bundle: {
     poolType: "chain_bundle",
     progressionType: "chain_tier",
@@ -399,6 +422,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.rock_blade_exchange && "rock_blade_exchange") ||
   (POOLS.spring_reunion_chain_bundle && "spring_reunion_chain_bundle") ||
   POOL_KEYS[POOL_KEYS.length - 1] ||
   "xinzai_jinxiu";
@@ -417,6 +441,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   ouzhan_fengyan: ["assets/欧战烽烟"],
   dream_midfield_exchange: ["assets/梦幻中轴"],
   lucky_drop_exchange: ["assets/天降幸运"],
+  rock_blade_exchange: ["assets/磐石利刃"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
   s9_season_inherit: ["assets/S9赛季累抽继承"],
@@ -470,6 +495,15 @@ const POOL_PLAYER_META = {
     哈维: { type: "史诗", position: "后腰" },
     拉姆: { type: "史诗", position: "后腰" },
     伊涅斯塔: { type: "史诗", position: "中前卫" },
+  },
+  rock_blade_exchange: {
+    贝肯鲍尔: { type: "史诗", position: "中后卫" },
+    苏亚雷斯: { type: "史诗", position: "中锋" },
+    内斯塔: { type: "史诗", position: "中后卫" },
+    比利亚: { type: "史诗", position: "中锋" },
+    弗兰: { type: "史诗", position: "中锋" },
+    特维斯: { type: "史诗", position: "中锋" },
+    西多夫: { type: "史诗", position: "后腰" },
   },
   genius_chain_bundle: {
     贝斯特: { type: "BT", position: "右边锋" },

@@ -784,8 +784,8 @@ button.danger {
 .cinematic-stage {
   --stage-w: min(70vw, 590px);
   --stage-h: min(56vh, 370px);
-  --card-w: min(20vw, 175px);
-  --type-w: min(38vw, 280px);
+  --card-w: min(14vw, 118px);
+  --type-w: min(24vw, 148px);
   --type-ar: 16 / 9;
   position: relative;
   width: var(--stage-w);
@@ -2088,19 +2088,37 @@ button.danger {
     animation: none !important;
   }
 
+  /* 移动端激光束改为静态，减少闪烁与掉帧 */
+  #cinematicDemoModal:not(.hidden) .cinematic-page-lasers .page-laser-line,
+  #cinematicDemoModal:not(.hidden) .cinematic-page-lasers .page-laser-sweep {
+    animation: none !important;
+  }
+
+  #cinematicDemoModal .cinematic-page-lasers .left-1 { transform: rotate(130deg) scaleX(1); opacity: 0.24; }
+  #cinematicDemoModal .cinematic-page-lasers .left-2 { transform: rotate(142deg) scaleX(1); opacity: 0.22; }
+  #cinematicDemoModal .cinematic-page-lasers .left-3 { transform: rotate(154deg) scaleX(1); opacity: 0.2; }
+  #cinematicDemoModal .cinematic-page-lasers .right-1 { transform: rotate(50deg) scaleX(1); opacity: 0.24; }
+  #cinematicDemoModal .cinematic-page-lasers .right-2 { transform: rotate(38deg) scaleX(1); opacity: 0.22; }
+  #cinematicDemoModal .cinematic-page-lasers .right-3 { transform: rotate(26deg) scaleX(1); opacity: 0.2; }
+
+  #cinematicDemoModal .cinematic-page-lasers .page-laser-sweep {
+    opacity: 0.16;
+    transform: translate(-50%, -50%) scaleX(1);
+  }
+
   #cinematicDemoModal:not(.hidden) .cinematic-page-lasers .left-1,
   #cinematicDemoModal:not(.hidden) .cinematic-page-lasers .right-1 {
-    animation: pageLaserDraw 0.8s cubic-bezier(0.16, 0.72, 0.2, 1) forwards 0.06s !important;
+    animation: none !important;
   }
 
   #cinematicDemoModal:not(.hidden) .cinematic-page-lasers .left-2,
   #cinematicDemoModal:not(.hidden) .cinematic-page-lasers .right-2 {
-    animation: pageLaserDraw 0.88s cubic-bezier(0.16, 0.72, 0.2, 1) forwards 0.12s !important;
+    animation: none !important;
   }
 
   #cinematicDemoModal:not(.hidden) .cinematic-page-lasers .left-3,
   #cinematicDemoModal:not(.hidden) .cinematic-page-lasers .right-3 {
-    animation: pageLaserDraw 0.94s cubic-bezier(0.16, 0.72, 0.2, 1) forwards 0.18s !important;
+    animation: none !important;
   }
 
   #cinematicDemoModal .cinematic-page-lasers .c-top {
