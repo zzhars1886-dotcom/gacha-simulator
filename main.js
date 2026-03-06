@@ -493,7 +493,7 @@ const POOL_PLAYER_META = {
     科勒: { type: "史诗", position: "中锋" },
     亚马尔: { type: "史诗", position: "右前卫" },
     哈维: { type: "史诗", position: "后腰" },
-    拉姆: { type: "史诗", position: "后腰" },
+    拉姆: { type: "史诗", position: "右后卫" },
     伊涅斯塔: { type: "史诗", position: "中前卫" },
   },
   rock_blade_exchange: {
