@@ -755,20 +755,100 @@ function calcSeasonWithGiftExpected(startProgress, empoweredCount, flags) {
   };
 }
 
-function calcExchangeWithGiftExpected(baseAny, baseSpecific) {
-  const toAnyGuarantee = 250; // 25 徽章随机增能卡必得券
-  const toSpecificGuarantee = 470; // 47 徽章自选券（按默认主流程）
-  const pAny = baseAny > 0 ? 1 / baseAny : 0;
-  const pSpecific = baseSpecific > 0 ? 1 / baseSpecific : 0;
+function calcExchangeWithGiftExpected(pool) {
+  const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
+  const n = Math.max(1, (pool.empoweredCards || []).length);
+  const capAny = 250; // 等效 25 徽章随机增能券
+  const capSpecificByTarget = (targetName) => getFavoredProgressCap(pool, [targetName]);
 
-  const cappedExpected = (p, limit) => {
-    if (p <= 0) return limit;
-    return (1 - (1 - p) ** limit) / p;
+  const calcExpectedWithGuarantees = (pBase, cap, includeRandomAt250) => {
+    let expected = 0;
+    let survival = 1;
+    for (let draw = 1; draw <= cap; draw += 1) {
+      expected += survival;
+      let missFactor = 1 - clamp01(pBase);
+      if (includeRandomAt250 && draw === 250) {
+        missFactor *= 1 - (1 / n);
+      }
+      if (draw === cap) {
+        missFactor = 0; // cap 抽触发自选保底
+      }
+      survival *= missFactor;
+    }
+    return expected;
   };
 
-  const any = cappedExpected(pAny, toAnyGuarantee);
-  const specific = cappedExpected(pSpecific, toSpecificGuarantee);
-  return { any, specific };
+  const calcAnyExpected = () => calcExpectedWithGuarantees(pAny, capAny, false);
+
+  const calcSpecificExpected = (targetName) => {
+    if (!targetName) return 0;
+    const pSpecific = pAny / n;
+    const capSpecific = capSpecificByTarget(targetName);
+    return calcExpectedWithGuarantees(pSpecific, capSpecific, true);
+  };
+
+  const refTarget = (pool.empoweredCards || [])[0] || "";
+  return {
+    any: calcAnyExpected(),
+    specific: calcSpecificExpected(refTarget),
+  };
+}
+
+function calcExchangeSpecificHitCDF(pool, drawCount, targetName) {
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  if (drawCount <= 0 || !targetName) return 0;
+  const allNames = pool.empoweredCards || [];
+  if (!allNames.includes(targetName)) return 0;
+
+  const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
+  const n = Math.max(1, allNames.length);
+  const pSpecific = pAny / n;
+  const cap = getFavoredProgressCap(pool, [targetName]);
+  if (drawCount >= cap) return 1;
+  const baseNoHit = (1 - pSpecific) ** drawCount;
+  const randomVoucherNoHit = drawCount >= 250 ? (1 - (1 / n)) : 1;
+  return clamp01(1 - baseNoHit * randomVoucherNoHit);
+}
+
+function calcExchangeEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
+  if (targetCount <= 0) return 1;
+  if (drawCount <= 0) return 0;
+
+  const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
+  const cap = getFavoredProgressCap(pool, [(pool.empoweredCards || [])[0] || ""]);
+  const fixedGain = (drawCount >= 250 ? 1 : 0) + (drawCount >= cap ? 1 : 0);
+  const needFromBase = Math.max(0, targetCount - fixedGain);
+  return calcBinomialAtLeast(drawCount, pAny, needFromBase);
+}
+
+function calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount) {
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
+  if (targetCount <= 0) return 1;
+  if (drawCount <= 0 || !targetName) return 0;
+  const allNames = pool.empoweredCards || [];
+  if (!allNames.includes(targetName)) return 0;
+
+  const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
+  const n = Math.max(1, allNames.length);
+  const pSpecific = pAny / n;
+  const cap = getFavoredProgressCap(pool, [targetName]);
+  const fixedGain = (drawCount >= cap ? 1 : 0);
+  const randomVoucherHitP = drawCount >= 250 ? (1 / n) : 0;
+  let cdf = 0;
+  if (randomVoucherHitP > 0) {
+    const needWhenHit = Math.max(0, targetCount - fixedGain - 1);
+    const needWhenMiss = Math.max(0, targetCount - fixedGain);
+    cdf =
+      randomVoucherHitP * calcBinomialAtLeast(drawCount, pSpecific, needWhenHit) +
+      (1 - randomVoucherHitP) * calcBinomialAtLeast(drawCount, pSpecific, needWhenMiss);
+  } else {
+    const need = Math.max(0, targetCount - fixedGain);
+    cdf = calcBinomialAtLeast(drawCount, pSpecific, need);
+  }
+  return clamp01(cdf);
 }
 
 function getMilestoneRewardHitProb(reward, pool, empoweredCount) {
@@ -1182,6 +1262,7 @@ function simulateSeasonSpecificCDF(targetDraws, targetName) {
 
 const favoredProbabilityCache = {};
 const specificProbabilityCache = {};
+const specificCountProbabilityCache = {};
 const empoweredCountProbabilityCache = {};
 const uniqueEmpoweredCountProbabilityCache = {};
 const chainFavoredExpectedTierCache = {};
@@ -1231,6 +1312,8 @@ function getFavoredHitProbabilityByDrawCount(drawCount) {
     cdf = simulateSeasonSpecificCDF(drawCount, normalizedTarget);
   } else if (pool.progressionType === "milestone") {
     cdf = calcMilestoneSpecificHitCDF(pool, drawCount);
+  } else if (pool.progressionType === "exchange_badge") {
+    cdf = calcExchangeSpecificHitCDF(pool, drawCount, normalizedTarget);
   } else {
     const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
     const pSpecific = names.length > 0 ? pAny / names.length : 0;
@@ -1259,6 +1342,8 @@ function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
     cdf = simulateSeasonSpecificCDF(drawCount, targetName);
   } else if (pool.progressionType === "milestone") {
     cdf = calcMilestoneSpecificHitCDF(pool, drawCount);
+  } else if (pool.progressionType === "exchange_badge") {
+    cdf = calcExchangeSpecificHitCDF(pool, drawCount, targetName);
   } else {
     const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
     const pSpecific = names.length > 0 ? pAny / names.length : 0;
@@ -1269,7 +1354,7 @@ function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
   return specificProbabilityCache[cacheKey];
 }
 
-function getFavoredProgressCap(pool = getCurrentPool()) {
+function getFavoredProgressCap(pool = getCurrentPool(), selectedNames = []) {
   if (isChainPool()) {
     return (pool.chainTiers || []).length || 7;
   }
@@ -1278,7 +1363,14 @@ function getFavoredProgressCap(pool = getCurrentPool()) {
     const firstSelect = (pool.milestones || []).find((m) => m.type === "empowered_select");
     return firstSelect ? Number(firstSelect.pulls) || 500 : 500;
   }
-  if (pool.progressionType === "exchange_badge") return 470;
+  if (pool.progressionType === "exchange_badge") {
+    const cfg = getExchangeConfig();
+    const selected = Array.from(new Set((selectedNames || []).filter(Boolean)));
+    if (cfg.fixedSelect42 && selected.length === 1 && selected[0] === cfg.fixedSelect42) {
+      return 420;
+    }
+    return 470;
+  }
   return 500;
 }
 
@@ -1470,9 +1562,9 @@ function calcChainFavoredSetMetricsExact(pool, selectedNames) {
 }
 
 function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
-  const cap = getFavoredProgressCap(pool);
-  const maxDraw = Math.max(cap * 4, 1200);
   const selected = Array.from(new Set((selectedNames || []).filter(Boolean)));
+  const cap = getFavoredProgressCap(pool, selected);
+  const maxDraw = Math.max(cap * 4, 1200);
   const m = selected.length;
   const n = (pool.empoweredCards || []).length || 1;
   if (!m) return { anyExpected: 0, allExpected: 0, allProbAtCap: 0 };
@@ -1481,7 +1573,6 @@ function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
   selected.forEach((name, idx) => {
     bitOf[name] = 1 << idx;
   });
-  const cfg = getExchangeConfig();
 
   const keyOf = (mask, aux1, aux2) => `${mask}|${aux1}|${aux2}`;
   const parseKey = (k) => {
@@ -1701,73 +1792,27 @@ function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
       });
       next = progressed;
     } else if (pool.progressionType === "exchange_badge") {
-      let progressed = new Map();
-      next.forEach((prob, key) => {
-        const { mask, aux1 } = parseKey(key);
-        const badges = aux1 + (draw % 10 === 0 ? 1 : 0);
-        push(progressed, mask, badges, 0, prob);
-      });
-
-      const applyExchangeGreedy = (mapIn) => {
-        let map = mapIn;
-        let changed = true;
-        while (changed) {
-          changed = false;
-          const out = new Map();
-          map.forEach((prob, key) => {
-            const { mask, aux1: badges } = parseKey(key);
-            if (prob <= 0) return;
-            // 42固定
-            if (
-              cfg.fixedSelect42 &&
-              badges >= 42 &&
-              Object.prototype.hasOwnProperty.call(bitOf, cfg.fixedSelect42) &&
-              (mask & bitOf[cfg.fixedSelect42]) === 0
-            ) {
-              push(out, mask | bitOf[cfg.fixedSelect42], badges - 42, 0, prob);
-              changed = true;
-              return;
-            }
-            // 47自选
-            if (badges >= 47) {
-              const selectPool =
-                Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0
-                  ? cfg.select47Players
-                  : (pool.empoweredCards || []);
-              const missingBits = Object.keys(bitOf)
-                .filter((name) => selectPool.includes(name))
-                .map((name) => bitOf[name])
-                .filter((bit) => (mask & bit) === 0);
-              if (missingBits.length > 0) {
-                const each = prob / missingBits.length;
-                missingBits.forEach((bit) => {
-                  push(out, mask | bit, badges - 47, 0, each);
-                });
-              } else {
-                push(out, mask, badges - 47, 0, prob);
-              }
-              changed = true;
-              return;
-            }
-            // 25随机
-            if (badges >= 25) {
-              const tmp = applyRandomEmpowered(
-                new Map([[keyOf(mask, badges - 25, 0), prob]]),
-                1,
-                pool.empoweredCards || [],
-                true
-              );
-              tmp.forEach((v, k) => out.set(k, (out.get(k) || 0) + v));
-              changed = true;
-              return;
-            }
-            push(out, mask, badges, 0, prob);
-          });
-          map = out;
-        }
-        return map;
-      };
-      next = applyExchangeGreedy(progressed);
+      if (draw === 250) {
+        next = applyRandomEmpowered(next, 1, pool.empoweredCards || [], true);
+      }
+      if (draw === cap) {
+        const afterSelect = new Map();
+        next.forEach((prob, key) => {
+          const { mask } = parseKey(key);
+          const missingBits = Object.keys(bitOf)
+            .map((name) => bitOf[name])
+            .filter((bit) => (mask & bit) === 0);
+          if (missingBits.length > 0) {
+            const each = prob / missingBits.length;
+            missingBits.forEach((bit) => {
+              push(afterSelect, mask | bit, 0, 0, each);
+            });
+          } else {
+            push(afterSelect, mask, 0, 0, prob);
+          }
+        });
+        next = afterSelect;
+      }
     }
 
     states = next;
@@ -1813,7 +1858,7 @@ function getFavoredSetExpectedMetrics(selectedNames) {
     ? `${activePoolKey}|count:${uniq.length}`
     : `${activePoolKey}|${normalizedNames.join(",")}`;
   if (favoredSetMetricsCache[key]) return favoredSetMetricsCache[key];
-  const cap = getFavoredProgressCap(pool);
+  const cap = getFavoredProgressCap(pool, normalizedNames);
   const runs = isChainPool() ? 6000 : 4000;
   const simulated = isChainPool()
     ? calcChainFavoredSetMetricsExact(pool, normalizedNames)
@@ -2075,6 +2120,8 @@ function getEmpoweredAtLeastProbabilityByDrawCount(drawCount, targetCount) {
     cdf = calcChainEmpoweredAtLeastCDF(drawCount, targetCount);
   } else if (pool.progressionType === "milestone") {
     cdf = calcMilestoneEmpoweredAtLeastCDF(pool, drawCount, targetCount);
+  } else if (pool.progressionType === "exchange_badge") {
+    cdf = calcExchangeEmpoweredAtLeastCDF(pool, drawCount, targetCount);
   } else {
     const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
     cdf = calcBinomialAtLeast(drawCount, pAny, targetCount);
@@ -2088,11 +2135,49 @@ function getBeforeProgress(progress) {
   return Math.max(0, Math.floor(Number(progress) || 0) - 1);
 }
 
+function getSpecificCountAtLeastProbabilityByDrawCount(drawCount, targetName, targetCount) {
+  const pool = getCurrentPool();
+  const names = isChainPool() ? getEmpoweredStatNames() : pool.empoweredCards || [];
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
+  if (targetCount <= 0) return 1;
+  if (!names.length || drawCount <= 0 || !targetName || !names.includes(targetName)) return 0;
+
+  const cacheKey = `${activePoolKey}|${targetName}|${drawCount}|${targetCount}|count`;
+  if (specificCountProbabilityCache[cacheKey] != null) {
+    return specificCountProbabilityCache[cacheKey];
+  }
+
+  let cdf = 0;
+  if (pool.progressionType === "exchange_badge") {
+    cdf = calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
+  } else {
+    const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
+    const pSpecific = names.length > 0 ? pAny / names.length : 0;
+    cdf = calcBinomialAtLeast(drawCount, pSpecific, targetCount);
+  }
+
+  specificCountProbabilityCache[cacheKey] = clamp01(cdf);
+  return specificCountProbabilityCache[cacheKey];
+}
+
 function getExceedPercentForSpecificByProgress(progress, targetName) {
   if (!targetName) return 100;
   const beforeProgress = getBeforeProgress(progress);
   const hitProb = getSpecificHitProbabilityByDrawCount(beforeProgress, targetName);
   return clamp01(1 - hitProb) * 100;
+}
+
+function getExceedPercentForSpecificCountByProgress(progress, targetName, targetCount) {
+  const currentProgress = Math.max(0, Math.floor(Number(progress) || 0));
+  const currentCount = Math.max(0, Math.floor(Number(targetCount) || 0));
+  if (!targetName) return 100;
+  const probMore = getSpecificCountAtLeastProbabilityByDrawCount(
+    currentProgress,
+    targetName,
+    currentCount + 1
+  );
+  return clamp01(1 - probMore) * 100;
 }
 
 function getExceedPercentForEmpoweredCountByProgress(progress, targetCount) {
@@ -2178,6 +2263,15 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
         if (seasonProgress === 500) {
           addSelectNamePreferNew(got, pool.empoweredCards || []);
           seasonProgress = 0;
+        }
+      }
+    } else if (pool.progressionType === "exchange_badge") {
+      const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
+      for (let draw = 1; draw <= progressCount; draw += 1) {
+        if (Math.random() < pAny) addRandomName(got, pool.empoweredCards || []);
+        if (draw === 250) addRandomName(got, pool.empoweredCards || []);
+        if (draw === getFavoredProgressCap(pool, [])) {
+          addSelectNamePreferNew(got, pool.empoweredCards || []);
         }
       }
     } else {
@@ -2322,7 +2416,7 @@ function getExpectedDrawMetrics() {
   }
 
   if (pool.progressionType === "exchange_badge") {
-    const withGift = calcExchangeWithGiftExpected(baseAny, baseSpecific);
+    const withGift = calcExchangeWithGiftExpected(pool);
     return {
       baseAny,
       baseSpecific,
@@ -2343,7 +2437,11 @@ function renderExpectedDrawInfo() {
 function getFavoredExpectedSpecific() {
   const metrics = getExpectedDrawMetrics();
   if (!metrics) return 0;
-  if (isSeasonPool() || getCurrentPool().progressionType === "milestone") {
+  if (
+    isSeasonPool() ||
+    getCurrentPool().progressionType === "milestone" ||
+    getCurrentPool().progressionType === "exchange_badge"
+  ) {
     return metrics.giftSpecific;
   }
   return metrics.baseSpecific;
@@ -3769,9 +3867,6 @@ function canExchangeToFavored(targetName) {
   if (cfg.fixedSelect42 && targetName === cfg.fixedSelect42) {
     return state.badges >= 42;
   }
-  if (Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0) {
-    return cfg.select47Players.includes(targetName) && state.badges >= 47;
-  }
   return state.badges >= 47;
 }
 
@@ -4791,14 +4886,24 @@ function renderStats() {
   if (!tbody) return;
   tbody.innerHTML = "";
   const favoredNames = new Set(getCurrentFavoredTargetNames());
+  const progressCountForLuck = isChainPool()
+    ? Math.max(0, Math.floor(Number(state.chainTierProgress) || 0))
+    : Math.max(0, Math.floor(Number(state.totalPulls) || 0));
   getEmpoweredStatNames().forEach((name) => {
     const tr = document.createElement("tr");
     const tdName = document.createElement("td");
     const tdCount = document.createElement("td");
     const count = state.empoweredCounts[name] || 0;
     tdName.textContent = name;
-    if (favoredNames.has(name)) {
-      if (count > 0) {
+    if (count > 0) {
+      const exceedSameName = getExceedPercentForSpecificCountByProgress(
+        progressCountForLuck,
+        name,
+        count
+      );
+      const sameNameGrade = getLuckGradeByExceedPercent(exceedSameName);
+      let extra = "";
+      if (favoredNames.has(name)) {
         const firstHit = (state.empoweredDetails[name] || [])[0] || null;
         let progressAtFirst = 0;
         if (firstHit && firstHit.pullIndex != null) {
@@ -4806,14 +4911,16 @@ function renderStats() {
         } else if (firstHit && firstHit.milestonePulls != null) {
           progressAtFirst = Math.max(0, Math.floor(Number(firstHit.milestonePulls) || 0));
         }
-        const exceedSpecific = getExceedPercentForSpecificByProgress(progressAtFirst, name);
-        const specificGrade = getLuckGradeByExceedPercent(exceedSpecific);
-        tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline"><span class="expected-value">${specificGrade}</span> | 超过 <span class="expected-value">${exceedSpecific.toFixed(
-          2
-        )}%</span> 的玩家</span>`;
-      } else {
-        tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">未获得</span>`;
+        const exceedFirstHit = getExceedPercentForSpecificByProgress(progressAtFirst, name);
+        extra = `；单卡首抽超过 <span class="expected-value">${exceedFirstHit.toFixed(2)}%</span> 的玩家`;
       }
+      tdCount.innerHTML =
+        `${count} ` +
+        `<span class="stat-exceed-note-inline">同名 <span class="expected-value">${sameNameGrade}</span> | 超过 <span class="expected-value">${exceedSameName.toFixed(
+          2
+        )}%</span> 的玩家${extra}</span>`;
+    } else if (favoredNames.has(name)) {
+      tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">未获得</span>`;
     } else {
       tdCount.textContent = String(count);
     }
