@@ -3272,51 +3272,48 @@ function replayCinematicDemoModal(options = {}) {
     return delayHighlight + highlightText.length * charDelay;
   };
 
-  const startTimeline = () => {
-    if (currentLoadSeq !== cinematicAssetLoadSeq) return;
-    stage.classList.remove("play");
-    void stage.offsetWidth;
-    stage.classList.add("play");
-    showLine(line1, "<span class=\"expected-value\">出货啦！</span>", 280);
-    // 关键词出现与右侧图片节点严格对齐：
-    // 类型 2.3s（类型图），位置 5.1s（开角图），名字 7.9s（完整图）
-    showLineWithPausedHighlight(
-      line2,
-      "类型是~ ",
-      `${targetTypeName}！`,
-      1200,
-      2300,
-      200
-    );
-    showLineWithPausedHighlight(
-      line3,
-      "注册位置是~ ",
-      `${targetPosition}！`,
-      4000,
-      5100,
-      200
-    );
-    const line4DoneAt = showLineWithPausedHighlight(
-      line4,
-      "他就是！ ",
-      `${targetPlayerName}！！！`,
-      6800,
-      7900,
-      230
-    );
-    if (isFavored) {
-      showLine(line5, "恭喜你获得心仪球员！", line4DoneAt + 220);
-    }
-    showLine(line6, buildCinematicStatsLine(cinematicDemoContext), line4DoneAt + 520);
-    if (ownedInfo) {
-      schedule(line4DoneAt + 120, () => {
-        ownedInfo.classList.add("show");
-      });
-    }
-    schedule(line4DoneAt + 760, () => {
-      cinematicDemoDone = true;
+  stage.classList.remove("play");
+  void stage.offsetWidth;
+  stage.classList.add("play");
+  showLine(line1, "<span class=\"expected-value\">出货啦！</span>", 280);
+  // 关键词出现与右侧图片节点严格对齐：
+  // 类型 2.3s（类型图），位置 5.1s（开角图），名字 7.9s（完整图）
+  showLineWithPausedHighlight(
+    line2,
+    "类型是~ ",
+    `${targetTypeName}！`,
+    1200,
+    2300,
+    200
+  );
+  showLineWithPausedHighlight(
+    line3,
+    "注册位置是~ ",
+    `${targetPosition}！`,
+    4000,
+    5100,
+    200
+  );
+  const line4DoneAt = showLineWithPausedHighlight(
+    line4,
+    "他就是！ ",
+    `${targetPlayerName}！！！`,
+    6800,
+    7900,
+    230
+  );
+  if (isFavored) {
+    showLine(line5, "恭喜你获得心仪球员！", line4DoneAt + 220);
+  }
+  showLine(line6, buildCinematicStatsLine(cinematicDemoContext), line4DoneAt + 520);
+  if (ownedInfo) {
+    schedule(line4DoneAt + 120, () => {
+      ownedInfo.classList.add("show");
     });
-  };
+  }
+  schedule(line4DoneAt + 760, () => {
+    cinematicDemoDone = true;
+  });
 
   resolveCinematicImageUrls(activePoolKey, targetTypeName, targetPlayerName, isLiveEvent)
     .then(({ typeUrl, playerUrl }) => {
@@ -3335,7 +3332,6 @@ function replayCinematicDemoModal(options = {}) {
         const ownedCount = Math.max(0, Number(state.empoweredCounts[targetPlayerName]) || 0);
         ownedInfo.textContent = ownedCount <= 1 ? "首次获得" : `第 ${ownedCount} 张`;
       }
-      startTimeline();
     })
     .catch(() => {
       if (currentLoadSeq !== cinematicAssetLoadSeq) return;
@@ -3353,7 +3349,6 @@ function replayCinematicDemoModal(options = {}) {
         const ownedCount = Math.max(0, Number(state.empoweredCounts[targetPlayerName]) || 0);
         ownedInfo.textContent = ownedCount <= 1 ? "首次获得" : `第 ${ownedCount} 张`;
       }
-      startTimeline();
     });
 }
 

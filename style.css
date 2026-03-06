@@ -2040,8 +2040,8 @@ button.danger {
   .cinematic-stage {
     --stage-w: min(86vw, 450px);
     --stage-h: min(60vh, 330px);
-    --card-w: min(30vw, 116px);
-    --type-w: min(44vw, 176px);
+    --card-w: min(24vw, 94px);
+    --type-w: min(36vw, 140px);
   }
 
   .cinematic-line {
