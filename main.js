@@ -4914,24 +4914,14 @@ function renderStats() {
   if (!tbody) return;
   tbody.innerHTML = "";
   const favoredNames = new Set(getCurrentFavoredTargetNames());
-  const progressCountForLuck = isChainPool()
-    ? Math.max(0, Math.floor(Number(state.chainTierProgress) || 0))
-    : Math.max(0, Math.floor(Number(state.totalPulls) || 0));
   getEmpoweredStatNames().forEach((name) => {
     const tr = document.createElement("tr");
     const tdName = document.createElement("td");
     const tdCount = document.createElement("td");
     const count = state.empoweredCounts[name] || 0;
     tdName.textContent = name;
-    if (count > 0) {
-      const exceedSameName = getExceedPercentForSpecificCountByProgress(
-        progressCountForLuck,
-        name,
-        count
-      );
-      const sameNameGrade = getLuckGradeByExceedPercent(exceedSameName);
-      let extra = "";
-      if (favoredNames.has(name)) {
+    if (favoredNames.has(name)) {
+      if (count > 0) {
         const firstHit = (state.empoweredDetails[name] || [])[0] || null;
         let progressAtFirst = 0;
         if (firstHit && firstHit.pullIndex != null) {
@@ -4939,16 +4929,14 @@ function renderStats() {
         } else if (firstHit && firstHit.milestonePulls != null) {
           progressAtFirst = Math.max(0, Math.floor(Number(firstHit.milestonePulls) || 0));
         }
-        const exceedFirstHit = getExceedPercentForSpecificByProgress(progressAtFirst, name);
-        extra = `；单卡首抽超过 <span class="expected-value">${exceedFirstHit.toFixed(2)}%</span> 的玩家`;
-      }
-      tdCount.innerHTML =
-        `${count} ` +
-        `<span class="stat-exceed-note-inline">同名 <span class="expected-value">${sameNameGrade}</span> | 超过 <span class="expected-value">${exceedSameName.toFixed(
+        const exceedSpecific = getExceedPercentForSpecificByProgress(progressAtFirst, name);
+        const specificGrade = getLuckGradeByExceedPercent(exceedSpecific);
+        tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline"><span class="expected-value">${specificGrade}</span> | 超过 <span class="expected-value">${exceedSpecific.toFixed(
           2
-        )}%</span> 的玩家${extra}</span>`;
-    } else if (favoredNames.has(name)) {
-      tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">未获得</span>`;
+        )}%</span> 的玩家</span>`;
+      } else {
+        tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">未获得</span>`;
+      }
     } else {
       tdCount.textContent = String(count);
     }
