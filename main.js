@@ -271,6 +271,29 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  pitch_maestro_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "球场主宰兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.005 },
+      { type: "selected", label: "精选卡", probability: 0.008 },
+      { type: "star5", label: "五星普卡", probability: 0.024 },
+      { type: "star4", label: "四星普卡", probability: 0.363 },
+      { type: "star3", label: "三星普卡", probability: 0.6 },
+    ],
+    empoweredCards: ["马克莱莱", "欧文", "皮克", "伊涅斯塔", "罗纳尔迪尼奥", "托雷斯", "范博梅尔"],
+    exchangeConfig: {
+      specificPlayers: ["马克莱莱", "皮克", "欧文"],
+      fixedSelect42: null,
+      select47Players: ["马克莱莱", "皮克", "欧文"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["马克莱莱", "皮克", "欧文"],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   genius_chain_bundle: {
     poolType: "chain_bundle",
     progressionType: "chain_tier",
@@ -482,6 +505,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.pitch_maestro_exchange && "pitch_maestro_exchange") ||
   (POOLS.rock_blade_exchange && "rock_blade_exchange") ||
   (POOLS.spring_reunion_chain_bundle && "spring_reunion_chain_bundle") ||
   POOL_KEYS[POOL_KEYS.length - 1] ||
@@ -503,6 +527,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   dream_midfield_exchange: ["assets/梦幻中轴"],
   lucky_drop_exchange: ["assets/天降幸运"],
   rock_blade_exchange: ["assets/磐石利刃"],
+  pitch_maestro_exchange: ["assets/球场主宰"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
   s9_season_inherit: ["assets/S9赛季累抽继承"],
@@ -567,6 +592,15 @@ const POOL_PLAYER_META = {
     弗兰: { type: "史诗", position: "中锋" },
     特维斯: { type: "史诗", position: "中锋" },
     西多夫: { type: "史诗", position: "后腰" },
+  },
+  pitch_maestro_exchange: {
+    马克莱莱: { type: "史诗", position: "后腰" },
+    欧文: { type: "史诗", position: "中锋" },
+    皮克: { type: "史诗", position: "中后卫" },
+    伊涅斯塔: { type: "史诗", position: "前腰" },
+    罗纳尔迪尼奥: { type: "史诗", position: "左边锋" },
+    托雷斯: { type: "史诗", position: "中锋" },
+    范博梅尔: { type: "史诗", position: "中前卫" },
   },
   genius_chain_bundle: {
     贝斯特: { type: "BT", position: "右边锋" },
