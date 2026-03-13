@@ -5163,14 +5163,12 @@ function renderProbabilities() {
 
 function renderAccumulatedTargetSwitch() {
   const row = document.getElementById("accumulatedTargetSwitchRow");
-  const current = document.getElementById("accumulatedTargetCurrent");
   const choice = document.getElementById("accumulatedTargetChoice");
-  if (!row || !current || !choice) return;
+  if (!row || !choice) return;
 
   if (!isAccumulatedGuaranteePool()) {
     row.classList.add("hidden");
     choice.innerHTML = "";
-    current.textContent = "";
     return;
   }
 
@@ -5178,26 +5176,18 @@ function renderAccumulatedTargetSwitch() {
   if (pools.length <= 1) {
     row.classList.add("hidden");
     choice.innerHTML = "";
-    current.textContent = "";
     return;
   }
 
   row.classList.remove("hidden");
   choice.innerHTML = "";
-  const currentPool = getCurrentPool();
-  const currentName = (currentPool.empoweredCards || [])[0] || "";
-  const currentMeta = getCinematicPlayerMeta(activePoolKey, currentName);
-  current.textContent = currentName
-    ? `当前定向：${currentName} ${currentMeta.position || ""} ${currentMeta.type || ""}`.trim()
-    : "";
 
   pools.forEach((key) => {
     const pool = POOLS[key];
     const targetName = (pool.empoweredCards || [])[0] || "";
-    const meta = getCinematicPlayerMeta(key, targetName);
     const option = document.createElement("option");
     option.value = key;
-    option.textContent = `${pool.switchButtonLabel || targetName} ${meta.type || ""} ${meta.position || ""}`.trim();
+    option.textContent = pool.switchButtonLabel || targetName;
     choice.appendChild(option);
   });
   choice.value = activePoolKey;

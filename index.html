@@ -185,13 +185,19 @@
         <section class="draw-panel card">
           <div class="draw-panel-head">
             <h3>抽卡操作</h3>
-            <div class="draw-anim-mode">
-              <label for="animationModeSelect">动画模式</label>
-              <select id="animationModeSelect">
-                <option value="favored_only">仅心仪动画</option>
-                <option value="all_empowered" selected>出货都动画</option>
-                <option value="none">无动画</option>
-              </select>
+            <div class="draw-panel-tools">
+              <div id="accumulatedTargetSwitchRow" class="draw-anim-mode hidden">
+                <label for="accumulatedTargetChoice">定向球员</label>
+                <select id="accumulatedTargetChoice"></select>
+              </div>
+              <div class="draw-anim-mode">
+                <label for="animationModeSelect">动画模式</label>
+                <select id="animationModeSelect">
+                  <option value="favored_only">仅心仪动画</option>
+                  <option value="all_empowered" selected>出货都动画</option>
+                  <option value="none">无动画</option>
+                </select>
+              </div>
             </div>
           </div>
           <div id="pityTrackerPanel" class="pity-tracker">
@@ -206,11 +212,6 @@
             <button id="btnSingle">单抽</button>
             <button id="btnTen">十连抽</button>
             <button id="btnFifty">弄50抽！</button>
-          </div>
-          <div id="accumulatedTargetSwitchRow" class="accumulated-target-switch compact hidden">
-            <label for="accumulatedTargetChoice">定向球员</label>
-            <select id="accumulatedTargetChoice"></select>
-            <span id="accumulatedTargetCurrent" class="hint-text small"></span>
           </div>
           <div class="draw-buttons quick-buttons">
             <button id="btnQuick60" data-draw-count="60">一键抽 60</button>

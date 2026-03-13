@@ -134,21 +134,17 @@ body::after {
   gap: 6px;
 }
 
-.accumulated-target-switch {
+.draw-panel-tools {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.accumulated-target-switch label {
-  font-size: 12px;
-  color: #cbd5e1;
-}
-
-.accumulated-target-switch select {
-  min-width: 180px;
+#accumulatedTargetChoice {
+  min-width: 92px;
+  max-width: 120px;
 }
 
 .mode-panel {
@@ -2089,6 +2085,11 @@ button.danger {
 
   .draw-panel-head {
     flex-wrap: wrap;
+  }
+
+  .draw-panel-tools {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .draw-anim-mode {
