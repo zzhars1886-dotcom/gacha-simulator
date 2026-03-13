@@ -418,6 +418,60 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  oriental_dragon_liyi: {
+    poolType: "accumulated_guarantee",
+    progressionType: "accumulated_target",
+    name: "东方巨龙累抽必得·李毅",
+    poolConfig: [
+      { type: "empowered", label: "定向球员", probability: 0.001 },
+      { type: "star5", label: "5星普通球员", probability: 0.024 },
+      { type: "star4", label: "4星球员", probability: 0.375 },
+      { type: "star3", label: "3星球员", probability: 0.6 },
+    ],
+    empoweredCards: ["李毅"],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+    accumulatedGuaranteeConfig: {
+      guaranteePulls: 160,
+      targetName: "李毅",
+      boosts: [
+        { pulls: 20, multiplier: 3 },
+        { pulls: 60, multiplier: 4 },
+        { pulls: 80, multiplier: 9 },
+        { pulls: 100, multiplier: 11 },
+        { pulls: 120, multiplier: 16 },
+        { pulls: 140, multiplier: 51 },
+      ],
+    },
+  },
+  oriental_dragon_fengxiaoting: {
+    poolType: "accumulated_guarantee",
+    progressionType: "accumulated_target",
+    name: "东方巨龙累抽必得·冯潇霆",
+    poolConfig: [
+      { type: "empowered", label: "定向球员", probability: 0.001 },
+      { type: "star5", label: "5星普通球员", probability: 0.024 },
+      { type: "star4", label: "4星球员", probability: 0.375 },
+      { type: "star3", label: "3星球员", probability: 0.6 },
+    ],
+    empoweredCards: ["冯潇霆"],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+    accumulatedGuaranteeConfig: {
+      guaranteePulls: 160,
+      targetName: "冯潇霆",
+      boosts: [
+        { pulls: 20, multiplier: 3 },
+        { pulls: 60, multiplier: 4 },
+        { pulls: 80, multiplier: 9 },
+        { pulls: 100, multiplier: 11 },
+        { pulls: 120, multiplier: 16 },
+        { pulls: 140, multiplier: 51 },
+      ],
+    },
+  },
 };
 
 const POOL_KEYS = Object.keys(POOLS);
@@ -433,6 +487,7 @@ const POOL_TYPE_LABELS = {
   exchange_guarantee: "兑换保底",
   chain_bundle: "连锁礼包",
   season_carryover: "赛季累抽继承",
+  accumulated_guarantee: "累抽必得",
 };
 
 const POOL_CINEMATIC_ASSET_FOLDERS = {
@@ -445,6 +500,8 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
   s9_season_inherit: ["assets/S9赛季累抽继承"],
+  oriental_dragon_liyi: ["assets/东方巨龙"],
+  oriental_dragon_fengxiaoting: ["assets/东方巨龙"],
 };
 
 const POOL_PLAYER_META = {
@@ -532,7 +589,7 @@ const POOL_PLAYER_META = {
     科尔: { type: "史诗", position: "中锋" },
     瓜迪奥拉: { type: "史诗", position: "后腰" },
     范尼斯特鲁伊: { type: "史诗", position: "中锋" },
-    李金羽: { type: "史诗", position: "中锋" },
+    李金羽: { type: "BT", position: "中锋" },
   },
   s9_season_inherit: {
     梅西: { type: "史诗", position: "影锋" },
@@ -547,6 +604,12 @@ const POOL_PLAYER_META = {
     皮克: { type: "史诗", position: "中后卫" },
     内马尔: { type: "BT", position: "左边锋" },
     伊涅斯塔: { type: "史诗", position: "中前卫" },
+  },
+  oriental_dragon_liyi: {
+    李毅: { type: "BT", position: "中锋" },
+  },
+  oriental_dragon_fengxiaoting: {
+    冯潇霆: { type: "BT", position: "中后卫" },
   },
 };
 
@@ -600,6 +663,7 @@ function createInitialState(empoweredCards) {
       p500: false,
     },
     seasonObtainedEmpoweredNames: {},
+    accumulatedGuaranteeGranted: false,
     keyMoments: [],
     resetCount: 0,
   };
@@ -665,6 +729,88 @@ function getSeasonEmpoweredProbAtProgress(progressAfterDraw) {
   if (progressAfterDraw >= 40) return 0.003;
   if (progressAfterDraw >= 20) return 0.002;
   return 0.001;
+}
+
+function getAccumulatedGuaranteeConfig(pool = getCurrentPool()) {
+  return pool.accumulatedGuaranteeConfig || null;
+}
+
+function getAccumulatedGuaranteeProgressCap(pool = getCurrentPool()) {
+  const cfg = getAccumulatedGuaranteeConfig(pool);
+  return Math.max(1, Number(cfg?.guaranteePulls || 160));
+}
+
+function getAccumulatedGuaranteeProbByCurrentProgress(currentProgress, pool = getCurrentPool()) {
+  const cfg = getAccumulatedGuaranteeConfig(pool);
+  const baseProb = getBaseEmpoweredProbability(pool.poolConfig || []);
+  if (!cfg) return baseProb;
+  const boosts = Array.isArray(cfg.boosts) ? cfg.boosts : [];
+  let multiplier = 1;
+  boosts.forEach((boost) => {
+    if (currentProgress >= Number(boost.pulls || 0)) {
+      multiplier = Number(boost.multiplier || 1);
+    }
+  });
+  return clamp01(baseProb * multiplier);
+}
+
+function calcAccumulatedGuaranteeSpecificCDF(pool, targetDraws) {
+  targetDraws = Math.max(0, Math.floor(Number(targetDraws) || 0));
+  if (targetDraws <= 0) return 0;
+  const cap = getAccumulatedGuaranteeProgressCap(pool);
+  if (targetDraws >= cap) return 1;
+  let survive = 1;
+  for (let draw = 1; draw <= targetDraws; draw += 1) {
+    const p = getAccumulatedGuaranteeProbByCurrentProgress(draw - 1, pool);
+    survive *= 1 - p;
+  }
+  return clamp01(1 - survive);
+}
+
+function calcAccumulatedGuaranteeExpected(pool) {
+  const cap = getAccumulatedGuaranteeProgressCap(pool);
+  const pFn = (progressAfterDraw) =>
+    getAccumulatedGuaranteeProbByCurrentProgress(progressAfterDraw - 1, pool);
+  const expected = expectedWithDrawAndGuarantee(0, cap, pFn);
+  return { any: expected, specific: expected };
+}
+
+function calcAccumulatedGuaranteeEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
+  if (targetCount <= 0) return 1;
+  if (drawCount <= 0) return 0;
+
+  const cap = getAccumulatedGuaranteeProgressCap(pool);
+  const guaranteeAdds = drawCount >= cap ? 1 : 0;
+  const needFromDraws = Math.max(0, targetCount - guaranteeAdds);
+  const dist = new Array(needFromDraws + 1).fill(0);
+  dist[0] = 1;
+
+  const lastDraw = Math.min(drawCount, cap - 1);
+  for (let draw = 1; draw <= lastDraw; draw += 1) {
+    const p = getAccumulatedGuaranteeProbByCurrentProgress(draw - 1, pool);
+    for (let count = needFromDraws - 1; count >= 0; count -= 1) {
+      const base = dist[count];
+      if (base <= 0) continue;
+      dist[count + 1] += base * p;
+      dist[count] = base * (1 - p);
+    }
+  }
+
+  if (drawCount > cap) {
+    for (let draw = cap + 1; draw <= drawCount; draw += 1) {
+      const p = getAccumulatedGuaranteeProbByCurrentProgress(draw - 1, pool);
+      for (let count = needFromDraws - 1; count >= 0; count -= 1) {
+        const base = dist[count];
+        if (base <= 0) continue;
+        dist[count + 1] += base * p;
+        dist[count] = base * (1 - p);
+      }
+    }
+  }
+
+  return clamp01(dist[needFromDraws] || 0);
 }
 
 function expectedWithProbFn(startProgress, drawLimit, probFn) {
@@ -1326,6 +1472,8 @@ function getFavoredHitProbabilityByDrawCount(drawCount) {
     cdf = calcChainSpecificCDF(drawCount, normalizedTarget);
   } else if (isSeasonPool()) {
     cdf = simulateSeasonSpecificCDF(drawCount, normalizedTarget);
+  } else if (isAccumulatedGuaranteePool()) {
+    cdf = calcAccumulatedGuaranteeSpecificCDF(pool, drawCount);
   } else if (pool.progressionType === "milestone") {
     cdf = calcMilestoneSpecificHitCDF(pool, drawCount);
   } else if (pool.progressionType === "exchange_badge") {
@@ -1356,6 +1504,8 @@ function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
     cdf = calcChainSpecificCDF(drawCount, targetName);
   } else if (isSeasonPool()) {
     cdf = simulateSeasonSpecificCDF(drawCount, targetName);
+  } else if (isAccumulatedGuaranteePool()) {
+    cdf = calcAccumulatedGuaranteeSpecificCDF(pool, drawCount);
   } else if (pool.progressionType === "milestone") {
     cdf = calcMilestoneSpecificHitCDF(pool, drawCount);
   } else if (pool.progressionType === "exchange_badge") {
@@ -1375,6 +1525,7 @@ function getFavoredProgressCap(pool = getCurrentPool(), selectedNames = []) {
     return (pool.chainTiers || []).length || 7;
   }
   if (isSeasonPool()) return 500;
+  if (isAccumulatedGuaranteePool()) return getAccumulatedGuaranteeProgressCap(pool);
   if (pool.progressionType === "milestone") {
     const firstSelect = (pool.milestones || []).find((m) => m.type === "empowered_select");
     return firstSelect ? Number(firstSelect.pulls) || 500 : 500;
@@ -1676,6 +1827,15 @@ function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
         if (unseenUnselected > 0) {
           push(next, mask, progress, seenUnselected + 1, prob * (pAny * (unseenUnselected / n)));
         }
+      } else if (pool.progressionType === "accumulated_target") {
+        const pAny = clamp01(getAccumulatedGuaranteeProbByCurrentProgress(draw - 1, pool));
+        Object.keys(bitOf).forEach((name) => {
+          const bit = bitOf[name];
+          if ((mask & bit) !== 0) return;
+          push(next, mask | bit, aux1, aux2, prob * (pAny / n));
+        });
+        const missing = selected.reduce((c, name) => c + (((mask & bitOf[name]) === 0) ? 1 : 0), 0);
+        push(next, mask, aux1, aux2, prob * (1 - pAny * (missing / n)));
       } else {
         const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
         // selected missing
@@ -1816,6 +1976,15 @@ function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
         dist.forEach((v, k) => progressed.set(k, (progressed.get(k) || 0) + v));
       });
       next = progressed;
+    } else if (pool.progressionType === "accumulated_target") {
+      if (draw === cap) {
+        const afterGuarantee = new Map();
+        next.forEach((prob, key) => {
+          const { mask } = parseKey(key);
+          push(afterGuarantee, fullMask, 0, 0, prob);
+        });
+        next = afterGuarantee;
+      }
     } else if (pool.progressionType === "exchange_badge") {
       if (draw === cap) {
         const selectPool = getExchangeSelectPoolForCap(pool, cap);
@@ -2142,6 +2311,8 @@ function getEmpoweredAtLeastProbabilityByDrawCount(drawCount, targetCount) {
     cdf = simulateSeasonEmpoweredAtLeastCDF(drawCount, targetCount);
   } else if (isChainPool()) {
     cdf = calcChainEmpoweredAtLeastCDF(drawCount, targetCount);
+  } else if (isAccumulatedGuaranteePool()) {
+    cdf = calcAccumulatedGuaranteeEmpoweredAtLeastCDF(pool, drawCount, targetCount);
   } else if (pool.progressionType === "milestone") {
     cdf = calcMilestoneEmpoweredAtLeastCDF(pool, drawCount, targetCount);
   } else if (pool.progressionType === "exchange_badge") {
@@ -2289,6 +2460,16 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
           seasonProgress = 0;
         }
       }
+    } else if (pool.progressionType === "accumulated_target") {
+      const cap = getAccumulatedGuaranteeProgressCap(pool);
+      for (let draw = 1; draw <= progressCount; draw += 1) {
+        const pAny = getAccumulatedGuaranteeProbByCurrentProgress(draw - 1, pool);
+        if (Math.random() < pAny) addRandomName(got, pool.empoweredCards || []);
+        if (draw === cap) {
+          const targetName = getAccumulatedGuaranteeConfig(pool)?.targetName || "";
+          addSelectNamePreferNew(got, targetName ? [targetName] : (pool.empoweredCards || []));
+        }
+      }
     } else if (pool.progressionType === "exchange_badge") {
       const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
       const cap = getExchangeConfig().fixedSelect42 ? 420 : 470;
@@ -2426,6 +2607,19 @@ function getExpectedDrawMetrics() {
     };
   }
 
+  if (isAccumulatedGuaranteePool()) {
+    const baseAny = getBaseEmpoweredProbability(pool.poolConfig || []) > 0
+      ? 1 / getBaseEmpoweredProbability(pool.poolConfig || [])
+      : 0;
+    const withGift = calcAccumulatedGuaranteeExpected(pool);
+    return {
+      baseAny,
+      baseSpecific: baseAny,
+      giftAny: withGift.any,
+      giftSpecific: withGift.specific,
+    };
+  }
+
   const empoweredProb = getBaseEmpoweredProbability(pool.poolConfig || []);
   const baseAny = empoweredProb > 0 ? 1 / empoweredProb : 0;
   const baseSpecific = empoweredProb > 0 ? 1 / (empoweredProb / empoweredCount) : 0;
@@ -2464,6 +2658,7 @@ function getFavoredExpectedSpecific() {
   if (!metrics) return 0;
   if (
     isSeasonPool() ||
+    isAccumulatedGuaranteePool() ||
     getCurrentPool().progressionType === "milestone" ||
     getCurrentPool().progressionType === "exchange_badge"
   ) {
@@ -3453,12 +3648,10 @@ function getSeasonBoostMultiplier(progressPulls) {
 
 function getCurrentRollPoolConfig() {
   const pool = getCurrentPool();
-  if (!isSeasonPool()) {
+  if (!isSeasonPool() && !isAccumulatedGuaranteePool()) {
     return pool.poolConfig;
   }
 
-  const currentProgressPulls = state.seasonProgressPulls || 0;
-  const boostMultiplier = getSeasonBoostMultiplier(currentProgressPulls);
   const boostedConfig = pool.poolConfig.map((item) => ({ ...item }));
   const empowered = boostedConfig.find((item) => item.type === "empowered");
   const star4 = boostedConfig.find((item) => item.type === "star4");
@@ -3467,7 +3660,9 @@ function getCurrentRollPoolConfig() {
   }
 
   const baseEmpoweredProb = empowered.probability;
-  const boostedEmpoweredProb = baseEmpoweredProb * (1 + boostMultiplier);
+  const boostedEmpoweredProb = isSeasonPool()
+    ? baseEmpoweredProb * (1 + getSeasonBoostMultiplier(state.seasonProgressPulls || 0))
+    : getAccumulatedGuaranteeProbByCurrentProgress(state.totalPulls || 0, pool);
   const diff = boostedEmpoweredProb - baseEmpoweredProb;
   empowered.probability = boostedEmpoweredProb;
   star4.probability = Math.max(0, star4.probability - diff);
@@ -3645,7 +3840,28 @@ function processProgressionRewardsIfNeeded() {
     unlockSeasonRewardsIfNeeded();
     return;
   }
+  if (pool.progressionType === "accumulated_target") {
+    unlockAccumulatedGuaranteeIfNeeded();
+    return;
+  }
   unlockMilestonesIfNeeded();
+}
+
+function unlockAccumulatedGuaranteeIfNeeded() {
+  const cfg = getAccumulatedGuaranteeConfig();
+  const cap = getAccumulatedGuaranteeProgressCap();
+  if (!cfg || state.totalPulls < cap) return;
+  if (state.accumulatedGuaranteeGranted) return;
+  state.accumulatedGuaranteeGranted = true;
+  state.rewards.push({
+    id: `accumulated-${cap}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    pulls: cap,
+    type: "empowered_select_fixed",
+    fixedName: cfg.targetName,
+    label: `${cfg.targetName}必得`,
+    sourceLabel: `${cap}抽定向必得`,
+  });
+  maybeAutoOpenRewards();
 }
 
 function unlockSeasonRewardsIfNeeded() {
@@ -4010,6 +4226,10 @@ function isChainPool() {
 
 function isSeasonPool() {
   return getCurrentPool().progressionType === "season_inherit";
+}
+
+function isAccumulatedGuaranteePool() {
+  return getCurrentPool().progressionType === "accumulated_target";
 }
 
 function getChainTierSpentGold() {
@@ -4752,6 +4972,32 @@ function renderProbabilities() {
         tbody.appendChild(tr);
       });
       namesSpan.textContent = `${empoweredCards.join(" / ")}（当前增能概率提升${boostPercent}%）`;
+    } else if (isAccumulatedGuaranteePool()) {
+      const currentConfig = getCurrentRollPoolConfig();
+      const baseEmpowered =
+        (poolConfig.find((item) => item.type === "empowered") || {}).probability || 0;
+      const currentEmpowered =
+        (currentConfig.find((item) => item.type === "empowered") || {}).probability || 0;
+      const boostPercent = Math.round(
+        ((currentEmpowered - baseEmpowered) / (baseEmpowered || 1)) * 100
+      );
+
+      probabilitySectionTitle.textContent = "当前卡池概率";
+      empoweredNamesTitle.textContent = "定向球员：";
+      colName.textContent = "卡牌类型";
+      colValue.textContent = "概率";
+
+      currentConfig.forEach((item) => {
+        const tr = document.createElement("tr");
+        const tdName = document.createElement("td");
+        const tdProb = document.createElement("td");
+        tdName.textContent = item.label;
+        tdProb.textContent = formatPercent(item.probability);
+        tr.appendChild(tdName);
+        tr.appendChild(tdProb);
+        tbody.appendChild(tr);
+      });
+      namesSpan.textContent = `${empoweredCards.join(" / ")}（当前定向概率提升${boostPercent}%）`;
     } else {
       probabilitySectionTitle.textContent = "当前卡池概率";
       empoweredNamesTitle.textContent = "增能卡名单（概率平分）：";
@@ -5020,6 +5266,23 @@ function renderPityTracker() {
     const need = Math.max(0, nextBadge - total);
     const percent = Math.max(0, Math.min(100, ((total - prevBadge) / 10) * 100));
     textEl.textContent = `距离下一枚徽章还差 ${need} 抽（当前徽章 ${state.badges || 0}）`;
+    fillEl.style.width = `${percent}%`;
+    return;
+  }
+
+  if (isAccumulatedGuaranteePool()) {
+    const marks = [20, 60, 80, 100, 120, 140, getAccumulatedGuaranteeProgressCap()];
+    const total = Math.max(0, Number(state.totalPulls) || 0);
+    const next = marks.find((m) => m > total);
+    if (!next) {
+      textEl.textContent = "当前定向必得节点已完成。";
+      fillEl.style.width = "100%";
+      return;
+    }
+    const prev = marks.filter((m) => m <= total).slice(-1)[0] || 0;
+    const need = next - total;
+    const percent = Math.max(0, Math.min(100, ((total - prev) / (next - prev)) * 100));
+    textEl.textContent = `距离 ${next} 抽节点还差 ${need} 抽`;
     fillEl.style.width = `${percent}%`;
     return;
   }
@@ -5355,6 +5618,29 @@ function renderMilestonesTable() {
     return;
   }
 
+  if (isAccumulatedGuaranteePool()) {
+    const rows = [
+      { pulls: "20 抽", text: "定向球员概率提升200%" },
+      { pulls: "60 抽", text: "定向球员概率提升300%" },
+      { pulls: "80 抽", text: "定向球员概率提升800%" },
+      { pulls: "100 抽", text: "定向球员概率提升1000%" },
+      { pulls: "120 抽", text: "定向球员概率提升1500%" },
+      { pulls: "140 抽", text: "定向球员概率提升5000%" },
+      { pulls: "160 抽", text: `必得${getAccumulatedGuaranteeConfig()?.targetName || "定向球员"}` },
+    ];
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      const tdPulls = document.createElement("td");
+      const tdLabel = document.createElement("td");
+      tdPulls.textContent = row.pulls;
+      tdLabel.textContent = row.text;
+      tr.appendChild(tdPulls);
+      tr.appendChild(tdLabel);
+      tbody.appendChild(tr);
+    });
+    return;
+  }
+
   if (isExchangePool()) {
     const cfg = getExchangeConfig();
     const specificText = (cfg.specificPlayers || []).join("/");
@@ -5487,6 +5773,15 @@ function renderQuickButtonsByPool() {
     return;
   }
 
+  if (isAccumulatedGuaranteePool()) {
+    setBtn(btnQuick60, "一键抽 20", 20, null, null);
+    setBtn(btnQuick250, "一键抽 60", 60, null, null);
+    setBtn(btnQuick420, "一键抽 100", 100, null, null);
+    setBtn(btnQuick470, "一键抽 140", 140, null, null);
+    setBtn(btnQuick520, "一键抽 160", 160, null, null);
+    return;
+  }
+
   if (activePoolKey === "lucky_drop_exchange") {
     setBtn(btnQuick60, "一键抽 60", 60, null, null);
     setBtn(btnQuick250, "一键抽 250", 250, null, null);
@@ -5551,6 +5846,9 @@ function renderDrawPanelByPool() {
       if (isSeasonPool()) {
         const progress = state.seasonProgressPulls || 0;
         seasonRoundInfo.textContent = `当前轮次进度：${progress} / 500`;
+        seasonRoundInfo.classList.remove("hidden");
+      } else if (isAccumulatedGuaranteePool()) {
+        seasonRoundInfo.textContent = `当前定向进度：${state.totalPulls || 0} / ${getAccumulatedGuaranteeProgressCap()}`;
         seasonRoundInfo.classList.remove("hidden");
       } else {
         seasonRoundInfo.classList.add("hidden");
