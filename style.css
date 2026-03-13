@@ -136,38 +136,19 @@ body::after {
 
 .accumulated-target-switch {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
   margin-bottom: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.24);
-  border: 1px solid rgba(147, 197, 253, 0.25);
-}
-
-.accumulated-target-switch-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   flex-wrap: wrap;
 }
 
-.accumulated-target-switch-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #bfdbfe;
+.accumulated-target-switch label {
+  font-size: 12px;
+  color: #cbd5e1;
 }
 
-.subpool-switch-button {
-  min-width: 140px;
-}
-
-.subpool-switch-button.active {
-  background: linear-gradient(135deg, #0ea5e9, #38bdf8);
-  color: #082f49;
-  border-color: rgba(224, 242, 254, 0.85);
-  box-shadow: 0 0 0 1px rgba(186, 230, 253, 0.28), 0 10px 24px rgba(14, 165, 233, 0.24);
+.accumulated-target-switch select {
+  min-width: 180px;
 }
 
 .mode-panel {

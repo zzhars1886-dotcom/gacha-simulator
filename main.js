@@ -2931,7 +2931,16 @@ function updatePoolHeader() {
 
   const poolSwitchChoice = document.getElementById("poolSwitchChoice");
   if (poolSwitchChoice) {
-    poolSwitchChoice.value = activePoolKey;
+    const activeGroup = getCurrentPool().switchGroup || "";
+    const options = Array.from(poolSwitchChoice.options || []);
+    const matched = options.find(
+      (opt) =>
+        opt.value === activePoolKey ||
+        (activeGroup && (POOLS[opt.value]?.switchGroup || "") === activeGroup)
+    );
+    if (matched) {
+      poolSwitchChoice.value = matched.value;
+    }
   }
 }
 
@@ -3068,6 +3077,28 @@ function getPoolKeysByType(poolType) {
   return POOL_KEYS.filter((key) => (POOLS[key].poolType || "carnival_gift") === poolType);
 }
 
+function getPoolSwitchChoicesByType(poolType) {
+  const keys = getPoolKeysByType(poolType);
+  const seenGroups = new Set();
+  const entries = [];
+
+  keys.forEach((key) => {
+    const pool = POOLS[key];
+    const group = pool.switchGroup || "";
+    if (group) {
+      if (seenGroups.has(group)) return;
+      seenGroups.add(group);
+    }
+    entries.push({
+      value: key,
+      label: pool.displayName || pool.name,
+      group,
+    });
+  });
+
+  return entries;
+}
+
 function populatePoolTypeChoices() {
   const poolTypeChoice = document.getElementById("poolTypeChoice");
   if (!poolTypeChoice) return;
@@ -3088,15 +3119,19 @@ function populatePoolSwitchChoicesByType(poolType) {
   if (!poolSwitchChoice) return;
 
   poolSwitchChoice.innerHTML = "";
-  const keys = getPoolKeysByType(poolType);
-  keys.forEach((key) => {
+  const entries = getPoolSwitchChoicesByType(poolType);
+  entries.forEach(({ value, label }) => {
     const option = document.createElement("option");
-    option.value = key;
-    option.textContent = POOLS[key].name;
+    option.value = value;
+    option.textContent = label;
     poolSwitchChoice.appendChild(option);
   });
-  if (keys.includes(activePoolKey)) {
-    poolSwitchChoice.value = activePoolKey;
+  const activeGroup = getCurrentPool().switchGroup || "";
+  const activeEntry = entries.find(
+    (entry) => entry.value === activePoolKey || (activeGroup && entry.group === activeGroup)
+  );
+  if (activeEntry) {
+    poolSwitchChoice.value = activeEntry.value;
   }
 }
 
@@ -3107,12 +3142,16 @@ function onPoolTypeChoiceChange() {
   const type = poolTypeChoice.value;
   populatePoolSwitchChoicesByType(type);
 
-  const keys = getPoolKeysByType(type);
-  if (!keys.length) return;
+  const entries = getPoolSwitchChoicesByType(type);
+  if (!entries.length) return;
 
-  const nextKey = keys.includes(activePoolKey) ? activePoolKey : keys[0];
+  const activeGroup = getCurrentPool().switchGroup || "";
+  const activeEntry = entries.find(
+    (entry) => entry.value === activePoolKey || (activeGroup && entry.group === activeGroup)
+  );
+  const nextKey = activeEntry ? activePoolKey : entries[0].value;
   if (poolSwitchChoice) {
-    poolSwitchChoice.value = nextKey;
+    poolSwitchChoice.value = activeEntry ? activeEntry.value : nextKey;
   }
   if (nextKey !== activePoolKey) {
     switchPool(nextKey);
@@ -5125,12 +5164,12 @@ function renderProbabilities() {
 function renderAccumulatedTargetSwitch() {
   const row = document.getElementById("accumulatedTargetSwitchRow");
   const current = document.getElementById("accumulatedTargetCurrent");
-  const buttons = document.getElementById("accumulatedTargetButtons");
-  if (!row || !current || !buttons) return;
+  const choice = document.getElementById("accumulatedTargetChoice");
+  if (!row || !current || !choice) return;
 
   if (!isAccumulatedGuaranteePool()) {
     row.classList.add("hidden");
-    buttons.innerHTML = "";
+    choice.innerHTML = "";
     current.textContent = "";
     return;
   }
@@ -5138,13 +5177,13 @@ function renderAccumulatedTargetSwitch() {
   const pools = getAccumulatedSwitchPools(getCurrentPool());
   if (pools.length <= 1) {
     row.classList.add("hidden");
-    buttons.innerHTML = "";
+    choice.innerHTML = "";
     current.textContent = "";
     return;
   }
 
   row.classList.remove("hidden");
-  buttons.innerHTML = "";
+  choice.innerHTML = "";
   const currentPool = getCurrentPool();
   const currentName = (currentPool.empoweredCards || [])[0] || "";
   const currentMeta = getCinematicPlayerMeta(activePoolKey, currentName);
@@ -5156,16 +5195,12 @@ function renderAccumulatedTargetSwitch() {
     const pool = POOLS[key];
     const targetName = (pool.empoweredCards || [])[0] || "";
     const meta = getCinematicPlayerMeta(key, targetName);
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "subpool-switch-button" + (key === activePoolKey ? " active" : "");
-    btn.textContent = `${pool.switchButtonLabel || targetName} ${meta.type || ""} ${meta.position || ""}`.trim();
-    btn.addEventListener("click", () => {
-      if (key === activePoolKey) return;
-      switchPool(key);
-    });
-    buttons.appendChild(btn);
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = `${pool.switchButtonLabel || targetName} ${meta.type || ""} ${meta.position || ""}`.trim();
+    choice.appendChild(option);
   });
+  choice.value = activePoolKey;
 }
 
 function renderStats() {
@@ -5972,6 +6007,7 @@ function bindEvents() {
   const btnChainFavSelectAll = document.getElementById("btnChainFavSelectAll");
   const favEmpoweredChoice = document.getElementById("favEmpoweredChoice");
   const chainFavEmpoweredChoice = document.getElementById("chainFavEmpoweredChoice");
+  const accumulatedTargetChoice = document.getElementById("accumulatedTargetChoice");
   const poolTypeChoice = document.getElementById("poolTypeChoice");
   const poolSwitchChoice = document.getElementById("poolSwitchChoice");
   const modeSwitchSelect = document.getElementById("modeSwitchSelect");
@@ -6136,6 +6172,13 @@ function bindEvents() {
   if (poolSwitchChoice) {
     poolSwitchChoice.addEventListener("change", () => {
       onPoolSwitchChoiceChange();
+    });
+  }
+  if (accumulatedTargetChoice) {
+    accumulatedTargetChoice.addEventListener("change", () => {
+      const targetKey = accumulatedTargetChoice.value;
+      if (!targetKey || targetKey === activePoolKey) return;
+      switchPool(targetKey);
     });
   }
   if (modeSwitchSelect) {
