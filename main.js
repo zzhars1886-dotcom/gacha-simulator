@@ -421,6 +421,9 @@ const POOLS = {
   oriental_dragon_liyi: {
     poolType: "accumulated_guarantee",
     progressionType: "accumulated_target",
+    displayName: "东方巨龙累抽必得",
+    switchGroup: "oriental_dragon_accumulated",
+    switchButtonLabel: "李毅",
     name: "东方巨龙累抽必得·李毅",
     poolConfig: [
       { type: "empowered", label: "定向球员", probability: 0.001 },
@@ -448,6 +451,9 @@ const POOLS = {
   oriental_dragon_fengxiaoting: {
     poolType: "accumulated_guarantee",
     progressionType: "accumulated_target",
+    displayName: "东方巨龙累抽必得",
+    switchGroup: "oriental_dragon_accumulated",
+    switchButtonLabel: "冯潇霆",
     name: "东方巨龙累抽必得·冯潇霆",
     poolConfig: [
       { type: "empowered", label: "定向球员", probability: 0.001 },
@@ -735,6 +741,12 @@ function getAccumulatedGuaranteeConfig(pool = getCurrentPool()) {
   return pool.accumulatedGuaranteeConfig || null;
 }
 
+function getAccumulatedSwitchPools(pool = getCurrentPool()) {
+  const group = pool.switchGroup || "";
+  if (!group) return [];
+  return POOL_KEYS.filter((key) => POOLS[key].switchGroup === group);
+}
+
 function getAccumulatedGuaranteeProgressCap(pool = getCurrentPool()) {
   const cfg = getAccumulatedGuaranteeConfig(pool);
   return Math.max(1, Number(cfg?.guaranteePulls || 160));
@@ -811,6 +823,14 @@ function calcAccumulatedGuaranteeEmpoweredAtLeastCDF(pool, drawCount, targetCoun
   }
 
   return clamp01(dist[needFromDraws] || 0);
+}
+
+function calcAccumulatedGuaranteeSpecificCountAtLeastCDF(pool, drawCount, targetCount) {
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
+  if (targetCount <= 0) return 1;
+  if (drawCount <= 0) return 0;
+  return calcAccumulatedGuaranteeEmpoweredAtLeastCDF(pool, drawCount, targetCount);
 }
 
 function expectedWithProbFn(startProgress, drawLimit, probFn) {
@@ -2344,7 +2364,9 @@ function getSpecificCountAtLeastProbabilityByDrawCount(drawCount, targetName, ta
   }
 
   let cdf = 0;
-  if (pool.progressionType === "exchange_badge") {
+  if (pool.progressionType === "accumulated_target") {
+    cdf = calcAccumulatedGuaranteeSpecificCountAtLeastCDF(pool, drawCount, targetCount);
+  } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
   } else {
     const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
@@ -2401,6 +2423,11 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
   if (targetUniqueCount <= 0) return 1;
   if (progressCount <= 0 || allNames.length <= 0) return 0;
   if (targetUniqueCount > allNames.length) return 0;
+
+  if (pool.progressionType === "accumulated_target") {
+    if (targetUniqueCount > 1) return 0;
+    return calcAccumulatedGuaranteeSpecificCDF(pool, progressCount);
+  }
 
   const addRandomName = (setObj, candidateNames) => {
     if (!candidateNames || candidateNames.length <= 0) return;
@@ -2893,7 +2920,8 @@ function resetEmpoweredDetailPanel() {
 function updatePoolHeader() {
   const nameSpan = document.getElementById("poolNameText");
   if (nameSpan) {
-    nameSpan.textContent = getCurrentPool().name;
+    const pool = getCurrentPool();
+    nameSpan.textContent = pool.displayName || pool.name;
   }
 
   const poolTypeChoice = document.getElementById("poolTypeChoice");
@@ -5094,6 +5122,52 @@ function renderProbabilities() {
   }
 }
 
+function renderAccumulatedTargetSwitch() {
+  const row = document.getElementById("accumulatedTargetSwitchRow");
+  const current = document.getElementById("accumulatedTargetCurrent");
+  const buttons = document.getElementById("accumulatedTargetButtons");
+  if (!row || !current || !buttons) return;
+
+  if (!isAccumulatedGuaranteePool()) {
+    row.classList.add("hidden");
+    buttons.innerHTML = "";
+    current.textContent = "";
+    return;
+  }
+
+  const pools = getAccumulatedSwitchPools(getCurrentPool());
+  if (pools.length <= 1) {
+    row.classList.add("hidden");
+    buttons.innerHTML = "";
+    current.textContent = "";
+    return;
+  }
+
+  row.classList.remove("hidden");
+  buttons.innerHTML = "";
+  const currentPool = getCurrentPool();
+  const currentName = (currentPool.empoweredCards || [])[0] || "";
+  const currentMeta = getCinematicPlayerMeta(activePoolKey, currentName);
+  current.textContent = currentName
+    ? `当前定向：${currentName} ${currentMeta.position || ""} ${currentMeta.type || ""}`.trim()
+    : "";
+
+  pools.forEach((key) => {
+    const pool = POOLS[key];
+    const targetName = (pool.empoweredCards || [])[0] || "";
+    const meta = getCinematicPlayerMeta(key, targetName);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "subpool-switch-button" + (key === activePoolKey ? " active" : "");
+    btn.textContent = `${pool.switchButtonLabel || targetName} ${meta.type || ""} ${meta.position || ""}`.trim();
+    btn.addEventListener("click", () => {
+      if (key === activePoolKey) return;
+      switchPool(key);
+    });
+    buttons.appendChild(btn);
+  });
+}
+
 function renderStats() {
   const totalPulls = state.totalPulls;
   const goldCost = isChainPool() ? getChainTierSpentGold() : totalPulls * 100;
@@ -5862,6 +5936,7 @@ function renderAll() {
   renderModeInfo();
   renderExpectedDrawInfo();
   renderProbabilities();
+  renderAccumulatedTargetSwitch();
   renderFavExpectedInfo();
   renderStats();
   renderLuckScore();
