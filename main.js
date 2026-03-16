@@ -32,20 +32,20 @@ function createMilestones(labels) {
 }
 
 function createDefenseGiftMilestones() {
-  const genericLabel = "5星签约 + 10%含钢铁防线史诗";
+  const genericLabel = "5星签约 10%含钢铁防线史诗";
   const rows = [
     { pulls: 30, targetName: "巴雷西", label: genericLabel },
     { pulls: 60, targetName: "巴雷西", label: genericLabel },
-    { pulls: 90, targetName: "布冯", label: "5星签约 + 10%含吉安路易吉·布冯" },
+    { pulls: 90, targetName: "布冯", label: "5星签约 10%含吉安路易吉·布冯" },
     { pulls: 120, targetName: "巴雷西", label: genericLabel },
     { pulls: 150, targetName: "巴雷西", label: genericLabel },
-    { pulls: 180, targetName: "科库", label: "5星签约 + 10%含菲利普·科库" },
+    { pulls: 180, targetName: "科库", label: "5星签约 10%含菲利普·科库" },
     { pulls: 210, targetName: "巴雷西", label: genericLabel },
     { pulls: 240, targetName: "巴雷西", label: genericLabel },
-    { pulls: 270, targetName: "布冯", label: "5星签约 + 10%含吉安路易吉·布冯" },
+    { pulls: 270, targetName: "布冯", label: "5星签约 10%含吉安路易吉·布冯" },
     { pulls: 300, targetName: "巴雷西", label: genericLabel },
     { pulls: 330, targetName: "巴雷西", label: genericLabel },
-    { pulls: 360, targetName: "科库", label: "5星签约 + 10%含菲利普·科库" },
+    { pulls: 360, targetName: "科库", label: "5星签约 10%含菲利普·科库" },
     { pulls: 390, targetName: "巴雷西", label: genericLabel },
     { pulls: 420, targetName: "巴雷西", label: genericLabel },
   ];
@@ -2177,9 +2177,13 @@ function getFavoredSetExpectedMetrics(selectedNames) {
   const pool = getCurrentPool();
   const uniq = Array.from(new Set((selectedNames || []).filter(Boolean)));
   if (!uniq.length) return null;
+  const hasTargetSpecificMilestones =
+    pool.progressionType === "milestone" &&
+    (pool.milestones || []).some((m) => m.type === "exchange_target_chance");
   const useCountBasedKey =
     !isChainPool() &&
-    (pool.progressionType === "milestone" || pool.progressionType === "season_inherit");
+    (pool.progressionType === "season_inherit" ||
+      (pool.progressionType === "milestone" && !hasTargetSpecificMilestones));
   const normalizedNames = useCountBasedKey
     ? (pool.empoweredCards || []).slice(0, uniq.length)
     : uniq.slice().sort();
