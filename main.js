@@ -31,6 +31,33 @@ function createMilestones(labels) {
   });
 }
 
+function createDefenseGiftMilestones() {
+  const genericLabel = "5星签约 + 10%含钢铁防线史诗";
+  const rows = [
+    { pulls: 30, targetName: "巴雷西", label: genericLabel },
+    { pulls: 60, targetName: "巴雷西", label: genericLabel },
+    { pulls: 90, targetName: "布冯", label: "5星签约 + 10%含吉安路易吉·布冯" },
+    { pulls: 120, targetName: "巴雷西", label: genericLabel },
+    { pulls: 150, targetName: "巴雷西", label: genericLabel },
+    { pulls: 180, targetName: "科库", label: "5星签约 + 10%含菲利普·科库" },
+    { pulls: 210, targetName: "巴雷西", label: genericLabel },
+    { pulls: 240, targetName: "巴雷西", label: genericLabel },
+    { pulls: 270, targetName: "布冯", label: "5星签约 + 10%含吉安路易吉·布冯" },
+    { pulls: 300, targetName: "巴雷西", label: genericLabel },
+    { pulls: 330, targetName: "巴雷西", label: genericLabel },
+    { pulls: 360, targetName: "科库", label: "5星签约 + 10%含菲利普·科库" },
+    { pulls: 390, targetName: "巴雷西", label: genericLabel },
+    { pulls: 420, targetName: "巴雷西", label: genericLabel },
+  ];
+  return rows.map((row) => ({
+    pulls: row.pulls,
+    type: "exchange_target_chance",
+    chance: 0.1,
+    targetName: row.targetName,
+    label: row.label,
+  }));
+}
+
 function createCarnivalPool(config) {
   return {
     poolType: "carnival_gift",
@@ -413,6 +440,22 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  defense_guardians_gift: {
+    poolType: "accumulated_gift",
+    progressionType: "milestone",
+    name: "防守悍将累抽赠礼",
+    progressCap: 420,
+    poolConfig: [
+      { type: "empowered", label: "史诗球员", probability: 0.005 },
+      { type: "star5", label: "5星普通球员", probability: 0.024 },
+      { type: "star4", label: "4星普通球员", probability: 0.371 },
+      { type: "star3", label: "3星普通球员", probability: 0.6 },
+    ],
+    empoweredCards: ["布冯", "德尔皮耶罗", "科库", "贝隆", "巴雷西", "埃托奥", "加西亚"],
+    milestones: createDefenseGiftMilestones(),
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   s9_season_inherit: {
     poolType: "season_carryover",
     progressionType: "season_inherit",
@@ -505,6 +548,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.defense_guardians_gift && "defense_guardians_gift") ||
   (POOLS.pitch_maestro_exchange && "pitch_maestro_exchange") ||
   (POOLS.rock_blade_exchange && "rock_blade_exchange") ||
   (POOLS.spring_reunion_chain_bundle && "spring_reunion_chain_bundle") ||
@@ -514,6 +558,7 @@ let activeModeKey = "unlimited";
 
 const POOL_TYPE_LABELS = {
   carnival_gift: "狂欢赠礼",
+  accumulated_gift: "累抽赠礼",
   exchange_guarantee: "兑换保底",
   chain_bundle: "连锁礼包",
   season_carryover: "赛季累抽继承",
@@ -530,6 +575,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   pitch_maestro_exchange: ["assets/球场主宰"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
+  defense_guardians_gift: ["assets/防守悍将"],
   s9_season_inherit: ["assets/S9赛季累抽继承"],
   oriental_dragon_liyi: ["assets/东方巨龙"],
   oriental_dragon_fengxiaoting: ["assets/东方巨龙"],
@@ -630,6 +676,15 @@ const POOL_PLAYER_META = {
     瓜迪奥拉: { type: "史诗", position: "后腰" },
     范尼斯特鲁伊: { type: "史诗", position: "中锋" },
     李金羽: { type: "BT", position: "中锋" },
+  },
+  defense_guardians_gift: {
+    布冯: { type: "史诗", position: "门将" },
+    德尔皮耶罗: { type: "史诗", position: "影锋" },
+    科库: { type: "史诗", position: "后腰" },
+    贝隆: { type: "史诗", position: "前腰" },
+    巴雷西: { type: "史诗", position: "中后卫" },
+    埃托奥: { type: "史诗", position: "右前卫" },
+    加西亚: { type: "史诗", position: "右边锋" },
   },
   s9_season_inherit: {
     梅西: { type: "史诗", position: "影锋" },
@@ -1095,6 +1150,14 @@ function getMilestoneRewardHitProb(reward, pool, empoweredCount) {
     return { any: 1, specific: 1 };
   }
 
+  if (reward.type === "exchange_target_chance") {
+    const chance = reward.chance || 0;
+    return {
+      any: chance,
+      specific: empoweredCount > 0 ? chance / empoweredCount : 0,
+    };
+  }
+
   return { any: 0, specific: 0 };
 }
 
@@ -1375,7 +1438,7 @@ function getBonusSpecificHitProb(pool, empoweredCount) {
   return total > 0 ? 1 / total : 0;
 }
 
-function calcMilestoneSpecificHitCDF(pool, targetDraws) {
+function calcMilestoneSpecificHitCDF(pool, targetDraws, targetName = "") {
   const empoweredCount = (pool.empoweredCards || []).length;
   if (empoweredCount <= 0 || targetDraws <= 0) return 0;
 
@@ -1403,6 +1466,15 @@ function calcMilestoneSpecificHitCDF(pool, targetDraws) {
         failThisPull *= 1 - 1 / empoweredCount;
       } else if (reward.type === "empowered_select") {
         failThisPull *= 0;
+      } else if (reward.type === "exchange_target_chance") {
+        const hit = reward.targetName && reward.targetName === targetName
+          ? (reward.chance || 0)
+          : targetName
+          ? 0
+          : empoweredCount > 0
+          ? (reward.chance || 0) / empoweredCount
+          : 0;
+        failThisPull *= 1 - hit;
       }
     });
     survive *= clamp01(failThisPull);
@@ -1529,7 +1601,7 @@ function getFavoredHitProbabilityByDrawCount(drawCount) {
   } else if (isAccumulatedGuaranteePool()) {
     cdf = calcAccumulatedGuaranteeSpecificCDF(pool, drawCount);
   } else if (pool.progressionType === "milestone") {
-    cdf = calcMilestoneSpecificHitCDF(pool, drawCount);
+    cdf = calcMilestoneSpecificHitCDF(pool, drawCount, normalizedTarget);
   } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeSpecificHitCDF(pool, drawCount, normalizedTarget);
   } else {
@@ -1561,7 +1633,7 @@ function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
   } else if (isAccumulatedGuaranteePool()) {
     cdf = calcAccumulatedGuaranteeSpecificCDF(pool, drawCount);
   } else if (pool.progressionType === "milestone") {
-    cdf = calcMilestoneSpecificHitCDF(pool, drawCount);
+    cdf = calcMilestoneSpecificHitCDF(pool, drawCount, targetName);
   } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeSpecificHitCDF(pool, drawCount, targetName);
   } else {
@@ -1581,6 +1653,7 @@ function getFavoredProgressCap(pool = getCurrentPool(), selectedNames = []) {
   if (isSeasonPool()) return 500;
   if (isAccumulatedGuaranteePool()) return getAccumulatedGuaranteeProgressCap(pool);
   if (pool.progressionType === "milestone") {
+    if (Number(pool.progressCap) > 0) return Number(pool.progressCap);
     const firstSelect = (pool.milestones || []).find((m) => m.type === "empowered_select");
     return firstSelect ? Number(firstSelect.pulls) || 500 : 500;
   }
@@ -1959,6 +2032,15 @@ function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
                 missingBits.forEach((bit) => {
                   push(afterReward, dMask | bit, idx + 1, 0, each);
                 });
+              } else {
+                push(afterReward, dMask, idx + 1, 0, dProb);
+              }
+            } else if (reward.type === "exchange_target_chance") {
+              const targetBit = reward.targetName ? bitOf[reward.targetName] || 0 : 0;
+              const hitChance = clamp01(reward.chance || 0);
+              if (targetBit && (dMask & targetBit) === 0 && hitChance > 0) {
+                push(afterReward, dMask | targetBit, idx + 1, 0, dProb * hitChance);
+                push(afterReward, dMask, idx + 1, 0, dProb * (1 - hitChance));
               } else {
                 push(afterReward, dMask, idx + 1, 0, dProb);
               }
@@ -2567,6 +2649,10 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
           addRandomName(got, pool.empoweredCards || []);
         } else if (reward.type === "empowered_select") {
           addSelectNamePreferNew(got, pool.empoweredCards || []);
+        } else if (reward.type === "exchange_target_chance") {
+          if (Math.random() < (reward.chance || 0)) {
+            addSelectNamePreferNew(got, reward.targetName ? [reward.targetName] : (pool.empoweredCards || []));
+          }
         }
       }
     }
@@ -5867,6 +5953,14 @@ function renderQuickButtonsByPool() {
   };
 
   if (pool.progressionType === "milestone") {
+    if (activePoolKey === "defense_guardians_gift") {
+      setBtn(btnQuick60, "一键到 60 抽", null, 60, null);
+      setBtn(btnQuick250, "一键到 100 抽", null, 100, null);
+      setBtn(btnQuick420, "一键到 200 抽", null, 200, null);
+      setBtn(btnQuick470, "一键到 420 抽", null, 420, null);
+      setBtn(btnQuick520, "一键到 420 抽", null, 420, null, true);
+      return;
+    }
     // 狂欢赠礼卡池：恢复原来的“一键到多少”
     setBtn(btnQuick60, "一键到 60 抽", null, 60, null);
     setBtn(btnQuick250, "一键到 100 抽", null, 100, null);
