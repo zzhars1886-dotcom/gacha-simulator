@@ -33,27 +33,29 @@ function createMilestones(labels) {
 
 function createDefenseGiftMilestones() {
   const genericLabel = "5星签约 10%含钢铁防线史诗";
+  const genericTargets = ["布冯", "德尔皮耶罗", "科库", "贝隆", "巴雷西", "埃托奥", "加西亚"];
   const rows = [
-    { pulls: 30, targetName: "巴雷西", label: genericLabel },
-    { pulls: 60, targetName: "巴雷西", label: genericLabel },
+    { pulls: 30, candidateNames: genericTargets, label: genericLabel },
+    { pulls: 60, candidateNames: genericTargets, label: genericLabel },
     { pulls: 90, targetName: "布冯", label: "5星签约 10%含吉安路易吉·布冯" },
-    { pulls: 120, targetName: "巴雷西", label: genericLabel },
-    { pulls: 150, targetName: "巴雷西", label: genericLabel },
+    { pulls: 120, candidateNames: genericTargets, label: genericLabel },
+    { pulls: 150, candidateNames: genericTargets, label: genericLabel },
     { pulls: 180, targetName: "科库", label: "5星签约 10%含菲利普·科库" },
-    { pulls: 210, targetName: "巴雷西", label: genericLabel },
-    { pulls: 240, targetName: "巴雷西", label: genericLabel },
+    { pulls: 210, candidateNames: genericTargets, label: genericLabel },
+    { pulls: 240, candidateNames: genericTargets, label: genericLabel },
     { pulls: 270, targetName: "布冯", label: "5星签约 10%含吉安路易吉·布冯" },
-    { pulls: 300, targetName: "巴雷西", label: genericLabel },
-    { pulls: 330, targetName: "巴雷西", label: genericLabel },
+    { pulls: 300, candidateNames: genericTargets, label: genericLabel },
+    { pulls: 330, candidateNames: genericTargets, label: genericLabel },
     { pulls: 360, targetName: "科库", label: "5星签约 10%含菲利普·科库" },
-    { pulls: 390, targetName: "巴雷西", label: genericLabel },
-    { pulls: 420, targetName: "巴雷西", label: genericLabel },
+    { pulls: 390, candidateNames: genericTargets, label: genericLabel },
+    { pulls: 420, candidateNames: genericTargets, label: genericLabel },
   ];
   return rows.map((row) => ({
     pulls: row.pulls,
     type: "exchange_target_chance",
     chance: 0.1,
     targetName: row.targetName,
+    candidateNames: row.candidateNames || null,
     label: row.label,
   }));
 }
@@ -1152,6 +1154,15 @@ function getMilestoneRewardHitProb(reward, pool, empoweredCount) {
 
   if (reward.type === "exchange_target_chance") {
     const chance = reward.chance || 0;
+    const candidates = Array.isArray(reward.candidateNames) ? reward.candidateNames : [];
+    if (candidates.length > 0) {
+      const valid = candidates.filter((name) => (pool.empoweredCards || []).includes(name));
+      const count = valid.length;
+      return {
+        any: chance,
+        specific: count > 0 ? chance / count : 0,
+      };
+    }
     return {
       any: chance,
       specific: empoweredCount > 0 ? chance / empoweredCount : 0,
@@ -1467,7 +1478,11 @@ function calcMilestoneSpecificHitCDF(pool, targetDraws, targetName = "") {
       } else if (reward.type === "empowered_select") {
         failThisPull *= 0;
       } else if (reward.type === "exchange_target_chance") {
-        const hit = reward.targetName && reward.targetName === targetName
+        const candidates = Array.isArray(reward.candidateNames) ? reward.candidateNames : [];
+        const valid = candidates.filter((name) => (pool.empoweredCards || []).includes(name));
+        const hit = valid.length > 0
+          ? (targetName && valid.includes(targetName) ? (reward.chance || 0) / valid.length : 0)
+          : reward.targetName && reward.targetName === targetName
           ? (reward.chance || 0)
           : targetName
           ? 0
@@ -2036,13 +2051,29 @@ function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
                 push(afterReward, dMask, idx + 1, 0, dProb);
               }
             } else if (reward.type === "exchange_target_chance") {
-              const targetBit = reward.targetName ? bitOf[reward.targetName] || 0 : 0;
               const hitChance = clamp01(reward.chance || 0);
-              if (targetBit && (dMask & targetBit) === 0 && hitChance > 0) {
-                push(afterReward, dMask | targetBit, idx + 1, 0, dProb * hitChance);
+              const candidates = Array.isArray(reward.candidateNames) ? reward.candidateNames : [];
+              const validBits = candidates
+                .map((name) => bitOf[name] || 0)
+                .filter((bit) => bit !== 0);
+              if (validBits.length > 0 && hitChance > 0) {
+                const perBitHit = hitChance / validBits.length;
+                validBits.forEach((bit) => {
+                  if ((dMask & bit) === 0) {
+                    push(afterReward, dMask | bit, idx + 1, 0, dProb * perBitHit);
+                  } else {
+                    push(afterReward, dMask, idx + 1, 0, dProb * perBitHit);
+                  }
+                });
                 push(afterReward, dMask, idx + 1, 0, dProb * (1 - hitChance));
               } else {
-                push(afterReward, dMask, idx + 1, 0, dProb);
+                const targetBit = reward.targetName ? bitOf[reward.targetName] || 0 : 0;
+                if (targetBit && (dMask & targetBit) === 0 && hitChance > 0) {
+                  push(afterReward, dMask | targetBit, idx + 1, 0, dProb * hitChance);
+                  push(afterReward, dMask, idx + 1, 0, dProb * (1 - hitChance));
+                } else {
+                  push(afterReward, dMask, idx + 1, 0, dProb);
+                }
               }
             } else {
               push(afterReward, dMask, idx + 1, 0, dProb);
@@ -2655,7 +2686,13 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
           addSelectNamePreferNew(got, pool.empoweredCards || []);
         } else if (reward.type === "exchange_target_chance") {
           if (Math.random() < (reward.chance || 0)) {
-            addSelectNamePreferNew(got, reward.targetName ? [reward.targetName] : (pool.empoweredCards || []));
+            const candidates =
+              Array.isArray(reward.candidateNames) && reward.candidateNames.length > 0
+                ? reward.candidateNames
+                : reward.targetName
+                ? [reward.targetName]
+                : (pool.empoweredCards || []);
+            addRandomName(got, candidates);
           }
         }
       }
@@ -4744,8 +4781,14 @@ function openRewardById(id) {
     }
     case "exchange_target_chance": {
       const isHit = Math.random() < (reward.chance || 0.1);
+      const rewardCandidates =
+        Array.isArray(reward.candidateNames) && reward.candidateNames.length > 0
+          ? reward.candidateNames
+          : reward.targetName
+          ? [reward.targetName]
+          : [];
       const card = isHit
-        ? createEmpoweredCard(reward.targetName)
+        ? createEmpoweredCard(randomFromArray(rewardCandidates))
         : createFiveStarCard();
       recordSingleDraw(card, toRewardSourceText(reward), {
         countTowardsTotal: false,
