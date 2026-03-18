@@ -4297,7 +4297,7 @@ function tenPull() {
 
   for (const card of batch) {
     recordSingleDraw(card, "ten-pull");
-    if (pendingFavoredHitEvent || isAnyHitModalOpen()) {
+    if (!isDiscountLimitedPool() && (pendingFavoredHitEvent || isAnyHitModalOpen())) {
       break;
     }
   }
@@ -6189,6 +6189,15 @@ function renderQuickButtonsByPool() {
     setBtn(btnQuick420, "一键抽 100", 100, null, null);
     setBtn(btnQuick470, "一键抽 140", 140, null, null);
     setBtn(btnQuick520, "一键抽 160", 160, null, null);
+    return;
+  }
+
+  if (isDiscountLimitedPool()) {
+    setBtn(btnQuick60, "一键抽 10", 10, null, null);
+    setBtn(btnQuick250, "一键抽 20", 20, null, null);
+    setBtn(btnQuick420, "一键抽 30", 30, null, null);
+    setBtn(btnQuick470, "一键抽 30", 30, null, null, true);
+    setBtn(btnQuick520, "一键抽 30", 30, null, null, true);
     return;
   }
 
