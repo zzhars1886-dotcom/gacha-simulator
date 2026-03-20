@@ -300,6 +300,29 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  golden_generation_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "黄金一代兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.005 },
+      { type: "selected", label: "精选卡", probability: 0.008 },
+      { type: "star5", label: "五星普卡", probability: 0.024 },
+      { type: "star4", label: "四星普卡", probability: 0.363 },
+      { type: "star3", label: "三星普卡", probability: 0.6 },
+    ],
+    empoweredCards: ["内德维德", "皮尔洛", "切赫", "阿德里亚诺", "萨内蒂", "罗西基", "博扬"],
+    exchangeConfig: {
+      specificPlayers: ["内德维德", "皮尔洛", "切赫"],
+      fixedSelect42: null,
+      select47Players: ["内德维德", "皮尔洛", "切赫"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["内德维德", "皮尔洛", "切赫"],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   pitch_maestro_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -568,6 +591,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.golden_generation_exchange && "golden_generation_exchange") ||
   (POOLS.midfield_master_halfprice && "midfield_master_halfprice") ||
   (POOLS.defense_guardians_gift && "defense_guardians_gift") ||
   (POOLS.pitch_maestro_exchange && "pitch_maestro_exchange") ||
@@ -594,6 +618,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   dream_midfield_exchange: ["assets/梦幻中轴"],
   lucky_drop_exchange: ["assets/天降幸运"],
   rock_blade_exchange: ["assets/磐石利刃"],
+  golden_generation_exchange: ["assets/黄金一代"],
   pitch_maestro_exchange: ["assets/球场主宰"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
@@ -661,6 +686,15 @@ const POOL_PLAYER_META = {
     弗兰: { type: "史诗", position: "中锋" },
     特维斯: { type: "史诗", position: "中锋" },
     西多夫: { type: "史诗", position: "后腰" },
+  },
+  golden_generation_exchange: {
+    内德维德: { type: "史诗", position: "前腰" },
+    皮尔洛: { type: "史诗", position: "后腰" },
+    切赫: { type: "史诗", position: "门将" },
+    阿德里亚诺: { type: "史诗", position: "中锋" },
+    萨内蒂: { type: "史诗", position: "左后卫" },
+    罗西基: { type: "史诗", position: "前腰" },
+    博扬: { type: "史诗", position: "右边锋" },
   },
   pitch_maestro_exchange: {
     马克莱莱: { type: "史诗", position: "后腰" },
