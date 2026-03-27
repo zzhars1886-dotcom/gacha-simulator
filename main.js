@@ -186,6 +186,34 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   }),
+  british_rivalry: createCarnivalPool({
+    name: "英伦争霸狂欢赠礼",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.005 },
+      { type: "selected", label: "精选卡", probability: 0.008 },
+      { type: "star5", label: "五星普卡", probability: 0.024 },
+      { type: "star4", label: "四星普卡", probability: 0.363 },
+      { type: "star3", label: "三星普卡", probability: 0.6 },
+    ],
+    empoweredCards: [
+      "维埃拉",
+      "亚亚图雷",
+      "博格坎普",
+      "费尔马伦",
+      "罗西基",
+      "萨卡",
+      "多纳鲁马",
+      "切尔基",
+    ],
+    milestones: createMilestones({
+      chance10: "10% 增能卡券",
+      chance30: "30% 增能卡券",
+      empoweredRandom: "随机增能卡必得券",
+      empoweredSelect: "增能卡自选券",
+    }),
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  }),
 
   ouzhan_fengyan: createCarnivalPool({
     name: "欧战烽烟狂欢赠礼",
@@ -614,6 +642,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.wall_of_sighs_exchange && "wall_of_sighs_exchange") ||
   (POOLS.golden_generation_exchange && "golden_generation_exchange") ||
   (POOLS.midfield_master_halfprice && "midfield_master_halfprice") ||
   (POOLS.defense_guardians_gift && "defense_guardians_gift") ||
@@ -637,6 +666,7 @@ const POOL_TYPE_LABELS = {
 const POOL_CINEMATIC_ASSET_FOLDERS = {
   xinzai_jinxiu: ["assets/新载锦绣"],
   blue_old_friend: ["assets/蓝衣故人"],
+  british_rivalry: ["assets/英伦争霸"],
   ouzhan_fengyan: ["assets/欧战烽烟"],
   dream_midfield_exchange: ["assets/梦幻中轴"],
   lucky_drop_exchange: ["assets/天降幸运"],
@@ -673,6 +703,16 @@ const POOL_PLAYER_META = {
     马克莱莱: { type: "史诗", position: "后腰" },
     麦克托米奈: { type: "BT", position: "中前卫" },
     若昂佩德罗: { type: "ST", position: "中锋" },
+  },
+  british_rivalry: {
+    维埃拉: { type: "史诗", position: "后腰" },
+    亚亚图雷: { type: "史诗", position: "后腰" },
+    博格坎普: { type: "史诗", position: "中锋" },
+    费尔马伦: { type: "史诗", position: "中后卫" },
+    罗西基: { type: "史诗", position: "前腰" },
+    萨卡: { type: "ST", position: "右边锋" },
+    多纳鲁马: { type: "ST", position: "门将" },
+    切尔基: { type: "ST", position: "前腰" },
   },
   ouzhan_fengyan: {
     博格坎普: { type: "史诗", position: "中锋" },
