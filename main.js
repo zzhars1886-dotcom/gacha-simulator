@@ -374,6 +374,38 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  northern_campaign_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "北伐争五兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.005 },
+      { type: "selected", label: "精选卡", probability: 0.008 },
+      { type: "star5", label: "五星普卡", probability: 0.024 },
+      { type: "star4", label: "四星普卡", probability: 0.363 },
+      { type: "star3", label: "三星普卡", probability: 0.6 },
+    ],
+    empoweredCards: [
+      "索博斯洛伊",
+      "B.费尔南德斯",
+      "舍斯科",
+      "沃尔特马德",
+      "R.詹姆斯",
+      "罗杰斯",
+      "亨德森",
+    ],
+    exchangeConfig: {
+      specificPlayers: ["索博斯洛伊", "B.费尔南德斯", "舍斯科"],
+      fixedSelect42: null,
+      select47Players: null,
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["索博斯洛伊", "B.费尔南德斯", "舍斯科"],
+    exchangeNoRepeatUntilComplete: true,
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   pitch_maestro_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -673,6 +705,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   rock_blade_exchange: ["assets/磐石利刃"],
   golden_generation_exchange: ["assets/黄金一代"],
   wall_of_sighs_exchange: ["assets/叹息之墙"],
+  northern_campaign_exchange: ["assets/北伐争五"],
   pitch_maestro_exchange: ["assets/球场主宰"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
@@ -769,6 +802,15 @@ const POOL_PLAYER_META = {
     基耶利尼: { type: "史诗", position: "中后卫" },
     范布隆克霍斯特: { type: "史诗", position: "左后卫" },
   },
+  northern_campaign_exchange: {
+    索博斯洛伊: { type: "ST", position: "前腰" },
+    "B.费尔南德斯": { type: "ST", position: "前腰" },
+    舍斯科: { type: "ST", position: "中锋" },
+    沃尔特马德: { type: "ST", position: "中锋" },
+    "R.詹姆斯": { type: "ST", position: "右后卫" },
+    罗杰斯: { type: "ST", position: "前腰" },
+    亨德森: { type: "ST", position: "后腰" },
+  },
   pitch_maestro_exchange: {
     马克莱莱: { type: "史诗", position: "后腰" },
     欧文: { type: "史诗", position: "中锋" },
@@ -861,9 +903,11 @@ const TEN_PULL_GUARANTEE_ENABLED = true;
 function createInitialState(empoweredCards) {
   const empoweredCounts = {};
   const empoweredDetails = {};
+  const ownedEmpoweredNames = {};
   empoweredCards.forEach((name) => {
     empoweredCounts[name] = 0;
     empoweredDetails[name] = [];
+    ownedEmpoweredNames[name] = false;
   });
 
   return {
@@ -900,6 +944,7 @@ function createInitialState(empoweredCards) {
     accumulatedGuaranteeGranted: false,
     keyMoments: [],
     resetCount: 0,
+    ownedEmpoweredNames,
   };
 }
 
@@ -1150,6 +1195,20 @@ function calcSeasonWithGiftExpected(startProgress, empoweredCount, flags) {
 }
 
 function calcExchangeWithGiftExpected(pool) {
+  if (isNonRepeatExchangePool(pool)) {
+    const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
+    const any =
+      pAny > 0
+        ? expectedWithDrawAndGuarantee(0, 470, (progressAfterDraw) =>
+            getBaseEmpoweredProbability(pool.poolConfig || [])
+          )
+        : 0;
+    const refTarget = (pool.empoweredCards || [])[0] || "";
+    return {
+      any,
+      specific: refTarget ? calcNonRepeatExchangeSpecificExpected(pool, refTarget) : 0,
+    };
+  }
   const cfg = getExchangeConfig();
   const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
   const n = Math.max(1, (pool.empoweredCards || []).length);
@@ -1196,6 +1255,9 @@ function calcExchangeWithGiftExpected(pool) {
 }
 
 function calcExchangeSpecificHitCDF(pool, drawCount, targetName) {
+  if (isNonRepeatExchangePool(pool)) {
+    return calcNonRepeatExchangeSpecificHitCDF(pool, drawCount, targetName);
+  }
   drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
   if (drawCount <= 0 || !targetName) return 0;
   const allNames = pool.empoweredCards || [];
@@ -1234,6 +1296,14 @@ function calcExchangeEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
 }
 
 function calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount) {
+  if (isNonRepeatExchangePool(pool)) {
+    return calcNonRepeatExchangeSpecificCountAtLeastCDF(
+      pool,
+      drawCount,
+      targetName,
+      targetCount
+    );
+  }
   drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
   targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
   if (targetCount <= 0) return 1;
@@ -1259,6 +1329,308 @@ function calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, target
   const need = Math.max(0, targetCount - fixedGain);
   const cdf = calcBinomialAtLeast(drawCount, pSpecific, need);
   return clamp01(cdf);
+}
+
+function calcNonRepeatExchangeSpecificHitCDF(pool, drawCount, targetName) {
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  if (drawCount <= 0 || !targetName) return 0;
+  const allNames = pool.empoweredCards || [];
+  const targetIdx = allNames.indexOf(targetName);
+  if (targetIdx === -1) return 0;
+
+  const presetMask = getPresetOwnedMask(pool);
+  if (presetMask & (1 << targetIdx)) return 1;
+
+  const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
+  const fullMask = (1 << allNames.length) - 1;
+  let states = new Map([[presetMask, 1]]);
+
+  for (let draw = 1; draw <= drawCount; draw += 1) {
+    const next = new Map();
+    states.forEach((prob, mask) => {
+      if (prob <= 0) return;
+      if (mask & (1 << targetIdx)) {
+        next.set(mask, (next.get(mask) || 0) + prob);
+        return;
+      }
+      const ownedCount = bitCount(mask);
+      if (ownedCount < allNames.length) {
+        const remaining = allNames.length - ownedCount;
+        next.set(mask, (next.get(mask) || 0) + prob * (1 - pAny));
+        const hitTargetProb = prob * (pAny / remaining);
+        if (hitTargetProb > 0) {
+          const hitMask = mask | (1 << targetIdx);
+          next.set(hitMask, (next.get(hitMask) || 0) + hitTargetProb);
+        }
+        if (remaining > 1) {
+          const hitOtherEach = prob * (pAny / remaining);
+          allNames.forEach((_, idx) => {
+            if (idx === targetIdx || (mask & (1 << idx))) return;
+            const hitMask = mask | (1 << idx);
+            next.set(hitMask, (next.get(hitMask) || 0) + hitOtherEach);
+          });
+        }
+      } else {
+        const hitMask = mask | (1 << targetIdx);
+        next.set(hitMask, (next.get(hitMask) || 0) + prob * (pAny / allNames.length));
+        next.set(mask, (next.get(mask) || 0) + prob * (1 - pAny / allNames.length));
+      }
+    });
+
+    if (draw === 470) {
+      const selectPool = getExchangeSelectPoolForCap(pool, 470);
+      if (selectPool.includes(targetName)) {
+        const afterSelect = new Map();
+        next.forEach((prob, mask) => {
+          const nextMask = mask | (1 << targetIdx);
+          afterSelect.set(nextMask, (afterSelect.get(nextMask) || 0) + prob);
+        });
+        states = afterSelect;
+      } else {
+        states = next;
+      }
+    } else {
+      states = next;
+    }
+
+    if (states.size === 1 && states.has(fullMask)) return 1;
+  }
+
+  let cdf = 0;
+  states.forEach((prob, mask) => {
+    if (mask & (1 << targetIdx)) cdf += prob;
+  });
+  return clamp01(cdf);
+}
+
+function calcNonRepeatExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount) {
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
+  if (targetCount <= 0) return 1;
+  if (drawCount <= 0 || !targetName) return 0;
+  const allNames = pool.empoweredCards || [];
+  const targetIdx = allNames.indexOf(targetName);
+  if (targetIdx === -1) return 0;
+
+  const presetMask = getPresetOwnedMask(pool);
+  const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
+  const cappedTarget = Math.max(1, targetCount);
+  const initialHasTarget = Number(Boolean(presetMask & (1 << targetIdx)));
+  let states = new Map([[`${presetMask}|${initialHasTarget}|0`, 1]]);
+
+  for (let draw = 1; draw <= drawCount; draw += 1) {
+    const next = new Map();
+    states.forEach((prob, key) => {
+      if (prob <= 0) return;
+      const parts = key.split("|");
+      const mask = Number(parts[0]);
+      const hasTarget = Number(parts[1]) || 0;
+      const count = Number(parts[2]) || 0;
+      const push = (nextMask, nextHasTarget, nextCount, addProb) => {
+        if (addProb <= 0) return;
+        const cappedCount = Math.min(cappedTarget, nextCount);
+        const nextKey = `${nextMask}|${nextHasTarget}|${cappedCount}`;
+        next.set(nextKey, (next.get(nextKey) || 0) + addProb);
+      };
+      const ownedCount = bitCount(mask);
+
+      if (ownedCount < allNames.length) {
+        push(mask, hasTarget, count, prob * (1 - pAny));
+        if (hasTarget) {
+          allNames.forEach((_, idx) => {
+            if (mask & (1 << idx)) return;
+            if (idx === targetIdx) return;
+            push(mask | (1 << idx), 1, count, prob * (pAny / (allNames.length - ownedCount)));
+          });
+        } else {
+          const remaining = allNames.length - ownedCount;
+          push(mask | (1 << targetIdx), 1, count + 1, prob * (pAny / remaining));
+          allNames.forEach((_, idx) => {
+            if (idx === targetIdx || (mask & (1 << idx))) return;
+            push(mask | (1 << idx), 0, count, prob * (pAny / remaining));
+          });
+        }
+      } else {
+        push(mask, hasTarget, count + 1, prob * (pAny / allNames.length));
+        push(mask, hasTarget, count, prob * (1 - pAny / allNames.length));
+      }
+    });
+
+    let statesAfter = next;
+    if (draw === 470) {
+      const selectPool = getExchangeSelectPoolForCap(pool, 470);
+      if (selectPool.includes(targetName)) {
+        const afterSelect = new Map();
+        statesAfter.forEach((prob, key) => {
+          const parts = key.split("|");
+          const mask = Number(parts[0]);
+          const count = Number(parts[2]) || 0;
+          const nextMask = mask | (1 << targetIdx);
+          const nextKey = `${nextMask}|1|${Math.min(cappedTarget, count + 1)}`;
+          afterSelect.set(nextKey, (afterSelect.get(nextKey) || 0) + prob);
+        });
+        statesAfter = afterSelect;
+      }
+    }
+    states = statesAfter;
+  }
+
+  let cdf = 0;
+  states.forEach((prob, key) => {
+    const count = Number(key.split("|")[2]) || 0;
+    if (count >= targetCount) cdf += prob;
+  });
+  return clamp01(cdf);
+}
+
+function calcNonRepeatExchangeSpecificExpected(pool, targetName) {
+  const allNames = pool.empoweredCards || [];
+  const targetIdx = allNames.indexOf(targetName);
+  if (targetIdx === -1) return 0;
+  const presetMask = getPresetOwnedMask(pool);
+  if (presetMask & (1 << targetIdx)) return 0;
+
+  const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
+  let expected = 0;
+  let states = new Map([[presetMask, 1]]);
+
+  for (let draw = 1; draw <= 470; draw += 1) {
+    let survival = 0;
+    states.forEach((prob, mask) => {
+      if ((mask & (1 << targetIdx)) === 0) survival += prob;
+    });
+    expected += survival;
+
+    const next = new Map();
+    states.forEach((prob, mask) => {
+      if (prob <= 0) return;
+      if (mask & (1 << targetIdx)) {
+        next.set(mask, (next.get(mask) || 0) + prob);
+        return;
+      }
+      const ownedCount = bitCount(mask);
+      if (ownedCount < allNames.length) {
+        const remaining = allNames.length - ownedCount;
+        next.set(mask, (next.get(mask) || 0) + prob * (1 - pAny));
+        next.set(
+          mask | (1 << targetIdx),
+          (next.get(mask | (1 << targetIdx)) || 0) + prob * (pAny / remaining)
+        );
+        allNames.forEach((_, idx) => {
+          if (idx === targetIdx || (mask & (1 << idx))) return;
+          const hitMask = mask | (1 << idx);
+          next.set(hitMask, (next.get(hitMask) || 0) + prob * (pAny / remaining));
+        });
+      } else {
+        const hitMask = mask | (1 << targetIdx);
+        next.set(hitMask, (next.get(hitMask) || 0) + prob * (pAny / allNames.length));
+        next.set(mask, (next.get(mask) || 0) + prob * (1 - pAny / allNames.length));
+      }
+    });
+
+    if (draw === 470) {
+      const selectPool = getExchangeSelectPoolForCap(pool, 470);
+      if (selectPool.includes(targetName)) {
+        return expected;
+      }
+    }
+    states = next;
+  }
+
+  return expected;
+}
+
+function calcNonRepeatExchangeFavoredSetMetrics(pool, selectedNames) {
+  const allNames = pool.empoweredCards || [];
+  const selected = Array.from(new Set((selectedNames || []).filter((name) => allNames.includes(name))));
+  if (!selected.length) return { anyExpected: 0, allExpected: 0, allProbAtCap: 0 };
+
+  const selectedMask = selected.reduce((mask, name) => mask | (1 << allNames.indexOf(name)), 0);
+  const presetMask = getPresetOwnedMask(pool);
+  const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
+  const cap = getFavoredProgressCap(pool, selected);
+  const maxDraw = Math.max(cap * 4, 1200);
+  let states = new Map([[presetMask, 1]]);
+  let prevAnyCDF = (presetMask & selectedMask) !== 0 ? 1 : 0;
+  let prevAllCDF = (presetMask & selectedMask) === selectedMask ? 1 : 0;
+  let anyExpected = 0;
+  let allExpected = 0;
+  let allCDFAtCap = prevAllCDF;
+
+  for (let draw = 1; draw <= maxDraw; draw += 1) {
+    let next = new Map();
+    states.forEach((prob, mask) => {
+      if (prob <= 0) return;
+      const ownedCount = bitCount(mask);
+      if (ownedCount < allNames.length) {
+        next.set(mask, (next.get(mask) || 0) + prob * (1 - pAny));
+        const remaining = allNames.length - ownedCount;
+        allNames.forEach((_, idx) => {
+          if (mask & (1 << idx)) return;
+          const hitMask = mask | (1 << idx);
+          next.set(hitMask, (next.get(hitMask) || 0) + prob * (pAny / remaining));
+        });
+      } else {
+        next.set(mask, (next.get(mask) || 0) + prob);
+      }
+    });
+
+    if (draw === cap) {
+      const selectPool = getExchangeSelectPoolForCap(pool, cap);
+      const selectMask = selectPool.reduce((mask, name) => {
+        const idx = allNames.indexOf(name);
+        return idx >= 0 ? mask | (1 << idx) : mask;
+      }, 0);
+      const afterSelect = new Map();
+      next.forEach((prob, mask) => {
+        const missingSelectable = selected.find((name) => {
+          const idx = allNames.indexOf(name);
+          return idx >= 0 && (mask & (1 << idx)) === 0 && selectPool.includes(name);
+        });
+        if (missingSelectable) {
+          const idx = allNames.indexOf(missingSelectable);
+          const nextMask = mask | (1 << idx);
+          afterSelect.set(nextMask, (afterSelect.get(nextMask) || 0) + prob);
+          return;
+        }
+        if ((mask & selectMask) !== selectMask) {
+          const firstSelectable = allNames.find((name) => selectPool.includes(name) && (mask & (1 << allNames.indexOf(name))) === 0);
+          if (firstSelectable) {
+            const idx = allNames.indexOf(firstSelectable);
+            const nextMask = mask | (1 << idx);
+            afterSelect.set(nextMask, (afterSelect.get(nextMask) || 0) + prob);
+            return;
+          }
+        }
+        afterSelect.set(mask, (afterSelect.get(mask) || 0) + prob);
+      });
+      next = afterSelect;
+    }
+
+    states = next;
+
+    let anyCDF = 0;
+    let allCDF = 0;
+    states.forEach((prob, mask) => {
+      if ((mask & selectedMask) !== 0) anyCDF += prob;
+      if ((mask & selectedMask) === selectedMask) allCDF += prob;
+    });
+    anyCDF = clamp01(anyCDF);
+    allCDF = clamp01(allCDF);
+    anyExpected += draw * Math.max(0, anyCDF - prevAnyCDF);
+    allExpected += draw * Math.max(0, allCDF - prevAllCDF);
+    prevAnyCDF = anyCDF;
+    prevAllCDF = allCDF;
+    if (draw === cap) allCDFAtCap = allCDF;
+  }
+
+  anyExpected += (maxDraw + 1) * Math.max(0, 1 - prevAnyCDF);
+  allExpected += (maxDraw + 1) * Math.max(0, 1 - prevAllCDF);
+  return {
+    anyExpected,
+    allExpected,
+    allProbAtCap: clamp01(allCDFAtCap),
+  };
 }
 
 function getMilestoneRewardHitProb(reward, pool, empoweredCount) {
@@ -1764,7 +2136,7 @@ function getFavoredHitProbabilityByDrawCount(drawCount) {
   const targetName = getCurrentFavoredTargetName();
   const normalizedTarget = targetName && names.includes(targetName) ? targetName : names[0];
 
-  const cacheKey = `${activePoolKey}|${normalizedTarget}|${drawCount}`;
+  const cacheKey = `${getProbabilityVariantKey(pool)}|${normalizedTarget}|${drawCount}`;
   if (favoredProbabilityCache[cacheKey] != null) {
     return favoredProbabilityCache[cacheKey];
   }
@@ -1796,7 +2168,7 @@ function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
   drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
   if (!names.length || drawCount <= 0 || !targetName || !names.includes(targetName)) return 0;
 
-  const cacheKey = `${activePoolKey}|${targetName}|${drawCount}`;
+  const cacheKey = `${getProbabilityVariantKey(pool)}|${targetName}|${drawCount}`;
   if (specificProbabilityCache[cacheKey] != null) {
     return specificProbabilityCache[cacheKey];
   }
@@ -2043,6 +2415,9 @@ function calcChainFavoredSetMetricsExact(pool, selectedNames) {
 
 function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
   const selected = Array.from(new Set((selectedNames || []).filter(Boolean)));
+  if (isNonRepeatExchangePool(pool)) {
+    return calcNonRepeatExchangeFavoredSetMetrics(pool, selected);
+  }
   const cap = getFavoredProgressCap(pool, selected);
   const maxDraw = Math.max(cap * 4, 1200);
   const m = selected.length;
@@ -2370,6 +2745,21 @@ function getFavoredSetExpectedMetrics(selectedNames) {
   const pool = getCurrentPool();
   const uniq = Array.from(new Set((selectedNames || []).filter(Boolean)));
   if (!uniq.length) return null;
+  if (isNonRepeatExchangePool(pool)) {
+    const normalizedNames = uniq.slice().sort();
+    const key = `${getProbabilityVariantKey(pool)}|${normalizedNames.join(",")}`;
+    if (favoredSetMetricsCache[key]) return favoredSetMetricsCache[key];
+    const cap = getFavoredProgressCap(pool, normalizedNames);
+    const exact = calcNonRepeatExchangeFavoredSetMetrics(pool, normalizedNames);
+    favoredSetMetricsCache[key] = {
+      anyExpected: exact.anyExpected,
+      allExpected: exact.allExpected,
+      allProbAtCap: exact.allProbAtCap,
+      cap,
+      unit: "抽",
+    };
+    return favoredSetMetricsCache[key];
+  }
   const hasTargetSpecificMilestones =
     pool.progressionType === "milestone" &&
     (pool.milestones || []).some((m) => m.type === "exchange_target_chance");
@@ -2381,8 +2771,8 @@ function getFavoredSetExpectedMetrics(selectedNames) {
     ? (pool.empoweredCards || []).slice(0, uniq.length)
     : uniq.slice().sort();
   const key = useCountBasedKey
-    ? `${activePoolKey}|count:${uniq.length}`
-    : `${activePoolKey}|${normalizedNames.join(",")}`;
+    ? `${getProbabilityVariantKey(pool)}|count:${uniq.length}`
+    : `${getProbabilityVariantKey(pool)}|${normalizedNames.join(",")}`;
   if (favoredSetMetricsCache[key]) return favoredSetMetricsCache[key];
   const cap = getFavoredProgressCap(pool, normalizedNames);
   const runs = isChainPool() ? 6000 : 4000;
@@ -2633,7 +3023,7 @@ function getEmpoweredAtLeastProbabilityByDrawCount(drawCount, targetCount) {
   if (targetCount <= 0) return 1;
   if (drawCount <= 0) return 0;
 
-  const cacheKey = `${activePoolKey}|${drawCount}|${targetCount}`;
+  const cacheKey = `${getProbabilityVariantKey(getCurrentPool())}|${drawCount}|${targetCount}`;
   if (empoweredCountProbabilityCache[cacheKey] != null) {
     return empoweredCountProbabilityCache[cacheKey];
   }
@@ -2671,7 +3061,7 @@ function getSpecificCountAtLeastProbabilityByDrawCount(drawCount, targetName, ta
   if (targetCount <= 0) return 1;
   if (!names.length || drawCount <= 0 || !targetName || !names.includes(targetName)) return 0;
 
-  const cacheKey = `${activePoolKey}|${targetName}|${drawCount}|${targetCount}|count`;
+  const cacheKey = `${getProbabilityVariantKey(pool)}|${targetName}|${drawCount}|${targetCount}|count`;
   if (specificCountProbabilityCache[cacheKey] != null) {
     return specificCountProbabilityCache[cacheKey];
   }
@@ -2724,8 +3114,11 @@ function getExceedPercentForEmpoweredCountByProgress(progress, targetCount) {
 function getCurrentUniqueEmpoweredCount() {
   const names = getEmpoweredStatNames();
   let count = 0;
+  const presetOwned = isNonRepeatExchangePool() ? new Set(getPresetOwnedNames()) : null;
   names.forEach((name) => {
-    if ((Number(state.empoweredCounts[name]) || 0) > 0) count += 1;
+    if ((Number(state.empoweredCounts[name]) || 0) > 0 || (presetOwned && presetOwned.has(name))) {
+      count += 1;
+    }
   });
   return count;
 }
@@ -2740,6 +3133,33 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
   if (pool.progressionType === "accumulated_target") {
     if (targetUniqueCount > 1) return 0;
     return calcAccumulatedGuaranteeSpecificCDF(pool, progressCount);
+  }
+
+  if (isNonRepeatExchangePool(pool)) {
+    const initialOwned = getPresetOwnedNames().length;
+    const total = allNames.length;
+    if (targetUniqueCount <= initialOwned) return 1;
+    const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
+    const cap = 470;
+    let cdf = 0;
+    for (let hits = 0; hits <= progressCount; hits += 1) {
+      const hitProb =
+        hits === 0
+          ? (1 - pAny) ** progressCount
+          : 0;
+      const pmf =
+        hits === 0
+          ? hitProb
+          : calcBinomialAtLeast(progressCount, pAny, hits) -
+            calcBinomialAtLeast(progressCount, pAny, hits + 1);
+      if (pmf <= 0) continue;
+      let uniqueCount = initialOwned + Math.min(hits, Math.max(0, total - initialOwned));
+      if (progressCount >= cap && uniqueCount < total) {
+        uniqueCount += 1;
+      }
+      if (uniqueCount >= targetUniqueCount) cdf += pmf;
+    }
+    return clamp01(cdf);
   }
 
   const addRandomName = (setObj, candidateNames) => {
@@ -2871,7 +3291,7 @@ function getUniqueEmpoweredAtLeastProbabilityByProgress(progressCount, targetUni
   if (targetUniqueCount <= 0) return 1;
   if (progressCount <= 0) return 0;
 
-  const cacheKey = `${activePoolKey}|${progressCount}|${targetUniqueCount}|unique`;
+  const cacheKey = `${getProbabilityVariantKey(getCurrentPool())}|${progressCount}|${targetUniqueCount}|unique`;
   if (uniqueEmpoweredCountProbabilityCache[cacheKey] != null) {
     return uniqueEmpoweredCountProbabilityCache[cacheKey];
   }
@@ -4060,7 +4480,10 @@ function getCurrentRollPoolConfig() {
 }
 
 function rollBaseCard() {
-  const { empoweredCards } = getCurrentPool();
+  const pool = getCurrentPool();
+  const empoweredCards = isNonRepeatExchangePool(pool)
+    ? getCurrentAvailableEmpoweredNames(pool)
+    : pool.empoweredCards || [];
   const poolConfig = getCurrentRollPoolConfig();
   const r = Math.random();
   let cumulative = 0;
@@ -4596,11 +5019,13 @@ function autoToFavoredEmpowered() {
 // 重置当前卡池状态
 function resetAll() {
   const prevResetCount = Math.max(0, Number(state.resetCount) || 0);
+  const prevOwnedMap = getOwnedEmpoweredMap(state, getCurrentPool());
   stateByModeAndPool[activeModeKey][activePoolKey] = createInitialState(
     getCurrentPool().empoweredCards
   );
   state = stateByModeAndPool[activeModeKey][activePoolKey];
   state.resetCount = prevResetCount + 1;
+  state.ownedEmpoweredNames = { ...state.ownedEmpoweredNames, ...prevOwnedMap };
   ensureChainPoolStateInitialized();
   resetEmpoweredDetailPanel();
   renderAll();
@@ -4708,6 +5133,73 @@ function getExchangeConfig() {
       hasSkin52: false,
     }
   );
+}
+
+function isNonRepeatExchangePool(pool = getCurrentPool()) {
+  return (
+    pool.progressionType === "exchange_badge" &&
+    Boolean(pool.exchangeNoRepeatUntilComplete)
+  );
+}
+
+function getOwnedEmpoweredMap(stateObj = state, pool = getCurrentPool()) {
+  const names = pool.empoweredCards || [];
+  const base = stateObj?.ownedEmpoweredNames || {};
+  const map = {};
+  names.forEach((name) => {
+    map[name] = Boolean(base[name]);
+  });
+  return map;
+}
+
+function getPresetOwnedNames(stateObj = state, pool = getCurrentPool()) {
+  const ownedMap = getOwnedEmpoweredMap(stateObj, pool);
+  return (pool.empoweredCards || []).filter((name) => ownedMap[name]);
+}
+
+function getPresetOwnedKey(pool = getCurrentPool(), stateObj = state) {
+  if (!isNonRepeatExchangePool(pool)) return "";
+  return getPresetOwnedNames(stateObj, pool).join("|");
+}
+
+function getProbabilityVariantKey(pool = getCurrentPool(), stateObj = state) {
+  if (!isNonRepeatExchangePool(pool)) return activePoolKey;
+  return `${activePoolKey}|owned:${getPresetOwnedKey(pool, stateObj)}`;
+}
+
+function getCurrentOwnedEmpoweredNames(pool = getCurrentPool(), stateObj = state) {
+  const owned = new Set(getPresetOwnedNames(stateObj, pool));
+  (pool.empoweredCards || []).forEach((name) => {
+    if ((Number(stateObj?.empoweredCounts?.[name]) || 0) > 0) owned.add(name);
+  });
+  return owned;
+}
+
+function getCurrentAvailableEmpoweredNames(pool = getCurrentPool(), stateObj = state) {
+  const names = (pool.empoweredCards || []).slice();
+  if (!isNonRepeatExchangePool(pool)) return names;
+  const owned = getCurrentOwnedEmpoweredNames(pool, stateObj);
+  if (owned.size >= names.length) return names;
+  return names.filter((name) => !owned.has(name));
+}
+
+function getPresetOwnedMask(pool = getCurrentPool(), stateObj = state) {
+  let mask = 0;
+  const ownedMap = getOwnedEmpoweredMap(stateObj, pool);
+  (pool.empoweredCards || []).forEach((name, idx) => {
+    if (ownedMap[name]) mask |= 1 << idx;
+  });
+  return mask;
+}
+
+function bitCount(value) {
+  let v = Number(value) || 0;
+  let count = 0;
+  while (v) {
+    v &= v - 1;
+    count += 1;
+  }
+  return count;
 }
 
 function createChainRewardToken(kind) {
@@ -5446,7 +5938,14 @@ function renderProbabilities() {
         tr.appendChild(tdProb);
         tbody.appendChild(tr);
       });
-      namesSpan.textContent = empoweredCards.join(" / ");
+      if (isNonRepeatExchangePool()) {
+        const ownedNames = getCurrentOwnedEmpoweredNames();
+        namesSpan.textContent = empoweredCards
+          .map((name) => (ownedNames.has(name) ? `${name}（已拥有）` : name))
+          .join(" / ");
+      } else {
+        namesSpan.textContent = empoweredCards.join(" / ");
+      }
     }
   }
 
@@ -5454,6 +5953,8 @@ function renderProbabilities() {
   const select = document.getElementById("selectRewardChoice");
   const favSelect = document.getElementById("favEmpoweredChoice");
   const chainFavSelect = document.getElementById("chainFavEmpoweredChoice");
+  const ownedSelect = document.getElementById("ownedEmpoweredChoice");
+  const ownedRow = document.getElementById("ownedEmpoweredRow");
   const favoredName = getCurrentFavoredTargetName();
   if (select) {
     const pendingInfo = state.pendingSelectMilestones[0] ?? null;
@@ -5507,6 +6008,33 @@ function renderProbabilities() {
     });
     renderFavTagSelector("favEmpoweredChoice", "favEmpoweredTags");
     updateFavSelectAllButton("favEmpoweredChoice", "btnFavSelectAll");
+  }
+
+  if (ownedRow && ownedSelect) {
+    if (isNonRepeatExchangePool()) {
+      const currentValues = Array.from(ownedSelect.selectedOptions || []).map((o) => o.value);
+      const ownedMap = getOwnedEmpoweredMap();
+      ownedRow.classList.remove("hidden");
+      ownedSelect.innerHTML = "";
+      empoweredCards.forEach((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        if (currentValues.includes(name) || ownedMap[name]) {
+          opt.selected = true;
+        }
+        ownedSelect.appendChild(opt);
+      });
+      renderFavTagSelector("ownedEmpoweredChoice", "ownedEmpoweredTags");
+      updateFavSelectAllButton("ownedEmpoweredChoice", "btnOwnedSelectAll");
+    } else {
+      ownedRow.classList.add("hidden");
+      ownedSelect.innerHTML = "";
+      const ownedTags = document.getElementById("ownedEmpoweredTags");
+      if (ownedTags) ownedTags.innerHTML = "";
+      const btnOwnedSelectAll = document.getElementById("btnOwnedSelectAll");
+      if (btnOwnedSelectAll) btnOwnedSelectAll.textContent = "一键全选";
+    }
   }
 
   if (chainFavSelect) {
@@ -5625,6 +6153,7 @@ function renderStats() {
   if (!tbody) return;
   tbody.innerHTML = "";
   const favoredNames = new Set(getCurrentFavoredTargetNames());
+  const presetOwnedNames = getCurrentOwnedEmpoweredNames();
   getEmpoweredStatNames().forEach((name) => {
     const tr = document.createElement("tr");
     const tdName = document.createElement("td");
@@ -5645,11 +6174,13 @@ function renderStats() {
         tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline"><span class="expected-value">${specificGrade}</span> | 超过 <span class="expected-value">${exceedSpecific.toFixed(
           2
         )}%</span> 的玩家</span>`;
+      } else if (presetOwnedNames.has(name)) {
+        tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">已拥有</span>`;
       } else {
         tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">未获得</span>`;
       }
     } else {
-      tdCount.textContent = String(count);
+      tdCount.textContent = presetOwnedNames.has(name) && count <= 0 ? `${count}（已拥有）` : String(count);
     }
     if (count > 0) {
       tdCount.style.color = "#fbbf24";
@@ -6431,8 +6962,10 @@ function bindEvents() {
   const btnAutoToFav = document.getElementById("btnAutoToFav");
   const btnFavSelectAll = document.getElementById("btnFavSelectAll");
   const btnChainFavSelectAll = document.getElementById("btnChainFavSelectAll");
+  const btnOwnedSelectAll = document.getElementById("btnOwnedSelectAll");
   const favEmpoweredChoice = document.getElementById("favEmpoweredChoice");
   const chainFavEmpoweredChoice = document.getElementById("chainFavEmpoweredChoice");
+  const ownedEmpoweredChoice = document.getElementById("ownedEmpoweredChoice");
   const accumulatedTargetChoice = document.getElementById("accumulatedTargetChoice");
   const poolTypeChoice = document.getElementById("poolTypeChoice");
   const poolSwitchChoice = document.getElementById("poolSwitchChoice");
@@ -6569,6 +7102,33 @@ function bindEvents() {
         opt.selected = !allSelected;
       });
       favEmpoweredChoice.dispatchEvent(new Event("change"));
+    });
+  }
+  if (ownedEmpoweredChoice) {
+    ownedEmpoweredChoice.addEventListener("change", () => {
+      const selected = new Set(
+        Array.from(ownedEmpoweredChoice.selectedOptions || []).map((opt) => opt.value)
+      );
+      const names = getCurrentPool().empoweredCards || [];
+      const nextMap = { ...(state.ownedEmpoweredNames || {}) };
+      names.forEach((name) => {
+        nextMap[name] = selected.has(name);
+      });
+      state.ownedEmpoweredNames = nextMap;
+      renderFavTagSelector("ownedEmpoweredChoice", "ownedEmpoweredTags");
+      updateFavSelectAllButton("ownedEmpoweredChoice", "btnOwnedSelectAll");
+      renderAll();
+    });
+  }
+  if (btnOwnedSelectAll && ownedEmpoweredChoice) {
+    btnOwnedSelectAll.addEventListener("click", () => {
+      const options = Array.from(ownedEmpoweredChoice.options || []);
+      const selectedCount = Array.from(ownedEmpoweredChoice.selectedOptions || []).length;
+      const allSelected = options.length > 0 && selectedCount === options.length;
+      options.forEach((opt) => {
+        opt.selected = !allSelected;
+      });
+      ownedEmpoweredChoice.dispatchEvent(new Event("change"));
     });
   }
   if (chainFavEmpoweredChoice) {

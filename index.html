@@ -230,6 +230,14 @@
             <button id="btnAutoToFav">一键抽到心仪球员</button>
             <span id="favExpectedInfo" class="hint-text small"></span>
           </div>
+          <div id="ownedEmpoweredRow" class="select-row favored-row hidden">
+            <div class="favored-head">
+              <label for="ownedEmpoweredChoice">已拥有球员：</label>
+              <button id="btnOwnedSelectAll" class="small-button">一键全选</button>
+            </div>
+            <select id="ownedEmpoweredChoice" multiple size="5" class="hidden"></select>
+            <div id="ownedEmpoweredTags" class="fav-tags"></div>
+          </div>
           <div class="draw-actions-footer">
             <button id="btnReset" class="danger">一键重置</button>
             <span class="total-pulls-label">当前总抽数：<span id="totalPulls">0</span></span>
