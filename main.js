@@ -364,12 +364,12 @@ const POOLS = {
     ],
     empoweredCards: ["巴雷西", "图拉姆", "舒梅切尔", "马克思", "兰帕德", "基耶利尼", "范布隆克霍斯特"],
     exchangeConfig: {
-      specificPlayers: ["巴雷西", "图拉姆", "舒梅切尔"],
+      specificPlayers: ["巴雷西", "图拉姆", "舒梅切尔", "马克思"],
       fixedSelect42: null,
-      select47Players: ["巴雷西", "图拉姆", "舒梅切尔"],
+      select47Players: ["巴雷西", "图拉姆", "舒梅切尔", "马克思"],
       hasSkin52: false,
     },
-    exchangeSpecificPlayers: ["巴雷西", "图拉姆", "舒梅切尔"],
+    exchangeSpecificPlayers: ["巴雷西", "图拉姆", "舒梅切尔", "马克思"],
     milestones: [],
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
@@ -674,6 +674,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.northern_campaign_exchange && "northern_campaign_exchange") ||
   (POOLS.wall_of_sighs_exchange && "wall_of_sighs_exchange") ||
   (POOLS.golden_generation_exchange && "golden_generation_exchange") ||
   (POOLS.midfield_master_halfprice && "midfield_master_halfprice") ||
