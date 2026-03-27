@@ -4512,8 +4512,13 @@ function createFiveStarCard() {
 
 // 生成一张随机增能卡
 function createEmpoweredCard(specifiedName) {
-  const { empoweredCards } = getCurrentPool();
-  const name = specifiedName || randomFromArray(empoweredCards);
+  const pool = getCurrentPool();
+  const empoweredCards = pool.empoweredCards || [];
+  const candidateNames =
+    specifiedName || !isNonRepeatExchangePool(pool)
+      ? empoweredCards
+      : getCurrentAvailableEmpoweredNames(pool);
+  const name = specifiedName || randomFromArray(candidateNames);
   return { type: "empowered", name };
 }
 
