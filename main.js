@@ -76,6 +76,21 @@ function createDefenseGiftMilestones() {
   return createAccumulatedGiftMilestones();
 }
 
+const SPRING_SHOP_PLAYERS = [
+  "麦孔",
+  "弗莱彻",
+  "菲戈",
+  "迪达",
+  "科尔",
+  "贝林厄姆",
+  "居莱尔",
+  "楚阿梅尼",
+  "凯塞多",
+  "卢卡库",
+];
+
+const SPRING_SHOP_ALL_SELECT_PLAYERS = ["瓦拉内", ...SPRING_SHOP_PLAYERS];
+
 function createCarnivalPool(config) {
   return {
     poolType: "carnival_gift",
@@ -828,6 +843,40 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  defense_spring_shop: {
+    poolType: "shop_package",
+    progressionType: "shop_package",
+    name: "防守教学春日礼包",
+    packagePriceGold: 688,
+    scholarEveryPacks: 10,
+    scholarMilestoneLimit: 10,
+    firstSelectPacks: 80,
+    allSelectPacks: 120,
+    poolConfig: [
+      { type: "spring_empowered", label: "春日礼包增能卡", probability: 0.04 },
+      { type: "spring_scholar_pack", label: "学霸礼包", probability: 0.1 },
+      { type: "spring_gold_2026", label: "返还 2026 金币", probability: 0.2 },
+      { type: "spring_gold_666", label: "返还 666 金币", probability: 0.3 },
+      { type: "spring_gold_888", label: "返还 888 金币", probability: 0.4 },
+    ],
+    scholarPackConfig: [
+      { type: "empowered_fixed", label: "瓦拉内", probability: 0.002, fixedName: "瓦拉内" },
+      { type: "spring_random", label: "春日礼包随机球员", probability: 0.15 },
+      { type: "gold", label: "返还 2026 金币", probability: 0.006, amount: 2026 },
+      { type: "gold", label: "返还 888 金币", probability: 0.036, amount: 888 },
+      { type: "gold", label: "返还 666 金币", probability: 0.066, amount: 666 },
+      { type: "gold", label: "返还 388 金币", probability: 0.2, amount: 388 },
+      { type: "gold", label: "返还 188 金币", probability: 0.3, amount: 188 },
+      { type: "token", label: "高级技巧代币", probability: 0.12 },
+      { type: "token", label: "随机增能代币", probability: 0.12 },
+    ],
+    empoweredCards: SPRING_SHOP_ALL_SELECT_PLAYERS,
+    springPackagePlayers: SPRING_SHOP_PLAYERS,
+    mainCoursePlayers: ["瓦拉内"],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
 };
 
 const POOL_KEYS = Object.keys(POOLS);
@@ -849,6 +898,7 @@ const POOL_TYPE_LABELS = {
   carnival_gift: "狂欢赠礼",
   accumulated_gift: "累抽赠礼",
   discount_no_guarantee: "折扣无保底",
+  shop_package: "商城礼包",
   exchange_guarantee: "兑换保底",
   chain_bundle: "连锁礼包",
   season_carryover: "赛季累抽继承",
@@ -877,6 +927,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   oriental_dragon_liyi: ["assets/东方巨龙"],
   oriental_dragon_fengxiaoting: ["assets/东方巨龙"],
   midfield_master_halfprice: ["assets/中路致胜5折"],
+  defense_spring_shop: ["assets/防守教学春日礼包"],
 };
 
 const POOL_PLAYER_META = {
@@ -1060,6 +1111,19 @@ const POOL_PLAYER_META = {
     斯内德: { type: "史诗", position: "前腰" },
     古蒂: { type: "史诗", position: "中前卫" },
   },
+  defense_spring_shop: {
+    瓦拉内: { type: "史诗", position: "中后卫" },
+    麦孔: { type: "史诗", position: "右后卫" },
+    弗莱彻: { type: "史诗", position: "后腰" },
+    菲戈: { type: "史诗", position: "右前卫" },
+    迪达: { type: "史诗", position: "门将" },
+    科尔: { type: "史诗", position: "中锋" },
+    贝林厄姆: { type: "ST", position: "中前卫" },
+    居莱尔: { type: "ST", position: "前腰" },
+    楚阿梅尼: { type: "ST", position: "后腰" },
+    凯塞多: { type: "ST", position: "后腰" },
+    卢卡库: { type: "ST", position: "中锋" },
+  },
   s9_season_inherit: {
     梅西: { type: "史诗", position: "影锋" },
     亚马尔: { type: "史诗", position: "右边锋" },
@@ -1135,6 +1199,10 @@ function createInitialState(empoweredCards) {
     },
     seasonObtainedEmpoweredNames: {},
     accumulatedGuaranteeGranted: false,
+    shopReturnedGold: 0,
+    shopScholarMilestonesGranted: 0,
+    shopSelect80Granted: false,
+    shopSelect120Granted: false,
     keyMoments: [],
     resetCount: 0,
     ownedEmpoweredNames,
@@ -1908,6 +1976,133 @@ function calcMilestoneWithGiftExpected(pool, empoweredCount) {
   };
 }
 
+function getShopFreeScholarCount(drawCount, pool = getCurrentPool()) {
+  if (!isShopPackagePool(pool)) return 0;
+  const every = Math.max(1, Number(pool.scholarEveryPacks || 10));
+  const limit = Math.max(0, Number(pool.scholarMilestoneLimit || 10));
+  return Math.min(limit, Math.floor(Math.max(0, Number(drawCount) || 0) / every));
+}
+
+function getShopScholarSpecificProb(pool, targetName) {
+  if (targetName === "瓦拉内") return 0.002;
+  return (pool.springPackagePlayers || []).includes(targetName) ? 0.15 / 10 : 0;
+}
+
+function getShopSelectGain(pool, drawCount, targetName) {
+  let gain = 0;
+  if (drawCount >= Number(pool.firstSelectPacks || 80) && (pool.springPackagePlayers || []).includes(targetName)) {
+    gain += 1;
+  }
+  if (drawCount >= Number(pool.allSelectPacks || 120) && (pool.empoweredCards || []).includes(targetName)) {
+    gain += 1;
+  }
+  return gain;
+}
+
+function calcShopPackageSpecificHitCDF(pool, drawCount, targetName) {
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  if (drawCount <= 0 || !targetName || !(pool.empoweredCards || []).includes(targetName)) return 0;
+  if (getShopSelectGain(pool, drawCount, targetName) > 0) return 1;
+  const springP = (pool.springPackagePlayers || []).includes(targetName) ? 0.04 / 10 : 0;
+  const scholarP = getShopScholarSpecificProb(pool, targetName);
+  const freeScholar = getShopFreeScholarCount(drawCount, pool);
+  const surviveSpring = (1 - springP) ** drawCount;
+  const surviveRandomScholar = (1 - 0.1 * scholarP) ** drawCount;
+  const surviveFreeScholar = (1 - scholarP) ** freeScholar;
+  return clamp01(1 - surviveSpring * surviveRandomScholar * surviveFreeScholar);
+}
+
+function convolveBinomialCapped(dist, trials, p, cap) {
+  trials = Math.max(0, Math.floor(Number(trials) || 0));
+  p = clamp01(p);
+  if (trials <= 0 || p <= 0) return dist.slice();
+  let out = dist.slice();
+  for (let t = 0; t < trials; t += 1) {
+    const next = new Array(cap + 1).fill(0);
+    for (let count = 0; count <= cap; count += 1) {
+      const prob = out[count] || 0;
+      if (prob <= 0) continue;
+      next[count] += prob * (1 - p);
+      next[Math.min(cap, count + 1)] += prob * p;
+    }
+    out = next;
+  }
+  return out;
+}
+
+function calcShopPackageAtLeastFromComponents(components, fixedGain, targetCount) {
+  const cap = Math.max(0, Math.floor(Number(targetCount) || 0));
+  if (cap <= 0) return 1;
+  const need = Math.max(0, cap - Math.max(0, Number(fixedGain) || 0));
+  if (need <= 0) return 1;
+  let dist = new Array(need + 1).fill(0);
+  dist[0] = 1;
+  components.forEach((component) => {
+    dist = convolveBinomialCapped(dist, component.trials, component.p, need);
+  });
+  return clamp01(dist[need] || 0);
+}
+
+function calcShopPackageEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
+  if (targetCount <= 0) return 1;
+  if (drawCount <= 0) return 0;
+  const freeScholar = getShopFreeScholarCount(drawCount, pool);
+  const fixedGain =
+    (drawCount >= Number(pool.firstSelectPacks || 80) ? 1 : 0) +
+    (drawCount >= Number(pool.allSelectPacks || 120) ? 1 : 0);
+  return calcShopPackageAtLeastFromComponents(
+    [
+      { trials: drawCount, p: 0.04 },
+      { trials: drawCount, p: 0.1 * 0.152 },
+      { trials: freeScholar, p: 0.152 },
+    ],
+    fixedGain,
+    targetCount
+  );
+}
+
+function calcShopPackageSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount) {
+  drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
+  targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
+  if (targetCount <= 0) return 1;
+  if (drawCount <= 0 || !targetName || !(pool.empoweredCards || []).includes(targetName)) return 0;
+  const freeScholar = getShopFreeScholarCount(drawCount, pool);
+  const springP = (pool.springPackagePlayers || []).includes(targetName) ? 0.04 / 10 : 0;
+  const scholarP = getShopScholarSpecificProb(pool, targetName);
+  const fixedGain = getShopSelectGain(pool, drawCount, targetName);
+  return calcShopPackageAtLeastFromComponents(
+    [
+      { trials: drawCount, p: springP },
+      { trials: drawCount, p: 0.1 * scholarP },
+      { trials: freeScholar, p: scholarP },
+    ],
+    fixedGain,
+    targetCount
+  );
+}
+
+function calcShopPackageExpected(pool, targetName = "") {
+  const maxDraw = 120;
+  let anyExpected = 0;
+  let specificExpected = 0;
+  let prevAny = 0;
+  let prevSpecific = 0;
+  const refTarget = targetName || (pool.empoweredCards || [])[0] || "";
+  for (let draw = 1; draw <= maxDraw; draw += 1) {
+    const anyCDF = calcShopPackageEmpoweredAtLeastCDF(pool, draw, 1);
+    const specificCDF = refTarget ? calcShopPackageSpecificHitCDF(pool, draw, refTarget) : 0;
+    anyExpected += draw * Math.max(0, anyCDF - prevAny);
+    specificExpected += draw * Math.max(0, specificCDF - prevSpecific);
+    prevAny = anyCDF;
+    prevSpecific = specificCDF;
+  }
+  anyExpected += (maxDraw + 1) * Math.max(0, 1 - prevAny);
+  specificExpected += (maxDraw + 1) * Math.max(0, 1 - prevSpecific);
+  return { any: anyExpected, specific: specificExpected };
+}
+
 function getChainTargetPool(targetName, pool = getCurrentPool()) {
   if (pool.chainSubPools) {
     const keys = Object.keys(pool.chainSubPools);
@@ -2303,6 +2498,9 @@ function isDiscountLimitedPool(pool = getCurrentPool()) {
 }
 
 function getPoolPricePerPull(pool = getCurrentPool()) {
+  if (isShopPackagePool(pool)) {
+    return Math.max(1, Number(pool.packagePriceGold || 688));
+  }
   if (isDiscountLimitedPool(pool)) {
     return Math.max(1, Number(pool.pricePerPull || 50));
   }
@@ -2337,6 +2535,8 @@ function getFavoredHitProbabilityByDrawCount(drawCount) {
   let cdf = 0;
   if (isChainPool()) {
     cdf = calcChainSpecificCDF(drawCount, normalizedTarget);
+  } else if (isShopPackagePool(pool)) {
+    cdf = calcShopPackageSpecificHitCDF(pool, drawCount, normalizedTarget);
   } else if (isSeasonPool()) {
     cdf = simulateSeasonSpecificCDF(drawCount, normalizedTarget);
   } else if (isAccumulatedGuaranteePool()) {
@@ -2369,6 +2569,8 @@ function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
   let cdf = 0;
   if (isChainPool()) {
     cdf = calcChainSpecificCDF(drawCount, targetName);
+  } else if (isShopPackagePool(pool)) {
+    cdf = calcShopPackageSpecificHitCDF(pool, drawCount, targetName);
   } else if (isSeasonPool()) {
     cdf = simulateSeasonSpecificCDF(drawCount, targetName);
   } else if (isAccumulatedGuaranteePool()) {
@@ -2392,6 +2594,7 @@ function getFavoredProgressCap(pool = getCurrentPool(), selectedNames = []) {
     return (pool.chainTiers || []).length || 7;
   }
   if (isDiscountLimitedPool(pool)) return getPoolPullCap(pool);
+  if (isShopPackagePool(pool)) return Number(pool.allSelectPacks || 120);
   if (isSeasonPool()) return 500;
   if (isAccumulatedGuaranteePool()) return getAccumulatedGuaranteeProgressCap(pool);
   if (pool.progressionType === "milestone") {
@@ -2604,6 +2807,116 @@ function calcChainFavoredSetMetricsExact(pool, selectedNames) {
     allExpected,
     allProbAtCap: clamp01(allCDFAtCap),
   };
+}
+
+function calcShopPackageFavoredSetMetrics(pool, selectedNames) {
+  const selected = Array.from(new Set((selectedNames || []).filter((name) => (pool.empoweredCards || []).includes(name))));
+  if (!selected.length) return { anyExpected: 0, allExpected: 0, allProbAtCap: 0 };
+  const bitOf = {};
+  selected.forEach((name, idx) => {
+    bitOf[name] = 1 << idx;
+  });
+  const fullMask = (1 << selected.length) - 1;
+  const springPlayers = pool.springPackagePlayers || [];
+
+  const applyRandomCandidates = (states, chance, candidates) => {
+    const next = new Map();
+    const valid = (candidates || []).filter(Boolean);
+    const poolCount = Math.max(1, valid.length);
+    states.forEach((prob, mask) => {
+      if (prob <= 0) return;
+      let miss = prob;
+      valid.forEach((name) => {
+        const bit = bitOf[name] || 0;
+        const p = prob * (chance / poolCount);
+        if (bit && (mask & bit) === 0) {
+          miss -= p;
+          next.set(mask | bit, (next.get(mask | bit) || 0) + p);
+        }
+      });
+      next.set(mask, (next.get(mask) || 0) + Math.max(0, miss));
+    });
+    return next;
+  };
+
+  const applyScholar = (states, chance) => {
+    const next = new Map();
+    states.forEach((prob, mask) => {
+      let miss = prob;
+      const varaneBit = bitOf["瓦拉内"] || 0;
+      const varaneProb = prob * chance * 0.002;
+      if (varaneBit && (mask & varaneBit) === 0) {
+        miss -= varaneProb;
+        next.set(mask | varaneBit, (next.get(mask | varaneBit) || 0) + varaneProb);
+      }
+      const springEach = prob * chance * (0.15 / Math.max(1, springPlayers.length));
+      springPlayers.forEach((name) => {
+        const bit = bitOf[name] || 0;
+        if (bit && (mask & bit) === 0) {
+          miss -= springEach;
+          next.set(mask | bit, (next.get(mask | bit) || 0) + springEach);
+        }
+      });
+      next.set(mask, (next.get(mask) || 0) + Math.max(0, miss));
+    });
+    return next;
+  };
+
+  const applySelect = (states, candidates) => {
+    const next = new Map();
+    states.forEach((prob, mask) => {
+      const missing = selected
+        .filter((name) => (candidates || []).includes(name))
+        .map((name) => bitOf[name])
+        .filter((bit) => bit && (mask & bit) === 0);
+      if (missing.length > 0) {
+        const bit = missing[0];
+        next.set(mask | bit, (next.get(mask | bit) || 0) + prob);
+      } else {
+        next.set(mask, (next.get(mask) || 0) + prob);
+      }
+    });
+    return next;
+  };
+
+  let states = new Map([[0, 1]]);
+  let anyExpected = 0;
+  let allExpected = 0;
+  let prevAny = 0;
+  let prevAll = 0;
+  let allProbAtCap = 0;
+  const cap = Number(pool.allSelectPacks || 120);
+  const maxDraw = Math.max(480, cap * 4);
+
+  for (let draw = 1; draw <= maxDraw; draw += 1) {
+    states = applyRandomCandidates(states, 0.04, springPlayers);
+    states = applyScholar(states, 0.1);
+    if (draw % Math.max(1, Number(pool.scholarEveryPacks || 10)) === 0 && draw <= 100) {
+      states = applyScholar(states, 1);
+    }
+    if (draw === Number(pool.firstSelectPacks || 80)) {
+      states = applySelect(states, springPlayers);
+    }
+    if (draw === Number(pool.allSelectPacks || 120)) {
+      states = applySelect(states, pool.empoweredCards || []);
+    }
+
+    let anyCDF = 0;
+    let allCDF = 0;
+    states.forEach((prob, mask) => {
+      if (mask !== 0) anyCDF += prob;
+      if (mask === fullMask) allCDF += prob;
+    });
+    anyExpected += draw * Math.max(0, anyCDF - prevAny);
+    allExpected += draw * Math.max(0, allCDF - prevAll);
+    prevAny = anyCDF;
+    prevAll = allCDF;
+    if (draw === cap) allProbAtCap = allCDF;
+  }
+
+  anyExpected += (maxDraw + 1) * Math.max(0, 1 - prevAny);
+  allExpected += (maxDraw + 1) * Math.max(0, 1 - prevAll);
+  return { anyExpected, allExpected, allProbAtCap: clamp01(allProbAtCap) };
 }
 
 function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
@@ -2938,6 +3251,21 @@ function getFavoredSetExpectedMetrics(selectedNames) {
   const pool = getCurrentPool();
   const uniq = Array.from(new Set((selectedNames || []).filter(Boolean)));
   if (!uniq.length) return null;
+  if (isShopPackagePool(pool)) {
+    const normalizedNames = uniq.slice().sort();
+    const key = `${activePoolKey}|shop|${normalizedNames.join(",")}`;
+    if (favoredSetMetricsCache[key]) return favoredSetMetricsCache[key];
+    const cap = getFavoredProgressCap(pool, normalizedNames);
+    const exact = calcShopPackageFavoredSetMetrics(pool, normalizedNames);
+    favoredSetMetricsCache[key] = {
+      anyExpected: exact.anyExpected,
+      allExpected: exact.allExpected,
+      allProbAtCap: exact.allProbAtCap,
+      cap,
+      unit: "次",
+    };
+    return favoredSetMetricsCache[key];
+  }
   if (isNonRepeatExchangePool(pool)) {
     const normalizedNames = uniq.slice().sort();
     const key = `${getProbabilityVariantKey(pool)}|${normalizedNames.join(",")}`;
@@ -3227,6 +3555,8 @@ function getEmpoweredAtLeastProbabilityByDrawCount(drawCount, targetCount) {
     cdf = simulateSeasonEmpoweredAtLeastCDF(drawCount, targetCount);
   } else if (isChainPool()) {
     cdf = calcChainEmpoweredAtLeastCDF(drawCount, targetCount);
+  } else if (isShopPackagePool(pool)) {
+    cdf = calcShopPackageEmpoweredAtLeastCDF(pool, drawCount, targetCount);
   } else if (isAccumulatedGuaranteePool()) {
     cdf = calcAccumulatedGuaranteeEmpoweredAtLeastCDF(pool, drawCount, targetCount);
   } else if (pool.progressionType === "milestone") {
@@ -3262,6 +3592,8 @@ function getSpecificCountAtLeastProbabilityByDrawCount(drawCount, targetName, ta
   let cdf = 0;
   if (pool.progressionType === "accumulated_target") {
     cdf = calcAccumulatedGuaranteeSpecificCountAtLeastCDF(pool, drawCount, targetCount);
+  } else if (isShopPackagePool(pool)) {
+    cdf = calcShopPackageSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
   } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
   } else {
@@ -3326,6 +3658,86 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
   if (pool.progressionType === "accumulated_target") {
     if (targetUniqueCount > 1) return 0;
     return calcAccumulatedGuaranteeSpecificCDF(pool, progressCount);
+  }
+
+  if (isShopPackagePool(pool)) {
+    const names = pool.empoweredCards || [];
+    const bitOf = {};
+    names.forEach((name, idx) => {
+      bitOf[name] = 1 << idx;
+    });
+    const springPlayers = pool.springPackagePlayers || [];
+    const applyRandom = (states, chance, candidates) => {
+      const next = new Map();
+      const valid = (candidates || []).filter((name) => bitOf[name]);
+      const poolCount = Math.max(1, (candidates || []).length);
+      states.forEach((prob, mask) => {
+        let miss = prob;
+        valid.forEach((name) => {
+          const bit = bitOf[name];
+          const p = prob * (chance / poolCount);
+          if ((mask & bit) === 0) {
+            miss -= p;
+            next.set(mask | bit, (next.get(mask | bit) || 0) + p);
+          }
+        });
+        next.set(mask, (next.get(mask) || 0) + Math.max(0, miss));
+      });
+      return next;
+    };
+    const applyScholar = (states, chance) => {
+      const next = new Map();
+      states.forEach((prob, mask) => {
+        let miss = prob;
+        const varaneBit = bitOf["瓦拉内"] || 0;
+        const varaneProb = prob * chance * 0.002;
+        if (varaneBit && (mask & varaneBit) === 0) {
+          miss -= varaneProb;
+          next.set(mask | varaneBit, (next.get(mask | varaneBit) || 0) + varaneProb);
+        }
+        const springEach = prob * chance * (0.15 / Math.max(1, springPlayers.length));
+        springPlayers.forEach((name) => {
+          const bit = bitOf[name] || 0;
+          if (bit && (mask & bit) === 0) {
+            miss -= springEach;
+            next.set(mask | bit, (next.get(mask | bit) || 0) + springEach);
+          }
+        });
+        next.set(mask, (next.get(mask) || 0) + Math.max(0, miss));
+      });
+      return next;
+    };
+    const applySelect = (states, candidates) => {
+      const next = new Map();
+      states.forEach((prob, mask) => {
+        const missing = (candidates || []).find((name) => {
+          const bit = bitOf[name] || 0;
+          return bit && (mask & bit) === 0;
+        });
+        if (missing) {
+          const bit = bitOf[missing];
+          next.set(mask | bit, (next.get(mask | bit) || 0) + prob);
+        } else {
+          next.set(mask, (next.get(mask) || 0) + prob);
+        }
+      });
+      return next;
+    };
+    let states = new Map([[0, 1]]);
+    for (let draw = 1; draw <= progressCount; draw += 1) {
+      states = applyRandom(states, 0.04, springPlayers);
+      states = applyScholar(states, 0.1);
+      if (draw % Math.max(1, Number(pool.scholarEveryPacks || 10)) === 0 && draw <= 100) {
+        states = applyScholar(states, 1);
+      }
+      if (draw === Number(pool.firstSelectPacks || 80)) states = applySelect(states, springPlayers);
+      if (draw === Number(pool.allSelectPacks || 120)) states = applySelect(states, names);
+    }
+    let cdf = 0;
+    states.forEach((prob, mask) => {
+      if (bitCount(mask) >= targetUniqueCount) cdf += prob;
+    });
+    return clamp01(cdf);
   }
 
   if (isNonRepeatExchangePool(pool)) {
@@ -3586,6 +3998,17 @@ function getExpectedDrawMetrics() {
   const empoweredProb = getBaseEmpoweredProbability(pool.poolConfig || []);
   const baseAny = empoweredProb > 0 ? 1 / empoweredProb : 0;
   const baseSpecific = empoweredProb > 0 ? 1 / (empoweredProb / empoweredCount) : 0;
+
+  if (isShopPackagePool(pool)) {
+    const refTarget = getCurrentFavoredTargetName() || (pool.empoweredCards || [])[0] || "";
+    const withGift = calcShopPackageExpected(pool, refTarget);
+    return {
+      baseAny: 1 / 0.04,
+      baseSpecific: refTarget === "瓦拉内" ? 1 / (0.1 * 0.002) : 1 / (0.04 / 10),
+      giftAny: withGift.any,
+      giftSpecific: withGift.specific,
+    };
+  }
 
   if (pool.progressionType === "milestone") {
     const withGift = calcMilestoneWithGiftExpected(pool, empoweredCount);
@@ -4843,6 +5266,10 @@ function recordSingleDraw(card, source = "normal", options = {}) {
 
 function processProgressionRewardsIfNeeded() {
   const pool = getCurrentPool();
+  if (pool.progressionType === "shop_package") {
+    unlockShopPackageRewardsIfNeeded();
+    return;
+  }
   if (pool.progressionType === "exchange_badge") {
     unlockBadgesIfNeeded();
     return;
@@ -4856,6 +5283,134 @@ function processProgressionRewardsIfNeeded() {
     return;
   }
   unlockMilestonesIfNeeded();
+}
+
+function addShopScholarReward(sourceLabel) {
+  const id = `shop-scholar-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  state.rewards.push({
+    id,
+    pulls: state.totalPulls,
+    type: "shop_scholar_pack",
+    label: "学霸礼包",
+    sourceLabel: sourceLabel || "学霸礼包",
+  });
+}
+
+function unlockShopPackageRewardsIfNeeded() {
+  const pool = getShopPackageConfig();
+  if (!pool) return;
+  const total = Math.max(0, Number(state.totalPulls) || 0);
+  const every = Math.max(1, Number(pool.scholarEveryPacks || 10));
+  const limit = Math.max(0, Number(pool.scholarMilestoneLimit || 10));
+  const shouldGrant = Math.min(limit, Math.floor(total / every));
+  while ((state.shopScholarMilestonesGranted || 0) < shouldGrant) {
+    state.shopScholarMilestonesGranted += 1;
+    addShopScholarReward(`${state.shopScholarMilestonesGranted * every}个春日礼包赠送`);
+  }
+
+  if (!state.shopSelect80Granted && total >= Number(pool.firstSelectPacks || 80)) {
+    state.shopSelect80Granted = true;
+    state.pendingSelectRewardCount += 1;
+    state.pendingSelectMilestones.push({
+      pulls: total,
+      sourceLabel: "80个春日礼包自选",
+      candidateNames: (pool.springPackagePlayers || []).slice(),
+    });
+  }
+
+  if (!state.shopSelect120Granted && total >= Number(pool.allSelectPacks || 120)) {
+    state.shopSelect120Granted = true;
+    state.pendingSelectRewardCount += 1;
+    state.pendingSelectMilestones.push({
+      pulls: total,
+      sourceLabel: "120个春日礼包11人自选",
+      candidateNames: (pool.empoweredCards || []).slice(),
+    });
+  }
+
+  maybeAutoOpenRewards();
+}
+
+function addReturnedGold(amount) {
+  const value = Math.max(0, Math.floor(Number(amount) || 0));
+  if (value <= 0) return;
+  state.shopReturnedGold = Math.max(0, Number(state.shopReturnedGold) || 0) + value;
+  if (activeModeKey === REAL_MODE_KEY) {
+    if (realModeMeta.remainingGold == null) realModeMeta.remainingGold = 0;
+    realModeMeta.remainingGold += value;
+  }
+}
+
+function rollWeightedItem(items) {
+  const list = Array.isArray(items) ? items : [];
+  const total = list.reduce((sum, item) => sum + Math.max(0, Number(item.probability) || 0), 0);
+  if (total <= 0) return null;
+  const r = Math.random() * total;
+  let cumulative = 0;
+  for (const item of list) {
+    cumulative += Math.max(0, Number(item.probability) || 0);
+    if (r < cumulative) return item;
+  }
+  return list[list.length - 1] || null;
+}
+
+function rollSpringShopPackage() {
+  const pool = getShopPackageConfig();
+  if (!pool) return;
+  const packagePrice = getPoolPricePerPull(pool);
+  if (!spendGoldAmount(packagePrice)) {
+    openInsufficientGoldModal();
+    return;
+  }
+
+  state.totalPulls += 1;
+  const springPlayers = pool.springPackagePlayers || [];
+  if (Math.random() < 0.04) {
+    recordSingleDraw(
+      createEmpoweredCard(randomFromArray(springPlayers)),
+      "spring-shop",
+      { countTowardsTotal: false }
+    );
+  }
+
+  const randomReward = rollWeightedItem([
+    { type: "scholar", probability: 0.1 },
+    { type: "gold", probability: 0.2, amount: 2026 },
+    { type: "gold", probability: 0.3, amount: 666 },
+    { type: "gold", probability: 0.4, amount: 888 },
+  ]);
+  if (randomReward?.type === "scholar") {
+    addShopScholarReward("春日礼包随机获得");
+  } else if (randomReward?.type === "gold") {
+    addReturnedGold(randomReward.amount);
+    recordSingleDraw(
+      { type: "gold", name: `${randomReward.amount} 金币` },
+      "春日礼包返还金币",
+      { countTowardsTotal: false }
+    );
+  }
+
+  unlockShopPackageRewardsIfNeeded();
+  renderAll();
+  showFavoredHitAnimationIfNeeded();
+}
+
+function rollShopScholarPackCard(reward) {
+  const pool = getShopPackageConfig();
+  if (!pool) return null;
+  const item = rollWeightedItem(pool.scholarPackConfig || []);
+  if (!item) return null;
+  if (item.type === "empowered_fixed") {
+    return createEmpoweredCard(item.fixedName);
+  }
+  if (item.type === "spring_random") {
+    return createEmpoweredCard(randomFromArray(pool.springPackagePlayers || []));
+  }
+  if (item.type === "gold") {
+    addReturnedGold(item.amount);
+    return { type: "gold", name: `${item.amount} 金币` };
+  }
+  return { type: "token", name: item.label || "礼包道具" };
 }
 
 function unlockAccumulatedGuaranteeIfNeeded() {
@@ -4994,6 +5549,11 @@ function maybeAutoOpenRewards() {
 // ================= 抽卡入口 =================
 
 function singlePull() {
+  if (isShopPackagePool()) {
+    pendingFavoredHitEvent = null;
+    rollSpringShopPackage();
+    return;
+  }
   if (isDiscountLimitedPool()) return;
   pendingFavoredHitEvent = null;
   if (!spendGoldForPulls(1)) return;
@@ -5005,6 +5565,7 @@ function singlePull() {
 
 // 十连抽：可选开启“至少 1 张五星及以上”保底（只对本次十连生效）
 function tenPull() {
+  if (isShopPackagePool()) return;
   if (isDiscountLimitedPool() && getRemainingPullSlots() < 10) return;
   pendingFavoredHitEvent = null;
   if (!spendGoldForPulls(10)) return;
@@ -5050,6 +5611,18 @@ function autoToTargetTotal(target) {
       tenPull();
       if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
     }
+    return;
+  }
+
+  if (isShopPackagePool()) {
+    const cappedTarget = Math.max(0, Math.floor(Number(target) || 0));
+    let didDraw = false;
+    while ((Number(state.totalPulls) || 0) < cappedTarget) {
+      rollSpringShopPackage();
+      didDraw = true;
+      if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
+    }
+    if (didDraw) renderAll();
     return;
   }
 
@@ -5116,6 +5689,16 @@ function autoDrawCount(count) {
     }
     return;
   }
+  if (isShopPackagePool()) {
+    let didDraw = false;
+    for (let i = 0; i < count; i += 1) {
+      rollSpringShopPackage();
+      didDraw = true;
+      if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
+    }
+    if (didDraw) renderAll();
+    return;
+  }
   let didDraw = false;
   for (let i = 0; i < count; i += 1) {
     if (!spendGoldForPulls(1)) break;
@@ -5168,6 +5751,20 @@ function autoToFavoredEmpowered() {
     hasSelectRewardAvailable() ||
     missingTargets.some((name) => canExchangeToFavored(name))
   ) {
+    return;
+  }
+
+  if (isShopPackagePool()) {
+    const MAX_AUTO_DRAWS = 200000;
+    for (let i = 0; i < MAX_AUTO_DRAWS; i += 1) {
+      const beforeMissing = missingTargets.filter((name) => (state.empoweredCounts[name] || 0) <= 0);
+      if (!beforeMissing.length) break;
+      rollSpringShopPackage();
+      const afterMissing = beforeMissing.filter((name) => (state.empoweredCounts[name] || 0) <= 0);
+      if (afterMissing.length < beforeMissing.length) break;
+      if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
+      if (hasSelectRewardAvailable()) break;
+    }
     return;
   }
 
@@ -5280,6 +5877,15 @@ function isSeasonPool() {
 
 function isAccumulatedGuaranteePool() {
   return getCurrentPool().progressionType === "accumulated_target";
+}
+
+function isShopPackagePool(pool = getCurrentPool()) {
+  return pool.progressionType === "shop_package";
+}
+
+function getShopPackageConfig(pool = getCurrentPool()) {
+  if (!isShopPackagePool(pool)) return null;
+  return pool;
 }
 
 function getChainTierSpentGold() {
@@ -5784,6 +6390,16 @@ function openRewardById(id) {
       });
       break;
     }
+    case "shop_scholar_pack": {
+      const card = rollShopScholarPackCard(reward);
+      if (card) {
+        recordSingleDraw(card, toRewardSourceText(reward), {
+          countTowardsTotal: false,
+          milestonePulls: reward.pulls,
+        });
+      }
+      break;
+    }
     default:
       break;
   }
@@ -5959,6 +6575,16 @@ function openAllRewards() {
         });
         break;
       }
+      case "shop_scholar_pack": {
+        const card = rollShopScholarPackCard(reward);
+        if (card) {
+          recordSingleDraw(card, toRewardSourceText(reward), {
+            countTowardsTotal: false,
+            milestonePulls: reward.pulls,
+          });
+        }
+        break;
+      }
       default:
         break;
     }
@@ -6121,6 +6747,33 @@ function renderProbabilities() {
         tbody.appendChild(tr);
       });
       namesSpan.textContent = `${empoweredCards.join(" / ")}（当前定向概率提升${boostPercent}%）`;
+    } else if (isShopPackagePool()) {
+      const pool = getCurrentPool();
+      probabilitySectionTitle.textContent = "商城礼包概率";
+      empoweredNamesTitle.textContent = "增能卡名单：";
+      colName.textContent = "礼包内容";
+      colValue.textContent = "概率";
+      (pool.poolConfig || []).forEach((item) => {
+        const tr = document.createElement("tr");
+        const tdName = document.createElement("td");
+        const tdProb = document.createElement("td");
+        tdName.textContent = item.label;
+        tdProb.textContent = formatPercent(item.probability);
+        tr.appendChild(tdName);
+        tr.appendChild(tdProb);
+        tbody.appendChild(tr);
+      });
+      (pool.scholarPackConfig || []).forEach((item) => {
+        const tr = document.createElement("tr");
+        const tdName = document.createElement("td");
+        const tdProb = document.createElement("td");
+        tdName.textContent = `学霸礼包：${item.label}`;
+        tdProb.textContent = formatPercent(item.probability);
+        tr.appendChild(tdName);
+        tr.appendChild(tdProb);
+        tbody.appendChild(tr);
+      });
+      namesSpan.textContent = `主菜：瓦拉内 / 春日礼包10人：${(pool.springPackagePlayers || []).join(" / ")}`;
     } else {
       probabilitySectionTitle.textContent = "当前卡池概率";
       empoweredNamesTitle.textContent = "增能卡名单（概率平分）：";
@@ -6291,6 +6944,8 @@ function renderStats() {
   const diamondCost = Math.floor(goldCost * 0.9);
   const statBadgeItem = document.getElementById("statBadgeItem");
   const statEmpoweredEl = document.getElementById("statEmpowered");
+  const returnedGoldCostItem = document.getElementById("returnedGoldCostItem");
+  const returnedGoldValue = document.getElementById("returnedGoldValue");
 
   const ids = {
     statTotalPulls: totalPulls,
@@ -6327,6 +6982,15 @@ function renderStats() {
       statBadgeItem.classList.remove("hidden");
     } else {
       statBadgeItem.classList.add("hidden");
+    }
+  }
+  if (returnedGoldCostItem && returnedGoldValue) {
+    if (isShopPackagePool()) {
+      returnedGoldCostItem.classList.remove("hidden");
+      returnedGoldValue.textContent = String(Math.max(0, Number(state.shopReturnedGold) || 0));
+    } else {
+      returnedGoldCostItem.classList.add("hidden");
+      returnedGoldValue.textContent = "0";
     }
   }
 
@@ -6453,6 +7117,23 @@ function renderPityTracker() {
     return;
   }
 
+  if (isShopPackagePool()) {
+    const total = Math.max(0, Number(state.totalPulls) || 0);
+    const marks = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120];
+    const next = marks.find((m) => m > total);
+    if (!next) {
+      textEl.textContent = "120个春日礼包节点已完成。";
+      fillEl.style.width = "100%";
+      return;
+    }
+    const prev = marks.filter((m) => m <= total).slice(-1)[0] || 0;
+    const need = next - total;
+    const percent = Math.max(0, Math.min(100, ((total - prev) / Math.max(1, next - prev)) * 100));
+    textEl.textContent = `距离 ${next} 个春日礼包节点还差 ${need} 个`;
+    fillEl.style.width = `${percent}%`;
+    return;
+  }
+
   if (isExchangePool()) {
     const total = Math.max(0, Number(state.totalPulls) || 0);
     const nextBadge = Math.max(10, Number(state.nextBadgeMilestone) || 10);
@@ -6493,15 +7174,6 @@ function renderPityTracker() {
     const percent = Math.max(0, Math.min(100, ((total - prev) / (next - prev)) * 100));
     textEl.textContent = `距离 ${next} 抽节点还差 ${need} 抽`;
     fillEl.style.width = `${percent}%`;
-    return;
-  }
-
-  if (isDiscountLimitedPool()) {
-    setBtn(btnQuick60, "一键抽 10", 10, null, null);
-    setBtn(btnQuick250, "一键抽 20", 20, null, null);
-    setBtn(btnQuick420, "一键抽 30", 30, null, null);
-    setBtn(btnQuick470, "一键抽 30", 30, null, null, true);
-    setBtn(btnQuick520, "一键抽 30", 30, null, null, true);
     return;
   }
 
@@ -6679,6 +7351,8 @@ function renderRewards() {
 
   rewardsTitle.textContent = isExchangePool()
     ? "待开启兑换奖励/自选包"
+    : isShopPackagePool()
+    ? "待开启学霸礼包 / 自选包"
     : isChainPool()
     ? "待开启礼包奖励 / 自选包"
     : "待开启累抽奖励 / 自选包";
@@ -6707,6 +7381,10 @@ function renderRewards() {
       const titleSpan = document.createElement("span");
       titleSpan.textContent = isExchangePool()
         ? "兑换奖励"
+        : isShopPackagePool()
+        ? reward.type === "shop_scholar_pack"
+          ? "学霸礼包"
+          : "商城奖励"
         : isChainPool()
         ? `第${reward.tier || "?"}档奖励`
         : `${reward.pulls} 抽奖励`;
@@ -6879,6 +7557,29 @@ function renderMilestonesTable() {
     return;
   }
 
+  if (isShopPackagePool()) {
+    const rows = [
+      { pulls: "单次购买", text: "688金币购买1个春日礼包" },
+      { pulls: "春日礼包", text: "4%获得春日礼包10人中的增能卡（10人平分）" },
+      { pulls: "随机奖励", text: "10%学霸礼包 / 20%返2026金币 / 30%返666金币 / 40%返888金币" },
+      { pulls: "每10个春日礼包", text: "免费获得1个学霸礼包（最多10次）" },
+      { pulls: "80个春日礼包", text: "春日礼包10人自选" },
+      { pulls: "120个春日礼包", text: "11人自选（含瓦拉内）" },
+      { pulls: "学霸礼包", text: "0.2%瓦拉内 / 15%春日礼包随机球员 / 其余为金币或代币" },
+    ];
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      const tdPulls = document.createElement("td");
+      const tdLabel = document.createElement("td");
+      tdPulls.textContent = row.pulls;
+      tdLabel.textContent = row.text;
+      tr.appendChild(tdPulls);
+      tr.appendChild(tdLabel);
+      tbody.appendChild(tr);
+    });
+    return;
+  }
+
   if (isExchangePool()) {
     const cfg = getExchangeConfig();
     const specificText = (cfg.specificPlayers || []).join("/");
@@ -7037,6 +7738,15 @@ function renderQuickButtonsByPool() {
     return;
   }
 
+  if (isShopPackagePool()) {
+    setBtn(btnQuick60, "一键买 10 个", null, 10, null);
+    setBtn(btnQuick250, "一键买 50 个", null, 50, null);
+    setBtn(btnQuick420, "一键买 80 个", null, 80, null);
+    setBtn(btnQuick470, "一键买 120 个", null, 120, null);
+    setBtn(btnQuick520, "一键买 120 个", null, 120, null, true);
+    return;
+  }
+
   if (activePoolKey === "lucky_drop_exchange") {
     setBtn(btnQuick60, "一键抽 60", 60, null, null);
     setBtn(btnQuick250, "一键抽 250", 250, null, null);
@@ -7108,6 +7818,9 @@ function renderDrawPanelByPool() {
       } else if (isAccumulatedGuaranteePool()) {
         seasonRoundInfo.textContent = `当前定向进度：${state.totalPulls || 0} / ${getAccumulatedGuaranteeProgressCap()}`;
         seasonRoundInfo.classList.remove("hidden");
+      } else if (isShopPackagePool()) {
+        seasonRoundInfo.textContent = `已获得春日礼包：${state.totalPulls || 0} 个；学霸礼包赠送：${state.shopScholarMilestonesGranted || 0} / 10`;
+        seasonRoundInfo.classList.remove("hidden");
       } else {
         seasonRoundInfo.classList.add("hidden");
       }
@@ -7135,7 +7848,9 @@ function renderAll() {
   const btnTen = document.getElementById("btnTen");
   const btnFifty = document.getElementById("btnFifty");
   if (btnSingle) btnSingle.classList.toggle("hidden", isDiscountLimitedPool());
-  if (btnFifty) btnFifty.classList.toggle("hidden", isDiscountLimitedPool());
+  if (btnFifty) btnFifty.classList.toggle("hidden", isDiscountLimitedPool() || isShopPackagePool());
+  if (btnTen) btnTen.classList.toggle("hidden", isShopPackagePool());
+  if (btnSingle) btnSingle.textContent = isShopPackagePool() ? "购买春日礼包（688金币）" : "单抽";
   if (btnTen) btnTen.textContent = isDiscountLimitedPool() ? "十连抽（500金币）" : "十连抽";
 }
 
