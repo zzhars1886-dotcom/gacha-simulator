@@ -31,22 +31,34 @@ function createMilestones(labels) {
   });
 }
 
-function createDefenseGiftMilestones() {
-  const genericLabel = "5星签约 10%含钢铁防线史诗";
-  const genericTargets = ["布冯", "德尔皮耶罗", "科库", "贝隆", "巴雷西", "埃托奥", "加西亚"];
+function createAccumulatedGiftMilestones(config = {}) {
+  const genericLabel = config.genericLabel || "5星签约 10%含钢铁防线史诗";
+  const genericTargets = config.genericTargets || [
+    "布冯",
+    "德尔皮耶罗",
+    "科库",
+    "贝隆",
+    "巴雷西",
+    "埃托奥",
+    "加西亚",
+  ];
+  const firstTarget = config.firstTarget || "布冯";
+  const firstLabel = config.firstLabel || "5星签约 10%含吉安路易吉·布冯";
+  const secondTarget = config.secondTarget || "科库";
+  const secondLabel = config.secondLabel || "5星签约 10%含菲利普·科库";
   const rows = [
     { pulls: 30, candidateNames: genericTargets, label: genericLabel },
     { pulls: 60, candidateNames: genericTargets, label: genericLabel },
-    { pulls: 90, targetName: "布冯", label: "5星签约 10%含吉安路易吉·布冯" },
+    { pulls: 90, targetName: firstTarget, label: firstLabel },
     { pulls: 120, candidateNames: genericTargets, label: genericLabel },
     { pulls: 150, candidateNames: genericTargets, label: genericLabel },
-    { pulls: 180, targetName: "科库", label: "5星签约 10%含菲利普·科库" },
+    { pulls: 180, targetName: secondTarget, label: secondLabel },
     { pulls: 210, candidateNames: genericTargets, label: genericLabel },
     { pulls: 240, candidateNames: genericTargets, label: genericLabel },
-    { pulls: 270, targetName: "布冯", label: "5星签约 10%含吉安路易吉·布冯" },
+    { pulls: 270, targetName: firstTarget, label: firstLabel },
     { pulls: 300, candidateNames: genericTargets, label: genericLabel },
     { pulls: 330, candidateNames: genericTargets, label: genericLabel },
-    { pulls: 360, targetName: "科库", label: "5星签约 10%含菲利普·科库" },
+    { pulls: 360, targetName: secondTarget, label: secondLabel },
     { pulls: 390, candidateNames: genericTargets, label: genericLabel },
     { pulls: 420, candidateNames: genericTargets, label: genericLabel },
   ];
@@ -58,6 +70,10 @@ function createDefenseGiftMilestones() {
     candidateNames: row.candidateNames || null,
     label: row.label,
   }));
+}
+
+function createDefenseGiftMilestones() {
+  return createAccumulatedGiftMilestones();
 }
 
 function createCarnivalPool(config) {
@@ -667,6 +683,45 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  firepower_full_gift: {
+    poolType: "accumulated_gift",
+    progressionType: "milestone",
+    name: "火力全开累抽赠礼",
+    progressCap: 420,
+    poolConfig: [
+      { type: "empowered", label: "史诗球员", probability: 0.005 },
+      { type: "star5", label: "5星普通球员", probability: 0.024 },
+      { type: "star4", label: "4星普通球员", probability: 0.371 },
+      { type: "star3", label: "3星普通球员", probability: 0.6 },
+    ],
+    empoweredCards: [
+      "亚马尔",
+      "奥斯梅恩",
+      "德尔皮耶罗",
+      "托蒂",
+      "阿德里亚诺",
+      "莫伦特斯",
+      "菲奥雷",
+    ],
+    milestones: createAccumulatedGiftMilestones({
+      genericLabel: "5星签约 10%含火力全开史诗",
+      genericTargets: [
+        "亚马尔",
+        "奥斯梅恩",
+        "德尔皮耶罗",
+        "托蒂",
+        "阿德里亚诺",
+        "莫伦特斯",
+        "菲奥雷",
+      ],
+      firstTarget: "阿德里亚诺",
+      firstLabel: "5星签约 10%含阿德里亚诺",
+      secondTarget: "德尔皮耶罗",
+      secondLabel: "5星签约 10%含德尔皮耶罗",
+    }),
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   s9_season_inherit: {
     poolType: "season_carryover",
     progressionType: "season_inherit",
@@ -817,6 +872,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   spring_reunion_chain_bundle: ["assets/新春团圆"],
   immortal_legends_chain_bundle: ["assets/不朽传奇"],
   defense_guardians_gift: ["assets/防守悍将"],
+  firepower_full_gift: ["assets/火力全开"],
   s9_season_inherit: ["assets/S9赛季累抽继承"],
   oriental_dragon_liyi: ["assets/东方巨龙"],
   oriental_dragon_fengxiaoting: ["assets/东方巨龙"],
@@ -985,6 +1041,15 @@ const POOL_PLAYER_META = {
     巴雷西: { type: "史诗", position: "中后卫" },
     埃托奥: { type: "史诗", position: "右前卫" },
     加西亚: { type: "史诗", position: "右边锋" },
+  },
+  firepower_full_gift: {
+    亚马尔: { type: "BT", position: "右边锋" },
+    奥斯梅恩: { type: "BT", position: "中锋" },
+    德尔皮耶罗: { type: "史诗", position: "中锋" },
+    托蒂: { type: "史诗", position: "前腰" },
+    阿德里亚诺: { type: "史诗", position: "中锋" },
+    莫伦特斯: { type: "史诗", position: "中锋" },
+    菲奥雷: { type: "史诗", position: "右前卫" },
   },
   midfield_master_halfprice: {
     卡纳瓦罗: { type: "史诗", position: "中后卫" },
@@ -6907,7 +6972,7 @@ function renderQuickButtonsByPool() {
   };
 
   if (pool.progressionType === "milestone") {
-    if (activePoolKey === "defense_guardians_gift") {
+    if (pool.poolType === "accumulated_gift") {
       setBtn(btnQuick60, "一键到 60 抽", null, 60, null);
       setBtn(btnQuick250, "一键到 100 抽", null, 100, null);
       setBtn(btnQuick420, "一键到 200 抽", null, 200, null);
