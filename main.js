@@ -5174,7 +5174,7 @@ function createBonusHitCard() {
 // ================= 状态更新 =================
 
 function recordSingleDraw(card, source = "normal", options = {}) {
-  const { countTowardsTotal = true, milestonePulls = null } = options;
+  const { countTowardsTotal = true, milestonePulls = null, sourcePulls = null } = options;
   const favoredTargetNames = getCurrentFavoredTargetNames();
   const favoredTargetName = favoredTargetNames[0] || "";
 
@@ -5202,6 +5202,7 @@ function recordSingleDraw(card, source = "normal", options = {}) {
           source,
           pullIndex: countTowardsTotal ? state.totalPulls : null,
           milestonePulls,
+          sourcePulls,
         });
         if (isSeasonPool()) {
           state.seasonObtainedEmpoweredNames[card.name] = true;
@@ -5261,6 +5262,7 @@ function recordSingleDraw(card, source = "normal", options = {}) {
     source,
     pullIndex: countTowardsTotal ? state.totalPulls : null,
     milestonePulls,
+    sourcePulls,
   });
   if (card.type === "empowered" && card.name) {
     const latest = state.resultsHistory[0];
@@ -5382,10 +5384,13 @@ function rollSpringShopPackage() {
     recordSingleDraw(
       createEmpoweredCard(randomFromArray(springPlayers)),
       "spring-shop",
-      { countTowardsTotal: false }
+      { countTowardsTotal: false, sourcePulls: state.totalPulls }
     );
   } else {
-    recordSingleDraw(createFiveStarCard(), "spring-shop", { countTowardsTotal: false });
+    recordSingleDraw(createFiveStarCard(), "spring-shop", {
+      countTowardsTotal: false,
+      sourcePulls: state.totalPulls,
+    });
   }
 
   if (Math.random() < getShopScholarDropProbability(pool)) {
@@ -5846,6 +5851,10 @@ function getEntrySourceText(entry) {
 }
 
 function getEntryWhereText(entry) {
+  if (entry.source === "spring-shop" && entry.sourcePulls != null) {
+    return `第 ${entry.sourcePulls} 抽春日礼包`;
+  }
+
   if (entry.pullIndex != null) {
     return `第 ${entry.pullIndex} 抽`;
   }
@@ -7745,11 +7754,11 @@ function renderQuickButtonsByPool() {
   }
 
   if (isShopPackagePool()) {
-    setBtn(btnQuick60, "一键买 10 个", null, 10, null);
-    setBtn(btnQuick250, "一键买 50 个", null, 50, null);
-    setBtn(btnQuick420, "一键买 80 个", null, 80, null);
-    setBtn(btnQuick470, "一键买 120 个", null, 120, null);
-    setBtn(btnQuick520, "一键买 120 个", null, 120, null, true);
+    setBtn(btnQuick60, "一键再买 10 个", 10, null, null);
+    setBtn(btnQuick250, "一键买到 50 个", null, 50, null);
+    setBtn(btnQuick420, "一键买到 80 个", null, 80, null);
+    setBtn(btnQuick470, "一键买到 120 个", null, 120, null);
+    setBtn(btnQuick520, "一键买到 120 个", null, 120, null, true);
     return;
   }
 
