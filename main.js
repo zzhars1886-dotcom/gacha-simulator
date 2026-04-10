@@ -880,6 +880,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.defense_spring_shop && "defense_spring_shop") ||
   (POOLS.immortal_legends_chain_bundle && "immortal_legends_chain_bundle") ||
   (POOLS.northern_campaign_exchange && "northern_campaign_exchange") ||
   (POOLS.wall_of_sighs_exchange && "wall_of_sighs_exchange") ||
