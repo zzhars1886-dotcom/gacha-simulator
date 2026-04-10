@@ -1199,6 +1199,7 @@ function createInitialState(empoweredCards) {
     seasonObtainedEmpoweredNames: {},
     accumulatedGuaranteeGranted: false,
     shopReturnedGold: 0,
+    shopRandomScholarRewards: 0,
     shopScholarMilestonesGranted: 0,
     shopSelect80Granted: false,
     shopSelect120Granted: false,
@@ -5294,8 +5295,11 @@ function processProgressionRewardsIfNeeded() {
   unlockMilestonesIfNeeded();
 }
 
-function addShopScholarReward(sourceLabel) {
+function addShopScholarReward(sourceLabel, options = {}) {
   const id = `shop-scholar-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  if (options.randomDrop) {
+    state.shopRandomScholarRewards = Math.max(0, Number(state.shopRandomScholarRewards) || 0) + 1;
+  }
   state.rewards.push({
     id,
     pulls: state.totalPulls,
@@ -5385,7 +5389,7 @@ function rollSpringShopPackage() {
   }
 
   if (Math.random() < getShopScholarDropProbability(pool)) {
-    addShopScholarReward("春日礼包随机获得");
+    addShopScholarReward("春日礼包10%随机获得", { randomDrop: true });
   }
 
   unlockShopPackageRewardsIfNeeded();
@@ -7393,6 +7397,9 @@ function renderRewards() {
       if (!typeText) {
         typeText = reward.type;
       }
+      if (isShopPackagePool() && reward.type === "shop_scholar_pack" && reward.sourceLabel) {
+        typeText = `${typeText}（${reward.sourceLabel}）`;
+      }
       typeSpan.textContent = typeText;
 
       labelWrapper.appendChild(titleSpan);
@@ -7818,7 +7825,10 @@ function renderDrawPanelByPool() {
         seasonRoundInfo.textContent = `当前定向进度：${state.totalPulls || 0} / ${getAccumulatedGuaranteeProgressCap()}`;
         seasonRoundInfo.classList.remove("hidden");
       } else if (isShopPackagePool()) {
-        seasonRoundInfo.textContent = `已获得春日礼包：${state.totalPulls || 0} 个；学霸礼包赠送：${state.shopScholarMilestonesGranted || 0} / 10`;
+        seasonRoundInfo.textContent =
+          `已获得春日礼包：${state.totalPulls || 0} 个；` +
+          `10%随机学霸礼包：${state.shopRandomScholarRewards || 0} 个；` +
+          `10个赠送学霸礼包：${state.shopScholarMilestonesGranted || 0} / 10`;
         seasonRoundInfo.classList.remove("hidden");
       } else {
         seasonRoundInfo.classList.add("hidden");
