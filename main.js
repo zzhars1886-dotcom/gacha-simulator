@@ -848,16 +848,15 @@ const POOLS = {
     progressionType: "shop_package",
     name: "防守教学春日礼包",
     packagePriceGold: 688,
+    scholarDropProbability: 0.1,
     scholarEveryPacks: 10,
     scholarMilestoneLimit: 10,
     firstSelectPacks: 80,
     allSelectPacks: 120,
     poolConfig: [
       { type: "spring_empowered", label: "春日礼包增能卡", probability: 0.04 },
-      { type: "spring_scholar_pack", label: "学霸礼包", probability: 0.1 },
-      { type: "spring_gold_2026", label: "返还 2026 金币", probability: 0.2 },
-      { type: "spring_gold_666", label: "返还 666 金币", probability: 0.3 },
-      { type: "spring_gold_888", label: "返还 888 金币", probability: 0.4 },
+      { type: "star5", label: "五星普卡", probability: 0.96 },
+      { type: "spring_scholar_pack", label: "额外获得学霸礼包", probability: 0.1 },
     ],
     scholarPackConfig: [
       { type: "empowered_fixed", label: "瓦拉内", probability: 0.002, fixedName: "瓦拉内" },
@@ -1988,6 +1987,10 @@ function getShopScholarSpecificProb(pool, targetName) {
   return (pool.springPackagePlayers || []).includes(targetName) ? 0.15 / 10 : 0;
 }
 
+function getShopScholarDropProbability(pool = getCurrentPool()) {
+  return clamp01(Number(pool.scholarDropProbability) || 0);
+}
+
 function getShopSelectGain(pool, drawCount, targetName) {
   let gain = 0;
   if (drawCount >= Number(pool.firstSelectPacks || 80) && (pool.springPackagePlayers || []).includes(targetName)) {
@@ -2005,9 +2008,10 @@ function calcShopPackageSpecificHitCDF(pool, drawCount, targetName) {
   if (getShopSelectGain(pool, drawCount, targetName) > 0) return 1;
   const springP = (pool.springPackagePlayers || []).includes(targetName) ? 0.04 / 10 : 0;
   const scholarP = getShopScholarSpecificProb(pool, targetName);
+  const scholarDropP = getShopScholarDropProbability(pool);
   const freeScholar = getShopFreeScholarCount(drawCount, pool);
   const surviveSpring = (1 - springP) ** drawCount;
-  const surviveRandomScholar = (1 - 0.1 * scholarP) ** drawCount;
+  const surviveRandomScholar = (1 - scholarDropP * scholarP) ** drawCount;
   const surviveFreeScholar = (1 - scholarP) ** freeScholar;
   return clamp01(1 - surviveSpring * surviveRandomScholar * surviveFreeScholar);
 }
@@ -2049,13 +2053,14 @@ function calcShopPackageEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
   if (targetCount <= 0) return 1;
   if (drawCount <= 0) return 0;
   const freeScholar = getShopFreeScholarCount(drawCount, pool);
+  const scholarDropP = getShopScholarDropProbability(pool);
   const fixedGain =
     (drawCount >= Number(pool.firstSelectPacks || 80) ? 1 : 0) +
     (drawCount >= Number(pool.allSelectPacks || 120) ? 1 : 0);
   return calcShopPackageAtLeastFromComponents(
     [
       { trials: drawCount, p: 0.04 },
-      { trials: drawCount, p: 0.1 * 0.152 },
+      { trials: drawCount, p: scholarDropP * 0.152 },
       { trials: freeScholar, p: 0.152 },
     ],
     fixedGain,
@@ -2071,11 +2076,12 @@ function calcShopPackageSpecificCountAtLeastCDF(pool, drawCount, targetName, tar
   const freeScholar = getShopFreeScholarCount(drawCount, pool);
   const springP = (pool.springPackagePlayers || []).includes(targetName) ? 0.04 / 10 : 0;
   const scholarP = getShopScholarSpecificProb(pool, targetName);
+  const scholarDropP = getShopScholarDropProbability(pool);
   const fixedGain = getShopSelectGain(pool, drawCount, targetName);
   return calcShopPackageAtLeastFromComponents(
     [
       { trials: drawCount, p: springP },
-      { trials: drawCount, p: 0.1 * scholarP },
+      { trials: drawCount, p: scholarDropP * scholarP },
       { trials: freeScholar, p: scholarP },
     ],
     fixedGain,
@@ -2890,7 +2896,7 @@ function calcShopPackageFavoredSetMetrics(pool, selectedNames) {
 
   for (let draw = 1; draw <= maxDraw; draw += 1) {
     states = applyRandomCandidates(states, 0.04, springPlayers);
-    states = applyScholar(states, 0.1);
+    states = applyScholar(states, getShopScholarDropProbability(pool));
     if (draw % Math.max(1, Number(pool.scholarEveryPacks || 10)) === 0 && draw <= 100) {
       states = applyScholar(states, 1);
     }
@@ -3726,7 +3732,7 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
     let states = new Map([[0, 1]]);
     for (let draw = 1; draw <= progressCount; draw += 1) {
       states = applyRandom(states, 0.04, springPlayers);
-      states = applyScholar(states, 0.1);
+      states = applyScholar(states, getShopScholarDropProbability(pool));
       if (draw % Math.max(1, Number(pool.scholarEveryPacks || 10)) === 0 && draw <= 100) {
         states = applyScholar(states, 1);
       }
@@ -4004,7 +4010,10 @@ function getExpectedDrawMetrics() {
     const withGift = calcShopPackageExpected(pool, refTarget);
     return {
       baseAny: 1 / 0.04,
-      baseSpecific: refTarget === "瓦拉内" ? 1 / (0.1 * 0.002) : 1 / (0.04 / 10),
+      baseSpecific:
+        refTarget === "瓦拉内"
+          ? 1 / (getShopScholarDropProbability(pool) * 0.002)
+          : 1 / (0.04 / 10),
       giftAny: withGift.any,
       giftSpecific: withGift.specific,
     };
@@ -5371,23 +5380,12 @@ function rollSpringShopPackage() {
       "spring-shop",
       { countTowardsTotal: false }
     );
+  } else {
+    recordSingleDraw(createFiveStarCard(), "spring-shop", { countTowardsTotal: false });
   }
 
-  const randomReward = rollWeightedItem([
-    { type: "scholar", probability: 0.1 },
-    { type: "gold", probability: 0.2, amount: 2026 },
-    { type: "gold", probability: 0.3, amount: 666 },
-    { type: "gold", probability: 0.4, amount: 888 },
-  ]);
-  if (randomReward?.type === "scholar") {
+  if (Math.random() < getShopScholarDropProbability(pool)) {
     addShopScholarReward("春日礼包随机获得");
-  } else if (randomReward?.type === "gold") {
-    addReturnedGold(randomReward.amount);
-    recordSingleDraw(
-      { type: "gold", name: `${randomReward.amount} 金币` },
-      "春日礼包返还金币",
-      { countTowardsTotal: false }
-    );
   }
 
   unlockShopPackageRewardsIfNeeded();
@@ -7561,7 +7559,8 @@ function renderMilestonesTable() {
     const rows = [
       { pulls: "单次购买", text: "688金币购买1个春日礼包" },
       { pulls: "春日礼包", text: "4%获得春日礼包10人中的增能卡（10人平分）" },
-      { pulls: "随机奖励", text: "10%学霸礼包 / 20%返2026金币 / 30%返666金币 / 40%返888金币" },
+      { pulls: "春日礼包", text: "其余96%获得五星普卡" },
+      { pulls: "额外奖励", text: "每个春日礼包独立10%获得1个学霸礼包" },
       { pulls: "每10个春日礼包", text: "免费获得1个学霸礼包（最多10次）" },
       { pulls: "80个春日礼包", text: "春日礼包10人自选" },
       { pulls: "120个春日礼包", text: "11人自选（含瓦拉内）" },
