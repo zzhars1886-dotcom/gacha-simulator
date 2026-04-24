@@ -907,6 +907,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.team_cornerstone_exchange && "team_cornerstone_exchange") ||
   (POOLS.defense_spring_shop && "defense_spring_shop") ||
   (POOLS.immortal_legends_chain_bundle && "immortal_legends_chain_bundle") ||
   (POOLS.northern_campaign_exchange && "northern_campaign_exchange") ||
@@ -1251,6 +1252,7 @@ function createInitialState(empoweredCards) {
     shopSelect80Granted: false,
     shopSelect120Granted: false,
     highlightTicketPulls: 0,
+    highlightTicketEmpoweredCount: 0,
     highlightTicketBatchRemaining: 0,
     keyMoments: [],
     resetCount: 0,
@@ -3990,6 +3992,13 @@ function getExceedPercentForUniqueEmpoweredCountByProgress(progress, uniqueCount
   return clamp01(1 - probMore) * 100;
 }
 
+function getExceedPercentForHighlightTicketEmpoweredCount(ticketCount, empoweredCount) {
+  const currentTicketCount = Math.max(0, Math.floor(Number(ticketCount) || 0));
+  const currentEmpoweredCount = Math.max(0, Math.floor(Number(empoweredCount) || 0));
+  const probMore = calcBinomialAtLeast(currentTicketCount, 0.1, currentEmpoweredCount + 1);
+  return clamp01(1 - probMore) * 100;
+}
+
 function consumePendingFavoredHitEvent() {
   const event = pendingFavoredHitEvent;
   pendingFavoredHitEvent = null;
@@ -4005,15 +4014,14 @@ function showFavoredHitAnimationIfNeeded() {
     openCinematicHitModal(event);
     return;
   }
-  if (event.skipLuckText) {
+  if (event.exceedPercent != null) {
     openCinematicHitModal({
       kind: "favored_only",
       targetName: event.targetName,
       totalDraws: event.totalDraws,
-      exceedPercent: 0,
+      exceedPercent: event.exceedPercent,
       progressUnit: event.progressUnit || "draw",
       isFavored: true,
-      skipLuckText: true,
     });
     return;
   }
@@ -5285,6 +5293,10 @@ function recordSingleDraw(card, source = "normal", options = {}) {
   switch (card.type) {
     case "empowered": {
       state.stats.empowered += 1;
+      if (source === "highlight-ticket") {
+        state.highlightTicketEmpoweredCount =
+          Math.max(0, Number(state.highlightTicketEmpoweredCount) || 0) + 1;
+      }
       if (card.name) {
         const prevCount = state.empoweredCounts[card.name] || 0;
         if (state.empoweredCounts[card.name] == null) {
@@ -5333,18 +5345,20 @@ function recordSingleDraw(card, source = "normal", options = {}) {
             ? Math.max(0, Number(ticketPullIndex) || 0)
             : getCurrentAnimationProgressDraws();
           const goldEmpoweredCount = Math.max(0, Number(getGoldStats().empowered) || 0);
-          const totalEmpoweredCount = Math.max(0, Number(state.stats.empowered) || 0);
+          const ticketEmpoweredCount = Math.max(
+            0,
+            Number(state.highlightTicketEmpoweredCount) || 0
+          );
           pendingFavoredHitEvent = {
             kind: "all_empowered",
             targetName: card.name,
             totalDraws,
-            empoweredCount: isTicket ? totalEmpoweredCount : goldEmpoweredCount,
+            empoweredCount: isTicket ? ticketEmpoweredCount : goldEmpoweredCount,
             exceedPercent: isTicket
-              ? 0
+              ? getExceedPercentForHighlightTicketEmpoweredCount(totalDraws, ticketEmpoweredCount)
               : getExceedPercentForEmpoweredCountByProgress(totalDraws, goldEmpoweredCount),
             isFavored: Boolean(favoredTargetNames.includes(card.name)),
             progressUnit: isTicket ? "ticket" : (isChainPool() ? "tier" : "draw"),
-            skipLuckText: isTicket,
           };
         } else if (
           animationMode === ANIMATION_MODES.FAVORED_ONLY &&
@@ -5359,8 +5373,12 @@ function recordSingleDraw(card, source = "normal", options = {}) {
               ? Math.max(0, Number(ticketPullIndex) || 0)
               : getCurrentAnimationProgressDraws(),
             progressUnit: isTicket ? "ticket" : (isChainPool() ? "tier" : "draw"),
-            skipLuckText: isTicket,
-            exceedPercent: isTicket ? 0 : undefined,
+            exceedPercent: isTicket
+              ? getExceedPercentForHighlightTicketEmpoweredCount(
+                Math.max(0, Number(ticketPullIndex) || 0),
+                Math.max(0, Number(state.highlightTicketEmpoweredCount) || 0)
+              )
+              : undefined,
           };
         }
       }
@@ -5396,7 +5414,7 @@ function recordSingleDraw(card, source = "normal", options = {}) {
     sourcePulls,
     ticketPullIndex,
   });
-  if (!excludeFromGoldStats && card.type === "empowered" && card.name) {
+  if (card.type === "empowered" && card.name) {
     const latest = state.resultsHistory[0];
     const where = latest ? getEntryWhereText(latest) : "奖励/其他来源";
     addKeyMoment(`${where} 出货：${card.name}`);
