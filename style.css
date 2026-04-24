@@ -2209,6 +2209,10 @@ button.danger {
   color: #e5e7eb;
 }
 
+#highlightTicketFooter {
+  margin-left: auto;
+}
+
 .results-header {
   font-size: 12px;
   color: #dbeafe;

@@ -428,6 +428,33 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  team_cornerstone_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "球队基石兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.005 },
+      { type: "selected", label: "精选卡", probability: 0.008 },
+      { type: "star5", label: "五星普卡", probability: 0.024 },
+      { type: "star4", label: "四星普卡", probability: 0.363 },
+      { type: "star3", label: "三星普卡", probability: 0.6 },
+    ],
+    empoweredCards: ["鲁尼", "布冯", "普拉蒂尼", "里贝里", "哈维", "阿隆索", "加西亚"],
+    exchangeConfig: {
+      specificPlayers: ["鲁尼", "布冯", "普拉蒂尼", "里贝里"],
+      fixedSelect42: null,
+      select47Players: ["鲁尼", "布冯", "普拉蒂尼", "里贝里"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["鲁尼", "布冯", "普拉蒂尼", "里贝里"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   northern_campaign_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -916,6 +943,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   golden_generation_exchange: ["assets/黄金一代"],
   wall_of_sighs_exchange: ["assets/叹息之墙"],
   red_black_eternal_exchange: ["assets/红黑不熄"],
+  team_cornerstone_exchange: ["assets/球队基石"],
   northern_campaign_exchange: ["assets/北伐争五"],
   pitch_maestro_exchange: ["assets/球场主宰"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
@@ -1024,6 +1052,15 @@ const POOL_PLAYER_META = {
     巴蒂斯图塔: { type: "史诗", position: "中锋" },
     德科: { type: "史诗", position: "中前卫" },
     奥多: { type: "史诗", position: "右后卫" },
+  },
+  team_cornerstone_exchange: {
+    鲁尼: { type: "史诗", position: "影锋" },
+    布冯: { type: "史诗", position: "门将" },
+    普拉蒂尼: { type: "史诗", position: "前腰" },
+    里贝里: { type: "史诗", position: "左前卫" },
+    哈维: { type: "史诗", position: "后腰" },
+    阿隆索: { type: "史诗", position: "中前卫" },
+    加西亚: { type: "史诗", position: "右边锋" },
   },
   northern_campaign_exchange: {
     索博斯洛伊: { type: "ST", position: "前腰" },
@@ -1204,6 +1241,7 @@ function createInitialState(empoweredCards) {
     shopScholarMilestonesGranted: 0,
     shopSelect80Granted: false,
     shopSelect120Granted: false,
+    highlightTicketPulls: 0,
     keyMoments: [],
     resetCount: 0,
     ownedEmpoweredNames,
@@ -5175,7 +5213,13 @@ function createBonusHitCard() {
 // ================= 状态更新 =================
 
 function recordSingleDraw(card, source = "normal", options = {}) {
-  const { countTowardsTotal = true, milestonePulls = null, sourcePulls = null } = options;
+  const {
+    countTowardsTotal = true,
+    milestonePulls = null,
+    sourcePulls = null,
+    ticketPullIndex = null,
+    excludeFromStats = false,
+  } = options;
   const favoredTargetNames = getCurrentFavoredTargetNames();
   const favoredTargetName = favoredTargetNames[0] || "";
 
@@ -5186,74 +5230,77 @@ function recordSingleDraw(card, source = "normal", options = {}) {
     }
   }
 
-  switch (card.type) {
-    case "empowered":
-      state.stats.empowered += 1;
-      if (card.name) {
-        const prevCount = state.empoweredCounts[card.name] || 0;
-        if (state.empoweredCounts[card.name] == null) {
-          state.empoweredCounts[card.name] = 0;
-        }
-        state.empoweredCounts[card.name] += 1;
-        if (!state.empoweredDetails[card.name]) {
-          state.empoweredDetails[card.name] = [];
-        }
-        state.empoweredDetails[card.name].push({
-          time: getTimestamp(),
-          source,
-          pullIndex: countTowardsTotal ? state.totalPulls : null,
-          milestonePulls,
-          sourcePulls,
-        });
-        if (isSeasonPool()) {
-          state.seasonObtainedEmpoweredNames[card.name] = true;
-        }
-        const animationMode = getCurrentAnimationMode();
-        if (animationMode === ANIMATION_MODES.ALL_EMPOWERED) {
-          if (!pendingFavoredHitEvent) {
-            const totalDraws = getCurrentAnimationProgressDraws();
-            const empoweredCount = state.stats.empowered || 0;
-            pendingFavoredHitEvent = {
-              kind: "all_empowered",
-              targetName: card.name,
-              totalDraws,
-              empoweredCount,
-              exceedPercent: getExceedPercentForEmpoweredCountByProgress(
+  if (!excludeFromStats) {
+    switch (card.type) {
+      case "empowered":
+        state.stats.empowered += 1;
+        if (card.name) {
+          const prevCount = state.empoweredCounts[card.name] || 0;
+          if (state.empoweredCounts[card.name] == null) {
+            state.empoweredCounts[card.name] = 0;
+          }
+          state.empoweredCounts[card.name] += 1;
+          if (!state.empoweredDetails[card.name]) {
+            state.empoweredDetails[card.name] = [];
+          }
+          state.empoweredDetails[card.name].push({
+            time: getTimestamp(),
+            source,
+            pullIndex: countTowardsTotal ? state.totalPulls : null,
+            milestonePulls,
+            sourcePulls,
+            ticketPullIndex,
+          });
+          if (isSeasonPool()) {
+            state.seasonObtainedEmpoweredNames[card.name] = true;
+          }
+          const animationMode = getCurrentAnimationMode();
+          if (animationMode === ANIMATION_MODES.ALL_EMPOWERED) {
+            if (!pendingFavoredHitEvent) {
+              const totalDraws = getCurrentAnimationProgressDraws();
+              const empoweredCount = state.stats.empowered || 0;
+              pendingFavoredHitEvent = {
+                kind: "all_empowered",
+                targetName: card.name,
                 totalDraws,
-                empoweredCount
-              ),
-              isFavored: Boolean(favoredTargetNames.includes(card.name)),
+                empoweredCount,
+                exceedPercent: getExceedPercentForEmpoweredCountByProgress(
+                  totalDraws,
+                  empoweredCount
+                ),
+                isFavored: Boolean(favoredTargetNames.includes(card.name)),
+                progressUnit: isChainPool() ? "tier" : "draw",
+              };
+            }
+          } else if (
+            animationMode === ANIMATION_MODES.FAVORED_ONLY &&
+            favoredTargetNames.includes(card.name) &&
+            prevCount === 0
+          ) {
+            pendingFavoredHitEvent = {
+              kind: "favored_only",
+              targetName: card.name,
+              totalDraws: getCurrentAnimationProgressDraws(),
               progressUnit: isChainPool() ? "tier" : "draw",
             };
           }
-        } else if (
-          animationMode === ANIMATION_MODES.FAVORED_ONLY &&
-          favoredTargetNames.includes(card.name) &&
-          prevCount === 0
-        ) {
-          pendingFavoredHitEvent = {
-            kind: "favored_only",
-            targetName: card.name,
-            totalDraws: getCurrentAnimationProgressDraws(),
-            progressUnit: isChainPool() ? "tier" : "draw",
-          };
         }
-      }
-      break;
-    case "selected":
-      state.stats.selected += 1;
-      break;
-    case "star5":
-      state.stats.star5 += 1;
-      break;
-    case "star4":
-      state.stats.star4 += 1;
-      break;
-    case "star3":
-      state.stats.star3 += 1;
-      break;
-    default:
-      break;
+        break;
+      case "selected":
+        state.stats.selected += 1;
+        break;
+      case "star5":
+        state.stats.star5 += 1;
+        break;
+      case "star4":
+        state.stats.star4 += 1;
+        break;
+      case "star3":
+        state.stats.star3 += 1;
+        break;
+      default:
+        break;
+    }
   }
 
   // 记录抽卡历史（包括奖励和自选，但不一定计入总抽数）
@@ -5264,8 +5311,9 @@ function recordSingleDraw(card, source = "normal", options = {}) {
     pullIndex: countTowardsTotal ? state.totalPulls : null,
     milestonePulls,
     sourcePulls,
+    ticketPullIndex,
   });
-  if (card.type === "empowered" && card.name) {
+  if (!excludeFromStats && card.type === "empowered" && card.name) {
     const latest = state.resultsHistory[0];
     const where = latest ? getEntryWhereText(latest) : "奖励/其他来源";
     addKeyMoment(`${where} 出货：${card.name}`);
@@ -5419,6 +5467,25 @@ function rollShopScholarPackCard(reward) {
     return { type: "gold", name: `${item.amount} 金币` };
   }
   return { type: "token", name: item.label || "礼包道具" };
+}
+
+function drawHighlightTicket(count = 1) {
+  const cfg = getHighlightTicketConfig();
+  const pool = getCurrentPool();
+  if (!cfg || !pool) return;
+  const total = Math.max(1, Math.floor(Number(count) || 1));
+  pendingFavoredHitEvent = null;
+  for (let i = 0; i < total; i += 1) {
+    state.highlightTicketPulls = Math.max(0, Number(state.highlightTicketPulls) || 0) + 1;
+    const hit = Math.random() < clamp01(Number(cfg.probability) || 0);
+    const card = hit ? createEmpoweredCard() : createFiveStarCard();
+    recordSingleDraw(card, "highlight-ticket", {
+      countTowardsTotal: false,
+      ticketPullIndex: state.highlightTicketPulls,
+      excludeFromStats: true,
+    });
+  }
+  renderAll();
 }
 
 function unlockAccumulatedGuaranteeIfNeeded() {
@@ -5852,6 +5919,9 @@ function getEntrySourceText(entry) {
 }
 
 function getEntryWhereText(entry) {
+  if (entry.source === "highlight-ticket" && entry.ticketPullIndex != null) {
+    return `第 ${entry.ticketPullIndex} 张高光券`;
+  }
   if (entry.source === "spring-shop" && entry.sourcePulls != null) {
     return `第 ${entry.sourcePulls} 抽春日礼包`;
   }
@@ -5893,6 +5963,14 @@ function isAccumulatedGuaranteePool() {
 
 function isShopPackagePool(pool = getCurrentPool()) {
   return pool.progressionType === "shop_package";
+}
+
+function isHighlightTicketPool(pool = getCurrentPool()) {
+  return Boolean(pool && pool.highlightTicketConfig);
+}
+
+function getHighlightTicketConfig(pool = getCurrentPool()) {
+  return isHighlightTicketPool(pool) ? pool.highlightTicketConfig || null : null;
 }
 
 function getShopPackageConfig(pool = getCurrentPool()) {
@@ -6801,6 +6879,26 @@ function renderProbabilities() {
         tr.appendChild(tdProb);
         tbody.appendChild(tr);
       });
+      if (isHighlightTicketPool()) {
+        const ticketCfg = getHighlightTicketConfig();
+        const extraRows = [
+          { label: "高光券增能卡", probability: clamp01(Number(ticketCfg?.probability) || 0) },
+          {
+            label: "高光券五星普卡",
+            probability: clamp01(1 - clamp01(Number(ticketCfg?.probability) || 0)),
+          },
+        ];
+        extraRows.forEach((item) => {
+          const tr = document.createElement("tr");
+          const tdName = document.createElement("td");
+          const tdProb = document.createElement("td");
+          tdName.textContent = item.label;
+          tdProb.textContent = formatPercent(item.probability);
+          tr.appendChild(tdName);
+          tr.appendChild(tdProb);
+          tbody.appendChild(tr);
+        });
+      }
       if (isNonRepeatExchangePool()) {
         const ownedNames = getCurrentOwnedEmpoweredNames();
         namesSpan.textContent = empoweredCards
@@ -7615,6 +7713,9 @@ function renderMilestonesTable() {
     } else {
       exchangeRows.push({ pulls: "47 徽章", text: "兑换任意增能卡自选" });
     }
+    if (isHighlightTicketPool()) {
+      exchangeRows.push({ pulls: "高光券", text: "10% 概率获得增能卡（7人平分），90% 为五星普卡" });
+    }
     if (cfg.hasSkin52) {
       exchangeRows.push({ pulls: "52 徽章", text: "兑换任意自选 + 维埃拉皮肤" });
     }
@@ -7785,6 +7886,9 @@ function renderDrawPanelByPool() {
   const chainTierProgressBar = document.getElementById("chainTierProgressBar");
   const chainTierProgressFill = document.getElementById("chainTierProgressFill");
   const seasonRoundInfo = document.getElementById("seasonRoundInfo");
+  const highlightTicketPanel = document.getElementById("highlightTicketPanel");
+  const highlightTicketFooter = document.getElementById("highlightTicketFooter");
+  const highlightTicketCount = document.getElementById("highlightTicketCount");
   if (!normal || !chain || !chainTierStatus || !chainTierProgressBar || !chainTierProgressFill) return;
 
   if (isChainPool()) {
@@ -7823,6 +7927,15 @@ function renderDrawPanelByPool() {
     normal.classList.remove("hidden");
     chainTierProgressBar.innerHTML = "";
     chainTierProgressFill.style.width = "0%";
+    if (highlightTicketPanel) {
+      highlightTicketPanel.classList.toggle("hidden", !isHighlightTicketPool());
+    }
+    if (highlightTicketFooter) {
+      highlightTicketFooter.classList.toggle("hidden", !isHighlightTicketPool());
+    }
+    if (highlightTicketCount) {
+      highlightTicketCount.textContent = String(Math.max(0, Number(state.highlightTicketPulls) || 0));
+    }
     if (seasonRoundInfo) {
       if (isSeasonPool()) {
         const progress = state.seasonProgressPulls || 0;
@@ -7918,6 +8031,8 @@ function bindEvents() {
   const btnDemoCinematicEpic = document.getElementById("btnDemoCinematicEpic");
   const btnDemoCinematicST = document.getElementById("btnDemoCinematicST");
   const btnDemoCinematicBT = document.getElementById("btnDemoCinematicBT");
+  const btnHighlightSingle = document.getElementById("btnHighlightSingle");
+  const btnHighlightTen = document.getElementById("btnHighlightTen");
   const btnLightningLab = document.getElementById("btnLightningLab");
   const btnTurtleLab = document.getElementById("btnTurtleLab");
   const btnCinematicReplay = document.getElementById("btnCinematicReplay");
@@ -7953,6 +8068,17 @@ function bindEvents() {
   if (btnTen) {
     btnTen.addEventListener("click", () => {
       tenPull();
+    });
+  }
+  if (btnHighlightSingle) {
+    btnHighlightSingle.addEventListener("click", () => {
+      drawHighlightTicket(1);
+    });
+  }
+  if (btnHighlightTen) {
+    btnHighlightTen.addEventListener("click", () => {
+      const cfg = getHighlightTicketConfig();
+      drawHighlightTicket(Number(cfg?.batchSize) || 10);
     });
   }
   if (btnFifty) {
