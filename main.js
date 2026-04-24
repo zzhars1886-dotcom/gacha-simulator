@@ -1251,6 +1251,7 @@ function createInitialState(empoweredCards) {
     shopSelect80Granted: false,
     shopSelect120Granted: false,
     highlightTicketPulls: 0,
+    highlightTicketBatchRemaining: 0,
     keyMoments: [],
     resetCount: 0,
     ownedEmpoweredNames,
@@ -4280,6 +4281,7 @@ function closeFavHitModal() {
     return;
   }
   maybeAutoOpenRewards();
+  resumeHighlightTicketBatchIfNeeded();
 }
 
 function isFavHitModalOpen() {
@@ -5103,6 +5105,7 @@ function closeCinematicDemoModal() {
   if (shouldResumeAutoRewards) {
     maybeAutoOpenRewards();
   }
+  resumeHighlightTicketBatchIfNeeded();
 }
 
 function openRealModeInitModal() {
@@ -5555,7 +5558,20 @@ function drawHighlightTicket(count = 1) {
   if (!cfg || !pool) return;
   const total = Math.max(1, Math.floor(Number(count) || 1));
   pendingFavoredHitEvent = null;
-  for (let i = 0; i < total; i += 1) {
+  state.highlightTicketBatchRemaining = total;
+  continueHighlightTicketBatch();
+}
+
+function continueHighlightTicketBatch() {
+  const cfg = getHighlightTicketConfig();
+  const pool = getCurrentPool();
+  if (!cfg || !pool) return;
+  if (isAnyHitModalOpen()) return;
+  let didDraw = false;
+  while ((Number(state.highlightTicketBatchRemaining) || 0) > 0) {
+    state.highlightTicketBatchRemaining -= 1;
+    didDraw = true;
+    pendingFavoredHitEvent = null;
     state.highlightTicketPulls = Math.max(0, Number(state.highlightTicketPulls) || 0) + 1;
     const hit = Math.random() < clamp01(Number(cfg.probability) || 0);
     const card = hit ? createEmpoweredCard() : createFiveStarCard();
@@ -5564,9 +5580,22 @@ function drawHighlightTicket(count = 1) {
       ticketPullIndex: state.highlightTicketPulls,
       excludeFromGoldStats: true,
     });
+    if (pendingFavoredHitEvent || isAnyHitModalOpen()) {
+      renderAll();
+      showFavoredHitAnimationIfNeeded();
+      return;
+    }
   }
-  renderAll();
+  if (didDraw) {
+    renderAll();
+  }
   showFavoredHitAnimationIfNeeded();
+}
+
+function resumeHighlightTicketBatchIfNeeded() {
+  if ((Number(state.highlightTicketBatchRemaining) || 0) <= 0) return;
+  if (isAnyHitModalOpen()) return;
+  continueHighlightTicketBatch();
 }
 
 function unlockAccumulatedGuaranteeIfNeeded() {
