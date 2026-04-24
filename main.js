@@ -1213,8 +1213,17 @@ function createInitialState(empoweredCards) {
       star4: 0,
       star3: 0,
     },
+    goldStats: {
+      empowered: 0,
+      selected: 0,
+      star5: 0,
+      star4: 0,
+      star3: 0,
+    },
     empoweredCounts,
+    goldEmpoweredCounts: { ...empoweredCounts },
     empoweredDetails,
+    goldEmpoweredDetails: JSON.parse(JSON.stringify(empoweredDetails)),
     resultsHistory: [],
     rewards: [],
     nextMilestoneIndex: 0,
@@ -1264,6 +1273,24 @@ let momentReplayTimers = [];
 
 function getCurrentPool() {
   return POOLS[activePoolKey];
+}
+
+function getGoldStats(stateObj = state) {
+  return stateObj?.goldStats || stateObj?.stats || {
+    empowered: 0,
+    selected: 0,
+    star5: 0,
+    star4: 0,
+    star3: 0,
+  };
+}
+
+function getGoldEmpoweredCounts(stateObj = state) {
+  return stateObj?.goldEmpoweredCounts || stateObj?.empoweredCounts || {};
+}
+
+function getGoldEmpoweredDetails(stateObj = state) {
+  return stateObj?.goldEmpoweredDetails || stateObj?.empoweredDetails || {};
 }
 
 function getStateForModeAndPool(modeKey, poolKey) {
@@ -3686,8 +3713,9 @@ function getCurrentUniqueEmpoweredCount() {
   const names = getEmpoweredStatNames();
   let count = 0;
   const presetOwned = isNonRepeatExchangePool() ? new Set(getPresetOwnedNames()) : null;
+  const goldCounts = getGoldEmpoweredCounts();
   names.forEach((name) => {
-    if ((Number(state.empoweredCounts[name]) || 0) > 0 || (presetOwned && presetOwned.has(name))) {
+    if ((Number(goldCounts[name]) || 0) > 0 || (presetOwned && presetOwned.has(name))) {
       count += 1;
     }
   });
@@ -3976,6 +4004,18 @@ function showFavoredHitAnimationIfNeeded() {
     openCinematicHitModal(event);
     return;
   }
+  if (event.skipLuckText) {
+    openCinematicHitModal({
+      kind: "favored_only",
+      targetName: event.targetName,
+      totalDraws: event.totalDraws,
+      exceedPercent: 0,
+      progressUnit: event.progressUnit || "draw",
+      isFavored: true,
+      skipLuckText: true,
+    });
+    return;
+  }
 
   const hitProb = getSpecificHitProbabilityByDrawCount(
     getBeforeProgress(event.totalDraws || 0),
@@ -4187,12 +4227,9 @@ function openFavHitModal(event) {
     if (title) title.textContent = "出货啦！";
     line1.innerHTML = "出的是~";
     line2.innerHTML = "";
-    const progressUnit = event.progressUnit === "tier" ? "档" : "抽";
     line3.innerHTML =
       (event.isFavored ? "<span class=\"fav-hit-inline-note\">恭喜你获得心仪球员！</span>" : "") +
-      `你已在 <span class="expected-value">${event.totalDraws}</span> ${progressUnit}内获得了 ` +
-      `<span class="expected-value">${event.empoweredCount}</span> 个增能球员，` +
-      `超过了 <span class="expected-value">${event.exceedPercent.toFixed(2)}%</span> 的玩家！`;
+      buildCinematicStatsLine(event);
 
     modal.classList.remove("hidden");
     const nameLineDoneAt = queueTypewriterLine(
@@ -4210,9 +4247,10 @@ function openFavHitModal(event) {
   } else {
     if (title) title.textContent = "出货啦！";
     line1.innerHTML = `恭喜你获得 <span class="expected-value">${event.targetName}</span>！！！`;
-    const progressUnit = event.progressUnit === "tier" ? "档" : "抽";
-    line2.innerHTML = `仅用 <span class="expected-value">${event.totalDraws}</span> ${progressUnit}`;
-    line3.innerHTML = `超过了 <span class="expected-value">${event.exceedPercent.toFixed(2)}%</span> 的玩家！`;
+    line2.innerHTML = `仅用 <span class="expected-value">${event.totalDraws}</span> ${getProgressUnitText(event.progressUnit)}`;
+    line3.innerHTML = event.skipLuckText
+      ? "高光券出货！"
+      : `超过了 <span class="expected-value">${event.exceedPercent.toFixed(2)}%</span> 的玩家！`;
   }
 
   modal.classList.remove("hidden");
@@ -4476,6 +4514,9 @@ function switchMode(targetModeKey) {
   Object.keys(state.empoweredDetails).forEach((name) => {
     state.empoweredDetails[name] = [];
   });
+  Object.keys(getGoldEmpoweredDetails(state)).forEach((name) => {
+    getGoldEmpoweredDetails(state)[name] = [];
+  });
   resetEmpoweredDetailPanel();
   renderAll();
   return true;
@@ -4737,11 +4778,19 @@ function setPlayerImageByPool(imgEl, poolKey, playerName) {
 }
 
 function getProgressUnitText(progressUnit) {
-  return progressUnit === "tier" ? "档" : "抽";
+  if (progressUnit === "tier") return "档";
+  if (progressUnit === "ticket") return "张券";
+  return "抽";
 }
 
 function buildCinematicStatsLine(ctx) {
   const unitText = getProgressUnitText(ctx.progressUnit);
+  if (ctx.skipLuckText) {
+    if (ctx.kind === "all_empowered") {
+      return `你已用 <span class="expected-value">${ctx.totalDraws}</span> ${unitText}获得了 <span class="expected-value">${ctx.targetName}</span>！`;
+    }
+    return `仅用 <span class="expected-value">${ctx.totalDraws}</span> ${unitText}就拿到了它！`;
+  }
   if (ctx.kind === "all_empowered") {
     return (
       `你已在 <span class="expected-value">${ctx.totalDraws}</span> ${unitText}内获得了 ` +
@@ -5218,7 +5267,7 @@ function recordSingleDraw(card, source = "normal", options = {}) {
     milestonePulls = null,
     sourcePulls = null,
     ticketPullIndex = null,
-    excludeFromStats = false,
+    excludeFromGoldStats = false,
   } = options;
   const favoredTargetNames = getCurrentFavoredTargetNames();
   const favoredTargetName = favoredTargetNames[0] || "";
@@ -5230,20 +5279,42 @@ function recordSingleDraw(card, source = "normal", options = {}) {
     }
   }
 
-  if (!excludeFromStats) {
-    switch (card.type) {
-      case "empowered":
-        state.stats.empowered += 1;
-        if (card.name) {
-          const prevCount = state.empoweredCounts[card.name] || 0;
-          if (state.empoweredCounts[card.name] == null) {
-            state.empoweredCounts[card.name] = 0;
+  switch (card.type) {
+    case "empowered": {
+      state.stats.empowered += 1;
+      if (card.name) {
+        const prevCount = state.empoweredCounts[card.name] || 0;
+        if (state.empoweredCounts[card.name] == null) {
+          state.empoweredCounts[card.name] = 0;
+        }
+        state.empoweredCounts[card.name] += 1;
+        if (!state.empoweredDetails[card.name]) {
+          state.empoweredDetails[card.name] = [];
+        }
+        state.empoweredDetails[card.name].push({
+          time: getTimestamp(),
+          source,
+          pullIndex: countTowardsTotal ? state.totalPulls : null,
+          milestonePulls,
+          sourcePulls,
+          ticketPullIndex,
+        });
+        if (isSeasonPool()) {
+          state.seasonObtainedEmpoweredNames[card.name] = true;
+        }
+        if (!excludeFromGoldStats) {
+          const goldStats = getGoldStats();
+          const goldCounts = getGoldEmpoweredCounts();
+          const goldDetails = getGoldEmpoweredDetails();
+          goldStats.empowered += 1;
+          if (goldCounts[card.name] == null) {
+            goldCounts[card.name] = 0;
           }
-          state.empoweredCounts[card.name] += 1;
-          if (!state.empoweredDetails[card.name]) {
-            state.empoweredDetails[card.name] = [];
+          goldCounts[card.name] += 1;
+          if (!goldDetails[card.name]) {
+            goldDetails[card.name] = [];
           }
-          state.empoweredDetails[card.name].push({
+          goldDetails[card.name].push({
             time: getTimestamp(),
             source,
             pullIndex: countTowardsTotal ? state.totalPulls : null,
@@ -5251,56 +5322,65 @@ function recordSingleDraw(card, source = "normal", options = {}) {
             sourcePulls,
             ticketPullIndex,
           });
-          if (isSeasonPool()) {
-            state.seasonObtainedEmpoweredNames[card.name] = true;
-          }
-          const animationMode = getCurrentAnimationMode();
-          if (animationMode === ANIMATION_MODES.ALL_EMPOWERED) {
-            if (!pendingFavoredHitEvent) {
-              const totalDraws = getCurrentAnimationProgressDraws();
-              const empoweredCount = state.stats.empowered || 0;
-              pendingFavoredHitEvent = {
-                kind: "all_empowered",
-                targetName: card.name,
-                totalDraws,
-                empoweredCount,
-                exceedPercent: getExceedPercentForEmpoweredCountByProgress(
-                  totalDraws,
-                  empoweredCount
-                ),
-                isFavored: Boolean(favoredTargetNames.includes(card.name)),
-                progressUnit: isChainPool() ? "tier" : "draw",
-              };
-            }
-          } else if (
-            animationMode === ANIMATION_MODES.FAVORED_ONLY &&
-            favoredTargetNames.includes(card.name) &&
-            prevCount === 0
-          ) {
-            pendingFavoredHitEvent = {
-              kind: "favored_only",
-              targetName: card.name,
-              totalDraws: getCurrentAnimationProgressDraws(),
-              progressUnit: isChainPool() ? "tier" : "draw",
-            };
-          }
         }
-        break;
-      case "selected":
-        state.stats.selected += 1;
-        break;
-      case "star5":
-        state.stats.star5 += 1;
-        break;
-      case "star4":
-        state.stats.star4 += 1;
-        break;
-      case "star3":
-        state.stats.star3 += 1;
-        break;
-      default:
-        break;
+        const animationMode = getCurrentAnimationMode();
+        if (animationMode === ANIMATION_MODES.ALL_EMPOWERED) {
+          const isTicket = source === "highlight-ticket";
+          const totalDraws = isTicket
+            ? Math.max(0, Number(ticketPullIndex) || 0)
+            : getCurrentAnimationProgressDraws();
+          const goldEmpoweredCount = Math.max(0, Number(getGoldStats().empowered) || 0);
+          const totalEmpoweredCount = Math.max(0, Number(state.stats.empowered) || 0);
+          pendingFavoredHitEvent = {
+            kind: "all_empowered",
+            targetName: card.name,
+            totalDraws,
+            empoweredCount: isTicket ? totalEmpoweredCount : goldEmpoweredCount,
+            exceedPercent: isTicket
+              ? 0
+              : getExceedPercentForEmpoweredCountByProgress(totalDraws, goldEmpoweredCount),
+            isFavored: Boolean(favoredTargetNames.includes(card.name)),
+            progressUnit: isTicket ? "ticket" : (isChainPool() ? "tier" : "draw"),
+            skipLuckText: isTicket,
+          };
+        } else if (
+          animationMode === ANIMATION_MODES.FAVORED_ONLY &&
+          favoredTargetNames.includes(card.name) &&
+          prevCount === 0
+        ) {
+          const isTicket = source === "highlight-ticket";
+          pendingFavoredHitEvent = {
+            kind: "favored_only",
+            targetName: card.name,
+            totalDraws: isTicket
+              ? Math.max(0, Number(ticketPullIndex) || 0)
+              : getCurrentAnimationProgressDraws(),
+            progressUnit: isTicket ? "ticket" : (isChainPool() ? "tier" : "draw"),
+            skipLuckText: isTicket,
+            exceedPercent: isTicket ? 0 : undefined,
+          };
+        }
+      }
+      break;
     }
+    case "selected":
+      state.stats.selected += 1;
+      if (!excludeFromGoldStats) getGoldStats().selected += 1;
+      break;
+    case "star5":
+      state.stats.star5 += 1;
+      if (!excludeFromGoldStats) getGoldStats().star5 += 1;
+      break;
+    case "star4":
+      state.stats.star4 += 1;
+      if (!excludeFromGoldStats) getGoldStats().star4 += 1;
+      break;
+    case "star3":
+      state.stats.star3 += 1;
+      if (!excludeFromGoldStats) getGoldStats().star3 += 1;
+      break;
+    default:
+      break;
   }
 
   // 记录抽卡历史（包括奖励和自选，但不一定计入总抽数）
@@ -5313,7 +5393,7 @@ function recordSingleDraw(card, source = "normal", options = {}) {
     sourcePulls,
     ticketPullIndex,
   });
-  if (!excludeFromStats && card.type === "empowered" && card.name) {
+  if (!excludeFromGoldStats && card.type === "empowered" && card.name) {
     const latest = state.resultsHistory[0];
     const where = latest ? getEntryWhereText(latest) : "奖励/其他来源";
     addKeyMoment(`${where} 出货：${card.name}`);
@@ -5482,10 +5562,11 @@ function drawHighlightTicket(count = 1) {
     recordSingleDraw(card, "highlight-ticket", {
       countTowardsTotal: false,
       ticketPullIndex: state.highlightTicketPulls,
-      excludeFromStats: true,
+      excludeFromGoldStats: true,
     });
   }
   renderAll();
+  showFavoredHitAnimationIfNeeded();
 }
 
 function unlockAccumulatedGuaranteeIfNeeded() {
@@ -7072,19 +7153,20 @@ function renderStats() {
 
   if (statEmpoweredEl) {
     const empoweredCount = Math.max(0, Math.floor(Number(state.stats.empowered) || 0));
+    const goldEmpoweredCount = Math.max(0, Math.floor(Number(getGoldStats().empowered) || 0));
     const progressCount = isChainPool()
       ? Math.max(0, Math.floor(Number(state.chainTierProgress) || 0))
       : Math.max(0, Math.floor(Number(state.totalPulls) || 0));
     const exceedPercent = getExceedPercentForEmpoweredCountByProgress(
       progressCount,
-      empoweredCount
+      goldEmpoweredCount
     );
     const avgGoldPerEmpowered =
-      empoweredCount > 0 ? Math.floor(goldCost / empoweredCount) : "-";
+      goldEmpoweredCount > 0 ? Math.floor(goldCost / goldEmpoweredCount) : "-";
     statEmpoweredEl.innerHTML =
       `<span class="stat-main">${empoweredCount}</span>` +
       `<span class="stat-exceed-note">平均 <span class="expected-value">${avgGoldPerEmpowered}</span> 金币/增能卡，` +
-      `超过 <span class="expected-value">${exceedPercent.toFixed(2)}%</span> 的玩家</span>`;
+      `超过 <span class="expected-value">${exceedPercent.toFixed(2)}%</span> 的玩家（仅金币抽）</span>`;
   }
 
   if (statBadgeItem) {
@@ -7126,15 +7208,18 @@ function renderStats() {
   tbody.innerHTML = "";
   const favoredNames = new Set(getCurrentFavoredTargetNames());
   const presetOwnedNames = getCurrentOwnedEmpoweredNames();
+  const goldCounts = getGoldEmpoweredCounts();
+  const goldDetails = getGoldEmpoweredDetails();
   getEmpoweredStatNames().forEach((name) => {
     const tr = document.createElement("tr");
     const tdName = document.createElement("td");
     const tdCount = document.createElement("td");
     const count = state.empoweredCounts[name] || 0;
+    const goldCount = goldCounts[name] || 0;
     tdName.textContent = name;
     if (favoredNames.has(name)) {
-      if (count > 0) {
-        const firstHit = (state.empoweredDetails[name] || [])[0] || null;
+      if (goldCount > 0) {
+        const firstHit = (goldDetails[name] || [])[0] || null;
         let progressAtFirst = 0;
         if (firstHit && firstHit.pullIndex != null) {
           progressAtFirst = Math.max(0, Math.floor(Number(firstHit.pullIndex) || 0));
@@ -7145,7 +7230,9 @@ function renderStats() {
         const specificGrade = getLuckGradeByExceedPercent(exceedSpecific);
         tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline"><span class="expected-value">${specificGrade}</span> | 超过 <span class="expected-value">${exceedSpecific.toFixed(
           2
-        )}%</span> 的玩家</span>`;
+        )}%</span> 的玩家（仅金币抽）</span>`;
+      } else if (count > 0) {
+        tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">高光券获得</span>`;
       } else if (presetOwnedNames.has(name)) {
         tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">已拥有</span>`;
       } else {
