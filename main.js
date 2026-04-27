@@ -245,6 +245,38 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   }),
+  double_end_reunion: createCarnivalPool({
+    name: "双端齐聚狂欢赠礼",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (8 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (34 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: [
+      "伊涅斯塔",
+      "马特乌斯",
+      "鲁梅尼格",
+      "德塞利",
+      "贝克汉姆",
+      "卡福",
+      "卡恩",
+      "托雷斯",
+    ],
+    milestones: createMilestones({
+      chance10: "10% 增能卡券",
+      chance30: "30% 增能卡券",
+      empoweredRandom: "随机增能卡必得券",
+      empoweredSelect: "增能卡自选券",
+    }),
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+      description: "高光券：10% 概率获得增能卡，8人平分。该卡池实际不能用券",
+    },
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  }),
 
   ouzhan_fengyan: createCarnivalPool({
     name: "欧战烽烟狂欢赠礼",
@@ -932,6 +964,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.double_end_reunion && "double_end_reunion") ||
   (POOLS.team_cornerstone_exchange && "team_cornerstone_exchange") ||
   (POOLS.defense_spring_shop && "defense_spring_shop") ||
   (POOLS.immortal_legends_chain_bundle && "immortal_legends_chain_bundle") ||
@@ -962,6 +995,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   xinzai_jinxiu: ["assets/新载锦绣"],
   blue_old_friend: ["assets/蓝衣故人"],
   british_rivalry: ["assets/英伦争霸"],
+  double_end_reunion: ["assets/双端齐聚"],
   ouzhan_fengyan: ["assets/欧战烽烟"],
   dream_midfield_exchange: ["assets/梦幻中轴"],
   lucky_drop_exchange: ["assets/天降幸运"],
@@ -1015,6 +1049,16 @@ const POOL_PLAYER_META = {
     萨卡: { type: "ST", position: "右边锋" },
     多纳鲁马: { type: "ST", position: "门将" },
     切尔基: { type: "ST", position: "前腰" },
+  },
+  double_end_reunion: {
+    伊涅斯塔: { type: "史诗", position: "中前卫" },
+    马特乌斯: { type: "史诗", position: "中前卫" },
+    鲁梅尼格: { type: "史诗", position: "中锋" },
+    德塞利: { type: "史诗", position: "中后卫" },
+    贝克汉姆: { type: "史诗", position: "右前卫" },
+    卡福: { type: "史诗", position: "右后卫" },
+    卡恩: { type: "史诗", position: "门将" },
+    托雷斯: { type: "史诗", position: "中锋" },
   },
   ouzhan_fengyan: {
     博格坎普: { type: "史诗", position: "中锋" },
@@ -6136,6 +6180,11 @@ function getHighlightTicketConfig(pool = getCurrentPool()) {
   return isHighlightTicketPool(pool) ? pool.highlightTicketConfig || null : null;
 }
 
+function getHighlightTicketDescription(pool = getCurrentPool()) {
+  const cfg = getHighlightTicketConfig(pool);
+  return cfg?.description || "高光券：10% 概率获得增能卡";
+}
+
 function getShopPackageConfig(pool = getCurrentPool()) {
   if (!isShopPackagePool(pool)) return null;
   return pool;
@@ -7883,7 +7932,10 @@ function renderMilestonesTable() {
       exchangeRows.push({ pulls: "47 徽章", text: "兑换任意增能卡自选" });
     }
     if (isHighlightTicketPool()) {
-      exchangeRows.push({ pulls: "高光券", text: "10% 概率获得增能卡" });
+      exchangeRows.push({
+        pulls: "高光券",
+        text: getHighlightTicketDescription().replace(/^高光券：/, ""),
+      });
     }
     if (cfg.hasSkin52) {
       exchangeRows.push({ pulls: "52 徽章", text: "兑换任意自选 + 维埃拉皮肤" });
@@ -7921,6 +7973,17 @@ function renderMilestonesTable() {
     tr.appendChild(tdLabel);
     tbody.appendChild(tr);
   });
+
+  if (isHighlightTicketPool()) {
+    const tr = document.createElement("tr");
+    const tdPulls = document.createElement("td");
+    const tdLabel = document.createElement("td");
+    tdPulls.textContent = "高光券";
+    tdLabel.textContent = getHighlightTicketDescription().replace(/^高光券：/, "");
+    tr.appendChild(tdPulls);
+    tr.appendChild(tdLabel);
+    tbody.appendChild(tr);
+  }
 }
 
 function renderQuickButtonsByPool() {
@@ -8056,6 +8119,7 @@ function renderDrawPanelByPool() {
   const chainTierProgressFill = document.getElementById("chainTierProgressFill");
   const seasonRoundInfo = document.getElementById("seasonRoundInfo");
   const highlightTicketPanel = document.getElementById("highlightTicketPanel");
+  const highlightTicketHint = document.getElementById("highlightTicketHint");
   const highlightTicketFooter = document.getElementById("highlightTicketFooter");
   const highlightTicketCount = document.getElementById("highlightTicketCount");
   if (!normal || !chain || !chainTierStatus || !chainTierProgressBar || !chainTierProgressFill) return;
@@ -8098,6 +8162,9 @@ function renderDrawPanelByPool() {
     chainTierProgressFill.style.width = "0%";
     if (highlightTicketPanel) {
       highlightTicketPanel.classList.toggle("hidden", !isHighlightTicketPool());
+    }
+    if (highlightTicketHint) {
+      highlightTicketHint.textContent = getHighlightTicketDescription();
     }
     if (highlightTicketFooter) {
       highlightTicketFooter.classList.toggle("hidden", !isHighlightTicketPool());
