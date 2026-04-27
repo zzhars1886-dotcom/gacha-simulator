@@ -472,6 +472,10 @@ const POOLS = {
       hasSkin52: false,
     },
     exchangeSpecificPlayers: ["埃托奥", "罗纳尔迪尼奥", "内马尔"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
     milestones: [],
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
