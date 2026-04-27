@@ -433,20 +433,19 @@ const POOLS = {
     progressionType: "exchange_badge",
     name: "球队基石兑换保底",
     poolConfig: [
-      { type: "empowered", label: "增能卡", probability: 0.005 },
-      { type: "selected", label: "精选卡", probability: 0.008 },
-      { type: "star5", label: "五星普卡", probability: 0.024 },
-      { type: "star4", label: "四星普卡", probability: 0.363 },
-      { type: "star3", label: "三星普卡", probability: 0.6 },
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
     ],
     empoweredCards: ["鲁尼", "布冯", "普拉蒂尼", "里贝里", "哈维", "阿隆索", "加西亚"],
     exchangeConfig: {
-      specificPlayers: ["鲁尼", "布冯", "普拉蒂尼", "里贝里"],
+      specificPlayers: ["布冯", "普拉蒂尼", "里贝里"],
       fixedSelect42: null,
-      select47Players: ["鲁尼", "布冯", "普拉蒂尼", "里贝里"],
+      select47Players: ["布冯", "普拉蒂尼", "里贝里"],
       hasSkin52: false,
     },
-    exchangeSpecificPlayers: ["鲁尼", "布冯", "普拉蒂尼", "里贝里"],
+    exchangeSpecificPlayers: ["布冯", "普拉蒂尼", "里贝里"],
     highlightTicketConfig: {
       probability: 0.1,
       batchSize: 10,
@@ -7848,7 +7847,7 @@ function renderMilestonesTable() {
       exchangeRows.push({ pulls: "47 徽章", text: "兑换任意增能卡自选" });
     }
     if (isHighlightTicketPool()) {
-      exchangeRows.push({ pulls: "高光券", text: "10% 概率获得增能卡（7人平分），90% 为五星普卡" });
+      exchangeRows.push({ pulls: "高光券", text: "10% 概率获得增能卡" });
     }
     if (cfg.hasSkin52) {
       exchangeRows.push({ pulls: "52 徽章", text: "兑换任意自选 + 维埃拉皮肤" });
