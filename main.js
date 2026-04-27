@@ -272,7 +272,7 @@ const POOLS = {
     highlightTicketConfig: {
       probability: 0.1,
       batchSize: 10,
-      description: "高光券：10% 概率获得增能卡，8人平分。该卡池实际不能用券",
+      description: "高光券：10% 概率获得增能卡。该卡池实际不能用券",
     },
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
