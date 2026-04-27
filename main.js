@@ -248,8 +248,8 @@ const POOLS = {
   double_end_reunion: createCarnivalPool({
     name: "双端齐聚狂欢赠礼",
     poolConfig: [
-      { type: "empowered", label: "增能卡", probability: 0.05 * (8 / 42) },
-      { type: "star5", label: "五星普卡", probability: 0.05 * (34 / 42) },
+      { type: "empowered", label: "增能卡", probability: 0.05 * (8 / 48) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (40 / 48) },
       { type: "star4", label: "四星普卡", probability: 0.3 },
       { type: "star3", label: "三星普卡", probability: 0.65 },
     ],
