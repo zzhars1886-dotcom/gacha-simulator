@@ -486,6 +486,32 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  double_red_meeting_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "双红际会兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["范德萨", "斯塔姆", "蒂亚戈", "阿隆索", "朴智星", "希尔维斯特", "迪乌夫"],
+    exchangeConfig: {
+      specificPlayers: ["范德萨", "斯塔姆", "蒂亚戈"],
+      fixedSelect42: null,
+      select47Players: ["范德萨", "斯塔姆", "蒂亚戈"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["范德萨", "斯塔姆", "蒂亚戈"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   green_elves_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -964,6 +990,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.double_red_meeting_exchange && "double_red_meeting_exchange") ||
   (POOLS.double_end_reunion && "double_end_reunion") ||
   (POOLS.team_cornerstone_exchange && "team_cornerstone_exchange") ||
   (POOLS.defense_spring_shop && "defense_spring_shop") ||
@@ -1004,6 +1031,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   wall_of_sighs_exchange: ["assets/叹息之墙"],
   red_black_eternal_exchange: ["assets/红黑不熄"],
   team_cornerstone_exchange: ["assets/球队基石"],
+  double_red_meeting_exchange: ["assets/双红际会"],
   green_elves_exchange: ["assets/绿茵精灵"],
   northern_campaign_exchange: ["assets/北伐争五"],
   pitch_maestro_exchange: ["assets/球场主宰"],
@@ -1132,6 +1160,15 @@ const POOL_PLAYER_META = {
     哈维: { type: "史诗", position: "后腰" },
     阿隆索: { type: "史诗", position: "中前卫" },
     加西亚: { type: "史诗", position: "右边锋" },
+  },
+  double_red_meeting_exchange: {
+    范德萨: { type: "史诗", position: "门将" },
+    斯塔姆: { type: "史诗", position: "中后卫" },
+    蒂亚戈: { type: "史诗", position: "中前卫" },
+    阿隆索: { type: "史诗", position: "后腰" },
+    朴智星: { type: "史诗", position: "左前卫" },
+    希尔维斯特: { type: "史诗", position: "左后卫" },
+    迪乌夫: { type: "史诗", position: "中锋" },
   },
   green_elves_exchange: {
     埃托奥: { type: "史诗", position: "中锋" },
