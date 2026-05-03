@@ -512,6 +512,32 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  muscle_forest_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "肌肉森林兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["古利特", "佩佩", "罗德里", "赖斯", "戴维斯", "里杰卡尔德", "科纳特"],
+    exchangeConfig: {
+      specificPlayers: ["古利特"],
+      fixedSelect42: null,
+      select47Players: ["古利特", "佩佩", "罗德里", "赖斯", "戴维斯", "里杰卡尔德", "科纳特"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["古利特"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   green_elves_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -990,6 +1016,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.muscle_forest_exchange && "muscle_forest_exchange") ||
   (POOLS.double_red_meeting_exchange && "double_red_meeting_exchange") ||
   (POOLS.double_end_reunion && "double_end_reunion") ||
   (POOLS.team_cornerstone_exchange && "team_cornerstone_exchange") ||
@@ -1032,6 +1059,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   red_black_eternal_exchange: ["assets/红黑不熄"],
   team_cornerstone_exchange: ["assets/球队基石"],
   double_red_meeting_exchange: ["assets/双红际会"],
+  muscle_forest_exchange: ["assets/肌肉森林"],
   green_elves_exchange: ["assets/绿茵精灵"],
   northern_campaign_exchange: ["assets/北伐争五"],
   pitch_maestro_exchange: ["assets/球场主宰"],
@@ -1169,6 +1197,15 @@ const POOL_PLAYER_META = {
     朴智星: { type: "史诗", position: "左前卫" },
     希尔维斯特: { type: "史诗", position: "左后卫" },
     迪乌夫: { type: "史诗", position: "中锋" },
+  },
+  muscle_forest_exchange: {
+    古利特: { type: "史诗", position: "前腰" },
+    佩佩: { type: "史诗", position: "中后卫" },
+    罗德里: { type: "ST", position: "后腰" },
+    赖斯: { type: "ST", position: "中前卫" },
+    戴维斯: { type: "史诗", position: "后腰" },
+    里杰卡尔德: { type: "史诗", position: "后腰" },
+    科纳特: { type: "ST", position: "中后卫" },
   },
   green_elves_exchange: {
     埃托奥: { type: "史诗", position: "中锋" },
