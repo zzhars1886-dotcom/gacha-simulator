@@ -538,6 +538,32 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  all_round_commander_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "全能指挥官兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["卡卡", "切赫", "内德维德", "拉姆", "巴蒂斯图塔", "菲奥雷", "伊涅斯塔"],
+    exchangeConfig: {
+      specificPlayers: ["卡卡", "切赫", "内德维德", "拉姆"],
+      fixedSelect42: null,
+      select47Players: ["卡卡", "切赫", "内德维德", "拉姆"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["卡卡", "切赫", "内德维德", "拉姆"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   green_elves_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -1016,6 +1042,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.all_round_commander_exchange && "all_round_commander_exchange") ||
   (POOLS.muscle_forest_exchange && "muscle_forest_exchange") ||
   (POOLS.double_red_meeting_exchange && "double_red_meeting_exchange") ||
   (POOLS.double_end_reunion && "double_end_reunion") ||
@@ -1060,6 +1087,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   team_cornerstone_exchange: ["assets/球队基石"],
   double_red_meeting_exchange: ["assets/双红际会"],
   muscle_forest_exchange: ["assets/肌肉森林"],
+  all_round_commander_exchange: ["assets/全能指挥官"],
   green_elves_exchange: ["assets/绿茵精灵"],
   northern_campaign_exchange: ["assets/北伐争五"],
   pitch_maestro_exchange: ["assets/球场主宰"],
@@ -1206,6 +1234,15 @@ const POOL_PLAYER_META = {
     戴维斯: { type: "史诗", position: "后腰" },
     里杰卡尔德: { type: "史诗", position: "后腰" },
     科纳特: { type: "ST", position: "中后卫" },
+  },
+  all_round_commander_exchange: {
+    卡卡: { type: "史诗", position: "前腰" },
+    切赫: { type: "史诗", position: "门将" },
+    内德维德: { type: "史诗", position: "左前卫" },
+    拉姆: { type: "史诗", position: "右后卫" },
+    巴蒂斯图塔: { type: "史诗", position: "中锋" },
+    菲奥雷: { type: "史诗", position: "右前卫" },
+    伊涅斯塔: { type: "史诗", position: "左边锋" },
   },
   green_elves_exchange: {
     埃托奥: { type: "史诗", position: "中锋" },
