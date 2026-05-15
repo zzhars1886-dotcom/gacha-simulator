@@ -844,6 +844,70 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  agile_spirit_chain_bundle: {
+    poolType: "chain_bundle",
+    progressionType: "chain_tier",
+    name: "敏捷灵动连锁礼包",
+    mainPoolName: "敏捷灵动",
+    sidePoolName: "闪转腾挪",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.005 },
+      { type: "selected", label: "精选卡", probability: 0.008 },
+      { type: "star5", label: "五星普卡", probability: 0.024 },
+      { type: "star4", label: "四星普卡", probability: 0.363 },
+      { type: "star3", label: "三星普卡", probability: 0.6 },
+    ],
+    chainSubPools: {
+      first: {
+        name: "敏捷灵动",
+        cards: [
+          "卡纳瓦罗",
+          "苏亚雷斯",
+          "普斯卡什",
+          "特维斯",
+          "多纳多尼",
+          "久利",
+          "王钰栋",
+          "博扬",
+          "姆巴佩",
+          "内托",
+        ],
+      },
+      second: {
+        name: "闪转腾挪",
+        cards: ["普斯卡什", "特维斯", "多纳多尼", "久利", "王钰栋", "博扬", "姆巴佩"],
+      },
+      third: {
+        name: "凌波微步",
+        cards: ["卡纳瓦罗", "苏亚雷斯", "普斯卡什", "特维斯", "多纳多尼", "博扬", "内托"],
+      },
+    },
+    empoweredCards: [
+      "卡纳瓦罗",
+      "苏亚雷斯",
+      "普斯卡什",
+      "特维斯",
+      "多纳多尼",
+      "久利",
+      "王钰栋",
+      "博扬",
+      "姆巴佩",
+      "内托",
+    ],
+    sidePoolCards: [],
+    chainTiers: [
+      { tier: 1, costGold: 1680, rewards: ["first_10", "first_10"] },
+      { tier: 2, costGold: 4400, rewards: ["first_30", "first_30"] },
+      { tier: 3, costGold: 6800, rewards: ["first_random"] },
+      { tier: 4, costGold: 6800, rewards: ["second_random"] },
+      { tier: 5, costGold: 11800, rewards: ["first_random", "second_random"] },
+      { tier: 6, costGold: 9800, rewards: ["first_random", "third_random"] },
+      { tier: 7, costGold: 8800, rewards: ["third_random", "first_select"] },
+    ],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   defense_guardians_gift: {
     poolType: "accumulated_gift",
     progressionType: "milestone",
@@ -1042,6 +1106,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.agile_spirit_chain_bundle && "agile_spirit_chain_bundle") ||
   (POOLS.all_round_commander_exchange && "all_round_commander_exchange") ||
   (POOLS.muscle_forest_exchange && "muscle_forest_exchange") ||
   (POOLS.double_red_meeting_exchange && "double_red_meeting_exchange") ||
@@ -1094,6 +1159,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
   immortal_legends_chain_bundle: ["assets/不朽传奇"],
+  agile_spirit_chain_bundle: ["assets/敏捷灵动"],
   defense_guardians_gift: ["assets/防守悍将"],
   firepower_full_gift: ["assets/火力全开"],
   s9_season_inherit: ["assets/S9赛季累抽继承"],
@@ -1243,6 +1309,18 @@ const POOL_PLAYER_META = {
     巴蒂斯图塔: { type: "史诗", position: "中锋" },
     菲奥雷: { type: "史诗", position: "右前卫" },
     伊涅斯塔: { type: "史诗", position: "左边锋" },
+  },
+  agile_spirit_chain_bundle: {
+    卡纳瓦罗: { type: "史诗", position: "中后卫" },
+    苏亚雷斯: { type: "史诗", position: "中锋" },
+    普斯卡什: { type: "史诗", position: "中锋" },
+    特维斯: { type: "史诗", position: "中锋" },
+    多纳多尼: { type: "史诗", position: "左前卫" },
+    久利: { type: "史诗", position: "右边锋" },
+    王钰栋: { type: "BT", position: "左边锋" },
+    博扬: { type: "史诗", position: "右边锋" },
+    姆巴佩: { type: "ST", position: "中锋" },
+    内托: { type: "ST", position: "左前卫" },
   },
   green_elves_exchange: {
     埃托奥: { type: "史诗", position: "中锋" },
