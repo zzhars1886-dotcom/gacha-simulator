@@ -1069,6 +1069,30 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  era_heroes_discount: {
+    poolType: "discount_no_guarantee",
+    progressionType: "discount_limited",
+    name: "时代英杰7折",
+    pricePerPull: 100,
+    discountPricePerPull: 70,
+    discountPullLimit: 30,
+    maxPullsPerReset: 0,
+    allowedDrawBatch: 10,
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["盖德穆勒", "斯内德", "弗兰", "贝尔戈米", "古蒂", "费里", "德尼尔森"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   defense_spring_shop: {
     poolType: "shop_package",
     progressionType: "shop_package",
@@ -1106,6 +1130,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.era_heroes_discount && "era_heroes_discount") ||
   (POOLS.agile_spirit_chain_bundle && "agile_spirit_chain_bundle") ||
   (POOLS.all_round_commander_exchange && "all_round_commander_exchange") ||
   (POOLS.muscle_forest_exchange && "muscle_forest_exchange") ||
@@ -1166,6 +1191,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   oriental_dragon_liyi: ["assets/东方巨龙"],
   oriental_dragon_fengxiaoting: ["assets/东方巨龙"],
   midfield_master_halfprice: ["assets/中路致胜5折"],
+  era_heroes_discount: ["assets/时代英杰"],
   defense_spring_shop: ["assets/防守教学春日礼包"],
 };
 
@@ -1321,6 +1347,15 @@ const POOL_PLAYER_META = {
     博扬: { type: "史诗", position: "右边锋" },
     姆巴佩: { type: "ST", position: "中锋" },
     内托: { type: "ST", position: "左前卫" },
+  },
+  era_heroes_discount: {
+    盖德穆勒: { type: "史诗", position: "中锋" },
+    斯内德: { type: "史诗", position: "前腰" },
+    弗兰: { type: "史诗", position: "中锋" },
+    贝尔戈米: { type: "史诗", position: "右后卫" },
+    古蒂: { type: "史诗", position: "中前卫" },
+    费里: { type: "史诗", position: "中后卫" },
+    德尼尔森: { type: "史诗", position: "左边锋" },
   },
   green_elves_exchange: {
     埃托奥: { type: "史诗", position: "中锋" },
@@ -2851,9 +2886,32 @@ function getPoolPricePerPull(pool = getCurrentPool()) {
   return GOLD_PER_PULL;
 }
 
+function getPullCostForRange(startPulls, count, pool = getCurrentPool()) {
+  const start = Math.max(0, Math.floor(Number(startPulls) || 0));
+  const total = Math.max(0, Math.floor(Number(count) || 0));
+  if (total <= 0) return 0;
+  const basePrice = getPoolPricePerPull(pool);
+  if (!isDiscountLimitedPool(pool) || !pool.discountPullLimit || !pool.discountPricePerPull) {
+    return total * basePrice;
+  }
+  const discountLimit = Math.max(0, Math.floor(Number(pool.discountPullLimit) || 0));
+  const discountPrice = Math.max(1, Number(pool.discountPricePerPull) || basePrice);
+  const discountedCount = Math.max(0, Math.min(total, discountLimit - start));
+  const normalCount = total - discountedCount;
+  return discountedCount * discountPrice + normalCount * basePrice;
+}
+
+function getGoldCostForCurrentState(pool = getCurrentPool()) {
+  const totalPulls = Math.max(0, Number(state.totalPulls) || 0);
+  if (isChainPool()) return getChainTierSpentGold();
+  if (isDiscountLimitedPool(pool)) return getPullCostForRange(0, totalPulls, pool);
+  return totalPulls * getPoolPricePerPull(pool);
+}
+
 function getPoolPullCap(pool = getCurrentPool()) {
   if (isDiscountLimitedPool(pool)) {
-    return Math.max(0, Number(pool.maxPullsPerReset || 30));
+    if (pool.maxPullsPerReset == null) return 30;
+    return Math.max(0, Number(pool.maxPullsPerReset) || 0);
   }
   return 0;
 }
@@ -4740,12 +4798,12 @@ function loadSkinMode() {
 function canAffordPulls(count) {
   if (activeModeKey !== REAL_MODE_KEY) return true;
   const remaining = realModeMeta.remainingGold || 0;
-  return remaining >= count * getPoolPricePerPull();
+  return remaining >= getPullCostForRange(state.totalPulls || 0, count);
 }
 
 function spendGoldForPulls(count) {
   if (activeModeKey !== REAL_MODE_KEY) return true;
-  const cost = count * getPoolPricePerPull();
+  const cost = getPullCostForRange(state.totalPulls || 0, count);
   if (!spendGoldAmount(cost)) {
     openInsufficientGoldModal();
     return false;
@@ -6073,7 +6131,8 @@ function autoToTargetTotal(target) {
   if (!Number.isFinite(target) || target <= 0) return;
 
   if (isDiscountLimitedPool()) {
-    const cappedTarget = Math.min(target, getPoolPullCap());
+    const cap = getPoolPullCap();
+    const cappedTarget = cap > 0 ? Math.min(target, cap) : target;
     const current = Math.max(0, Number(state.totalPulls) || 0);
     const need = cappedTarget - current;
     if (need <= 0) return;
@@ -7451,7 +7510,7 @@ function renderAccumulatedTargetSwitch() {
 
 function renderStats() {
   const totalPulls = state.totalPulls;
-  const goldCost = isChainPool() ? getChainTierSpentGold() : totalPulls * getPoolPricePerPull();
+  const goldCost = getGoldCostForCurrentState();
   const diamondCost = Math.floor(goldCost * 0.9);
   const statBadgeItem = document.getElementById("statBadgeItem");
   const statEmpoweredEl = document.getElementById("statEmpowered");
@@ -7665,6 +7724,17 @@ function renderPityTracker() {
   if (isDiscountLimitedPool()) {
     const cap = getPoolPullCap();
     const total = Math.max(0, Number(state.totalPulls) || 0);
+    if (cap <= 0) {
+      const discountLimit = Math.max(0, Number(getCurrentPool().discountPullLimit) || 0);
+      const remainingDiscount = Math.max(0, discountLimit - total);
+      textEl.textContent = remainingDiscount > 0
+        ? `前 ${discountLimit} 抽享 7 折，剩余折扣抽数 ${remainingDiscount} 抽`
+        : "折扣抽数已用完，后续按原价十连。";
+      fillEl.style.width = discountLimit > 0
+        ? `${Math.max(0, Math.min(100, (total / discountLimit) * 100))}%`
+        : "0%";
+      return;
+    }
     const remain = Math.max(0, cap - total);
     const percent = cap > 0 ? Math.max(0, Math.min(100, (total / cap) * 100)) : 0;
     if (remain <= 0) {
@@ -7672,7 +7742,7 @@ function renderPityTracker() {
       fillEl.style.width = "100%";
       return;
     }
-    textEl.textContent = `本轮剩余 ${remain} 抽（仅支持十连，10抽=500金币）`;
+    textEl.textContent = `本轮剩余 ${remain} 抽（仅支持十连，10抽=${getPullCostForRange(total, 10)}金币）`;
     fillEl.style.width = `${percent}%`;
     return;
   }
@@ -8058,12 +8128,25 @@ function renderMilestonesTable() {
   }
 
   if (isDiscountLimitedPool()) {
+    const pool = getCurrentPool();
+    const cap = getPoolPullCap(pool);
+    const discountLimit = Math.max(0, Number(pool.discountPullLimit) || 0);
     const rows = [
       { pulls: "每次十连", text: "保证至少 1 名 5星球员" },
-      { pulls: "单次活动", text: "仅可十连，最多抽 30 次" },
-      { pulls: "重置后", text: "可重新开始新一轮 30 抽" },
-      { pulls: "单次十连", text: "消耗 500 金币（5折）" },
+      {
+        pulls: "抽取限制",
+        text: cap > 0 ? `仅可十连，最多抽 ${cap} 次` : "仅可十连，无兑换徽章保底",
+      },
+      {
+        pulls: "折扣说明",
+        text: discountLimit > 0
+          ? `前 ${discountLimit} 抽 7 折，之后恢复原价`
+          : `单次十连消耗 ${getPullCostForRange(0, 10, pool)} 金币`,
+      },
     ];
+    if (isHighlightTicketPool()) {
+      rows.push({ pulls: "高光券", text: getHighlightTicketDescription().replace(/^高光券：/, "") });
+    }
     rows.forEach((row) => {
       const tr = document.createElement("tr");
       const tdPulls = document.createElement("td");
@@ -8268,11 +8351,20 @@ function renderQuickButtonsByPool() {
   }
 
   if (isDiscountLimitedPool()) {
+    const cap = getPoolPullCap(pool);
+    if (cap > 0) {
+      setBtn(btnQuick60, "一键抽 10", 10, null, null);
+      setBtn(btnQuick250, "一键抽 20", 20, null, null);
+      setBtn(btnQuick420, "一键抽 30", 30, null, null);
+      setBtn(btnQuick470, "一键抽 30", 30, null, null, true);
+      setBtn(btnQuick520, "一键抽 30", 30, null, null, true);
+      return;
+    }
     setBtn(btnQuick60, "一键抽 10", 10, null, null);
-    setBtn(btnQuick250, "一键抽 20", 20, null, null);
-    setBtn(btnQuick420, "一键抽 30", 30, null, null);
-    setBtn(btnQuick470, "一键抽 30", 30, null, null, true);
-    setBtn(btnQuick520, "一键抽 30", 30, null, null, true);
+    setBtn(btnQuick250, "一键抽 30", 30, null, null);
+    setBtn(btnQuick420, "一键抽 50", 50, null, null);
+    setBtn(btnQuick470, "一键抽 100", 100, null, null);
+    setBtn(btnQuick520, "一键抽 200", 200, null, null);
     return;
   }
 
@@ -8367,7 +8459,14 @@ function renderDrawPanelByPool() {
         seasonRoundInfo.textContent = `当前轮次进度：${progress} / 500`;
         seasonRoundInfo.classList.remove("hidden");
       } else if (isDiscountLimitedPool()) {
-        seasonRoundInfo.textContent = `本轮进度：${state.totalPulls || 0} / ${getPoolPullCap()}`;
+        const cap = getPoolPullCap();
+        if (cap > 0) {
+          seasonRoundInfo.textContent = `本轮进度：${state.totalPulls || 0} / ${cap}`;
+        } else {
+          const discountLimit = Math.max(0, Number(getCurrentPool().discountPullLimit) || 0);
+          const remainingDiscount = Math.max(0, discountLimit - Math.max(0, Number(state.totalPulls) || 0));
+          seasonRoundInfo.textContent = `已抽：${state.totalPulls || 0}；剩余7折抽数：${remainingDiscount}`;
+        }
         seasonRoundInfo.classList.remove("hidden");
       } else if (isAccumulatedGuaranteePool()) {
         seasonRoundInfo.textContent = `当前定向进度：${state.totalPulls || 0} / ${getAccumulatedGuaranteeProgressCap()}`;
@@ -8408,7 +8507,9 @@ function renderAll() {
   if (btnFifty) btnFifty.classList.toggle("hidden", isDiscountLimitedPool() || isShopPackagePool());
   if (btnTen) btnTen.classList.toggle("hidden", isShopPackagePool());
   if (btnSingle) btnSingle.textContent = isShopPackagePool() ? "购买春日礼包（688金币）" : "单抽";
-  if (btnTen) btnTen.textContent = isDiscountLimitedPool() ? "十连抽（500金币）" : "十连抽";
+  if (btnTen) btnTen.textContent = isDiscountLimitedPool()
+    ? `十连抽（${getPullCostForRange(state.totalPulls || 0, 10)}金币）`
+    : "十连抽";
 }
 
 // ================= 事件绑定 =================
