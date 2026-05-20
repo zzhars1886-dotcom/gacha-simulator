@@ -277,6 +277,33 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   }),
+  next_year_rematch: createCarnivalPool({
+    name: "来年再战狂欢赠礼",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (8 / 48) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (40 / 48) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: [
+      "格列兹曼",
+      "路易斯迪亚斯",
+      "阿劳霍",
+      "布拉欣迪亚斯",
+      "维尼修斯",
+      "索博斯洛伊",
+      "阿尔瓦雷斯",
+      "穆西亚拉",
+    ],
+    milestones: createMilestones({
+      chance10: "10% 增能卡券",
+      chance30: "30% 增能卡券",
+      empoweredRandom: "随机增能卡必得券",
+      empoweredSelect: "增能卡自选券",
+    }),
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  }),
 
   ouzhan_fengyan: createCarnivalPool({
     name: "欧战烽烟狂欢赠礼",
@@ -1130,6 +1157,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.next_year_rematch && "next_year_rematch") ||
   (POOLS.era_heroes_discount && "era_heroes_discount") ||
   (POOLS.agile_spirit_chain_bundle && "agile_spirit_chain_bundle") ||
   (POOLS.all_round_commander_exchange && "all_round_commander_exchange") ||
@@ -1167,6 +1195,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   blue_old_friend: ["assets/蓝衣故人"],
   british_rivalry: ["assets/英伦争霸"],
   double_end_reunion: ["assets/双端齐聚"],
+  next_year_rematch: ["assets/来年再战"],
   ouzhan_fengyan: ["assets/欧战烽烟"],
   dream_midfield_exchange: ["assets/梦幻中轴"],
   lucky_drop_exchange: ["assets/天降幸运"],
@@ -1235,6 +1264,16 @@ const POOL_PLAYER_META = {
     卡福: { type: "史诗", position: "右后卫" },
     卡恩: { type: "史诗", position: "门将" },
     托雷斯: { type: "史诗", position: "中锋" },
+  },
+  next_year_rematch: {
+    格列兹曼: { type: "ST", position: "中锋" },
+    路易斯迪亚斯: { type: "ST", position: "左边锋" },
+    阿劳霍: { type: "ST", position: "中后卫" },
+    布拉欣迪亚斯: { type: "ST", position: "前腰" },
+    维尼修斯: { type: "ST", position: "左边锋" },
+    索博斯洛伊: { type: "ST", position: "前腰" },
+    阿尔瓦雷斯: { type: "ST", position: "中锋" },
+    穆西亚拉: { type: "ST", position: "左前卫" },
   },
   ouzhan_fengyan: {
     博格坎普: { type: "史诗", position: "中锋" },
