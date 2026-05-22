@@ -617,6 +617,41 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  surface_strongest_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "地表至强兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (8 / 48) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (40 / 48) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: [
+      "维埃拉",
+      "克鲁伊夫",
+      "皮克",
+      "卡努",
+      "费尔马伦",
+      "博格坎普",
+      "萨维奥拉",
+      "瓜迪奥拉",
+    ],
+    exchangeConfig: {
+      specificPlayers: ["维埃拉", "克鲁伊夫", "皮克"],
+      fixedSelect42: null,
+      select47Players: ["维埃拉", "克鲁伊夫", "皮克"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["维埃拉", "克鲁伊夫", "皮克"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   northern_campaign_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -1157,6 +1192,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.surface_strongest_exchange && "surface_strongest_exchange") ||
   (POOLS.next_year_rematch && "next_year_rematch") ||
   (POOLS.era_heroes_discount && "era_heroes_discount") ||
   (POOLS.agile_spirit_chain_bundle && "agile_spirit_chain_bundle") ||
@@ -1208,6 +1244,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   muscle_forest_exchange: ["assets/肌肉森林"],
   all_round_commander_exchange: ["assets/全能指挥官"],
   green_elves_exchange: ["assets/绿茵精灵"],
+  surface_strongest_exchange: ["assets/地表至强"],
   northern_campaign_exchange: ["assets/北伐争五"],
   pitch_maestro_exchange: ["assets/球场主宰"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
@@ -1404,6 +1441,16 @@ const POOL_PLAYER_META = {
     佩德里: { type: "BT", position: "中前卫" },
     艾泽: { type: "ST", position: "前腰" },
     维尔茨: { type: "ST", position: "前腰" },
+  },
+  surface_strongest_exchange: {
+    维埃拉: { type: "史诗", position: "后腰" },
+    克鲁伊夫: { type: "史诗", position: "中锋" },
+    皮克: { type: "史诗", position: "中后卫" },
+    卡努: { type: "史诗", position: "中锋" },
+    费尔马伦: { type: "史诗", position: "中后卫" },
+    博格坎普: { type: "史诗", position: "中锋" },
+    萨维奥拉: { type: "史诗", position: "中锋" },
+    瓜迪奥拉: { type: "史诗", position: "后腰" },
   },
   northern_campaign_exchange: {
     索博斯洛伊: { type: "ST", position: "前腰" },
