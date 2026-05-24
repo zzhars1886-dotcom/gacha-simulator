@@ -707,6 +707,38 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  apennine_glory_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "亚平宁光辉兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "史诗球员", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["巴雷西", "马特乌斯", "萨内蒂", "巴乔", "加图索", "鲁伊科斯塔", "奥多"],
+    exchangeConfig: {
+      specificPlayers: ["巴雷西", "萨内蒂", "巴乔"],
+      fixedSelect42: null,
+      select47Players: ["巴雷西", "萨内蒂", "巴乔"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["巴雷西", "萨内蒂", "巴乔"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    exchangeBonusGiftConfig: {
+      everyPulls: 30,
+      chance: 0.1,
+      label: "10%随机史诗包",
+      sourceLabel: "10%随机史诗包",
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   genius_chain_bundle: {
     poolType: "chain_bundle",
     progressionType: "chain_tier",
@@ -1192,6 +1224,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.apennine_glory_exchange && "apennine_glory_exchange") ||
   (POOLS.surface_strongest_exchange && "surface_strongest_exchange") ||
   (POOLS.next_year_rematch && "next_year_rematch") ||
   (POOLS.era_heroes_discount && "era_heroes_discount") ||
@@ -1247,6 +1280,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   surface_strongest_exchange: ["assets/地表至强"],
   northern_campaign_exchange: ["assets/北伐争五"],
   pitch_maestro_exchange: ["assets/球场主宰"],
+  apennine_glory_exchange: ["assets/亚平宁光辉"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
   immortal_legends_chain_bundle: ["assets/不朽传奇"],
@@ -1470,6 +1504,15 @@ const POOL_PLAYER_META = {
     托雷斯: { type: "史诗", position: "中锋" },
     范博梅尔: { type: "史诗", position: "中前卫" },
   },
+  apennine_glory_exchange: {
+    巴雷西: { type: "史诗", position: "中后卫" },
+    马特乌斯: { type: "史诗", position: "前腰" },
+    萨内蒂: { type: "史诗", position: "左后卫" },
+    巴乔: { type: "史诗", position: "前腰" },
+    加图索: { type: "史诗", position: "后腰" },
+    鲁伊科斯塔: { type: "史诗", position: "中前卫" },
+    奥多: { type: "史诗", position: "右后卫" },
+  },
   genius_chain_bundle: {
     贝斯特: { type: "BT", position: "右边锋" },
     帕尔默: { type: "BT", position: "右前卫" },
@@ -1621,6 +1664,7 @@ function createInitialState(empoweredCards) {
     chainSidePoolRemaining: [],
     badges: 0,
     nextBadgeMilestone: 10,
+    exchangeBonusGiftMilestonesGranted: 0,
     vieiraSkinCount: 0,
     pendingSelectRewardCount: 0,
     pendingSelectMilestones: [],
@@ -1928,7 +1972,8 @@ function calcExchangeWithGiftExpected(pool) {
       specific: refTarget ? calcNonRepeatExchangeSpecificExpected(pool, refTarget) : 0,
     };
   }
-  const cfg = getExchangeConfig();
+  const cfg = getExchangeConfig(pool);
+  const bonusCfg = getExchangeBonusGiftConfig(pool);
   const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
   const n = Math.max(1, (pool.empoweredCards || []).length);
   const capAny = cfg.fixedSelect42 ? 420 : 470;
@@ -1942,13 +1987,30 @@ function calcExchangeWithGiftExpected(pool) {
     return select47Pool.includes(targetName) ? 470 : null;
   };
 
-  const calcExpectedWithGuarantees = (pBase, cap) => {
-    if (!cap || cap <= 0) return pBase > 0 ? (1 / pBase) : 0;
+  const getBonusSpecificProb = (targetName) => {
+    if (!bonusCfg || !targetName) return 0;
+    const candidates = getExchangeBonusGiftCandidates(pool, bonusCfg);
+    return candidates.includes(targetName) ? bonusCfg.chance / Math.max(1, candidates.length) : 0;
+  };
+
+  const calcExpectedWithGuarantees = (pBase, cap, pBonus = 0) => {
+    const stepProb = (draw) => {
+      const giftProb = bonusCfg && draw % bonusCfg.everyPulls === 0 ? pBonus : 0;
+      return clamp01(1 - (1 - clamp01(pBase)) * (1 - clamp01(giftProb)));
+    };
+    if (!cap || cap <= 0) {
+      const cycleLength = bonusCfg ? bonusCfg.everyPulls : 1;
+      const cycleProbs = [];
+      for (let draw = 1; draw <= cycleLength; draw += 1) {
+        cycleProbs.push(stepProb(draw));
+      }
+      return expectedFromSeasonCycle(0, cycleProbs);
+    }
     let expected = 0;
     let survival = 1;
     for (let draw = 1; draw <= cap; draw += 1) {
       expected += survival;
-      let missFactor = 1 - clamp01(pBase);
+      let missFactor = 1 - stepProb(draw);
       if (draw === cap) {
         missFactor = 0; // cap 抽触发自选保底
       }
@@ -1957,13 +2019,14 @@ function calcExchangeWithGiftExpected(pool) {
     return expected;
   };
 
-  const calcAnyExpected = () => calcExpectedWithGuarantees(pAny, capAny);
+  const calcAnyExpected = () =>
+    calcExpectedWithGuarantees(pAny, capAny, bonusCfg ? bonusCfg.chance : 0);
 
   const calcSpecificExpected = (targetName) => {
     if (!targetName) return 0;
     const pSpecific = pAny / n;
     const capSpecific = capSpecificByTarget(targetName);
-    return calcExpectedWithGuarantees(pSpecific, capSpecific);
+    return calcExpectedWithGuarantees(pSpecific, capSpecific, getBonusSpecificProb(targetName));
   };
 
   const refTarget = (pool.empoweredCards || [])[0] || "";
@@ -1971,6 +2034,47 @@ function calcExchangeWithGiftExpected(pool) {
     any: calcAnyExpected(),
     specific: calcSpecificExpected(refTarget),
   };
+}
+
+function getExchangeSelectCapForTarget(pool, targetName) {
+  if (!targetName) return null;
+  const cfg = getExchangeConfig(pool);
+  if (cfg.fixedSelect42 && targetName === cfg.fixedSelect42) return 420;
+  const select47Pool =
+    Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0
+      ? cfg.select47Players
+      : (pool.empoweredCards || []);
+  return select47Pool.includes(targetName) ? 470 : null;
+}
+
+function getExchangeBonusGiftCandidates(pool, cfg = getExchangeBonusGiftConfig(pool)) {
+  if (!cfg) return [];
+  const names = pool.empoweredCards || [];
+  const candidates =
+    Array.isArray(cfg.candidateNames) && cfg.candidateNames.length > 0
+      ? cfg.candidateNames
+      : names;
+  return candidates.filter((name) => names.includes(name));
+}
+
+function getExchangeBonusGiftCount(pool, drawCount) {
+  const cfg = getExchangeBonusGiftConfig(pool);
+  if (!cfg) return 0;
+  return Math.floor(Math.max(0, Math.floor(Number(drawCount) || 0)) / cfg.everyPulls);
+}
+
+function calcAtLeastFromIndependentSources(sources, fixedGain, targetCount) {
+  const need = Math.max(
+    0,
+    Math.floor(Number(targetCount) || 0) - Math.max(0, Number(fixedGain) || 0)
+  );
+  if (need <= 0) return 1;
+  let dist = new Array(need + 1).fill(0);
+  dist[0] = 1;
+  sources.forEach((source) => {
+    dist = convolveBinomialCapped(dist, source.trials, source.p, need);
+  });
+  return clamp01(dist[need] || 0);
 }
 
 function calcExchangeSpecificHitCDF(pool, drawCount, targetName) {
@@ -1981,23 +2085,21 @@ function calcExchangeSpecificHitCDF(pool, drawCount, targetName) {
   if (drawCount <= 0 || !targetName) return 0;
   const allNames = pool.empoweredCards || [];
   if (!allNames.includes(targetName)) return 0;
-  const cfg = getExchangeConfig();
   const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
   const n = Math.max(1, allNames.length);
   const pSpecific = pAny / n;
-  let cap = null;
-  if (cfg.fixedSelect42 && targetName === cfg.fixedSelect42) {
-    cap = 420;
-  } else {
-    const select47Pool =
-      Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0
-        ? cfg.select47Players
-        : (pool.empoweredCards || []);
-    if (select47Pool.includes(targetName)) cap = 470;
-  }
+  const cap = getExchangeSelectCapForTarget(pool, targetName);
   if (cap && drawCount >= cap) return 1;
-  const baseNoHit = (1 - pSpecific) ** drawCount;
-  return clamp01(1 - baseNoHit);
+  const bonusCfg = getExchangeBonusGiftConfig(pool);
+  const bonusCandidates = getExchangeBonusGiftCandidates(pool, bonusCfg);
+  const pBonusSpecific =
+    bonusCfg && bonusCandidates.includes(targetName)
+      ? bonusCfg.chance / Math.max(1, bonusCandidates.length)
+      : 0;
+  const noHit =
+    (1 - pSpecific) ** drawCount *
+    (1 - pBonusSpecific) ** getExchangeBonusGiftCount(pool, drawCount);
+  return clamp01(1 - noHit);
 }
 
 function calcExchangeEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
@@ -2007,11 +2109,18 @@ function calcExchangeEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
   if (drawCount <= 0) return 0;
 
   const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
-  const cfg = getExchangeConfig();
+  const cfg = getExchangeConfig(pool);
   const cap = cfg.fixedSelect42 ? 420 : 470;
   const fixedGain = drawCount >= cap ? 1 : 0;
-  const needFromBase = Math.max(0, targetCount - fixedGain);
-  return calcBinomialAtLeast(drawCount, pAny, needFromBase);
+  const bonusCfg = getExchangeBonusGiftConfig(pool);
+  return calcAtLeastFromIndependentSources(
+    [
+      { trials: drawCount, p: pAny },
+      { trials: getExchangeBonusGiftCount(pool, drawCount), p: bonusCfg ? bonusCfg.chance : 0 },
+    ],
+    fixedGain,
+    targetCount
+  );
 }
 
 function calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount) {
@@ -2033,21 +2142,22 @@ function calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, target
   const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
   const n = Math.max(1, allNames.length);
   const pSpecific = pAny / n;
-  const cfg = getExchangeConfig();
-  let cap = null;
-  if (cfg.fixedSelect42 && targetName === cfg.fixedSelect42) {
-    cap = 420;
-  } else {
-    const select47Pool =
-      Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0
-        ? cfg.select47Players
-        : (pool.empoweredCards || []);
-    if (select47Pool.includes(targetName)) cap = 470;
-  }
+  const cap = getExchangeSelectCapForTarget(pool, targetName);
   const fixedGain = cap && drawCount >= cap ? 1 : 0;
-  const need = Math.max(0, targetCount - fixedGain);
-  const cdf = calcBinomialAtLeast(drawCount, pSpecific, need);
-  return clamp01(cdf);
+  const bonusCfg = getExchangeBonusGiftConfig(pool);
+  const bonusCandidates = getExchangeBonusGiftCandidates(pool, bonusCfg);
+  const pBonusSpecific =
+    bonusCfg && bonusCandidates.includes(targetName)
+      ? bonusCfg.chance / Math.max(1, bonusCandidates.length)
+      : 0;
+  return calcAtLeastFromIndependentSources(
+    [
+      { trials: drawCount, p: pSpecific },
+      { trials: getExchangeBonusGiftCount(pool, drawCount), p: pBonusSpecific },
+    ],
+    fixedGain,
+    targetCount
+  );
 }
 
 function calcNonRepeatExchangeSpecificHitCDF(pool, drawCount, targetName) {
@@ -3091,7 +3201,7 @@ function getFavoredProgressCap(pool = getCurrentPool(), selectedNames = []) {
     return firstSelect ? Number(firstSelect.pulls) || 500 : 500;
   }
   if (pool.progressionType === "exchange_badge") {
-    const cfg = getExchangeConfig();
+    const cfg = getExchangeConfig(pool);
     const selected = Array.from(new Set((selectedNames || []).filter(Boolean)));
     if (cfg.fixedSelect42 && selected.length === 1 && selected[0] === cfg.fixedSelect42) {
       return 420;
@@ -3102,7 +3212,7 @@ function getFavoredProgressCap(pool = getCurrentPool(), selectedNames = []) {
 }
 
 function getExchangeSelectPoolForCap(pool, capDraw) {
-  const cfg = getExchangeConfig();
+  const cfg = getExchangeConfig(pool);
   if (cfg.fixedSelect42 && capDraw === 420) return [cfg.fixedSelect42];
   if (Array.isArray(cfg.select47Players) && cfg.select47Players.length > 0) {
     return cfg.select47Players.slice();
@@ -3703,6 +3813,15 @@ function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
           }
         });
         next = afterSelect;
+      }
+      const bonusCfg = getExchangeBonusGiftConfig(pool);
+      if (bonusCfg && draw % bonusCfg.everyPulls === 0) {
+        next = applyRandomEmpowered(
+          next,
+          bonusCfg.chance,
+          getExchangeBonusGiftCandidates(pool, bonusCfg),
+          true
+        );
       }
     }
 
@@ -4326,12 +4445,17 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
       }
     } else if (pool.progressionType === "exchange_badge") {
       const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
-      const cap = getExchangeConfig().fixedSelect42 ? 420 : 470;
+      const cap = getExchangeConfig(pool).fixedSelect42 ? 420 : 470;
       const selectPool = getExchangeSelectPoolForCap(pool, cap);
+      const bonusCfg = getExchangeBonusGiftConfig(pool);
+      const bonusCandidates = getExchangeBonusGiftCandidates(pool, bonusCfg);
       for (let draw = 1; draw <= progressCount; draw += 1) {
         if (Math.random() < pAny) addRandomName(got, pool.empoweredCards || []);
         if (draw === cap) {
           addSelectNamePreferNew(got, selectPool);
+        }
+        if (bonusCfg && draw % bonusCfg.everyPulls === 0 && Math.random() < bonusCfg.chance) {
+          addRandomName(got, bonusCandidates);
         }
       }
     } else {
@@ -5846,6 +5970,7 @@ function processProgressionRewardsIfNeeded() {
   }
   if (pool.progressionType === "exchange_badge") {
     unlockBadgesIfNeeded();
+    unlockExchangeBonusGiftsIfNeeded();
     return;
   }
   if (pool.progressionType === "season_inherit") {
@@ -6125,6 +6250,43 @@ function unlockBadgesIfNeeded() {
     state.badges += 1;
     state.nextBadgeMilestone += 10;
   }
+}
+
+function getExchangeBonusGiftConfig(pool = getCurrentPool()) {
+  const cfg = pool?.exchangeBonusGiftConfig;
+  if (!cfg) return null;
+  const everyPulls = Math.max(1, Math.floor(Number(cfg.everyPulls) || 0));
+  const chance = clamp01(Number(cfg.chance) || 0);
+  if (chance <= 0) return null;
+  return {
+    everyPulls,
+    chance,
+    label: cfg.label || `${Math.round(chance * 100)}% 随机增能卡包`,
+    sourceLabel: cfg.sourceLabel || `每${everyPulls}抽随机增能卡包`,
+    candidateNames: Array.isArray(cfg.candidateNames) ? cfg.candidateNames.slice() : null,
+  };
+}
+
+function unlockExchangeBonusGiftsIfNeeded() {
+  const pool = getCurrentPool();
+  const cfg = getExchangeBonusGiftConfig(pool);
+  if (!cfg) return;
+  const total = Math.max(0, Number(state.totalPulls) || 0);
+  const shouldGrant = Math.floor(total / cfg.everyPulls);
+  while ((state.exchangeBonusGiftMilestonesGranted || 0) < shouldGrant) {
+    state.exchangeBonusGiftMilestonesGranted += 1;
+    const pulls = state.exchangeBonusGiftMilestonesGranted * cfg.everyPulls;
+    state.rewards.push({
+      id: `exchange-gift-${pulls}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      pulls,
+      type: "exchange_target_chance",
+      chance: cfg.chance,
+      candidateNames: cfg.candidateNames || (pool.empoweredCards || []).slice(),
+      label: cfg.label,
+      sourceLabel: cfg.sourceLabel,
+    });
+  }
+  maybeAutoOpenRewards();
 }
 
 function getRewardOpenMode() {
@@ -6563,8 +6725,7 @@ function ensureChainPoolStateInitialized() {
   }
 }
 
-function getExchangeConfig() {
-  const pool = getCurrentPool();
+function getExchangeConfig(pool = getCurrentPool()) {
   return (
     pool.exchangeConfig || {
       specificPlayers: pool.exchangeSpecificPlayers || [],
@@ -7103,8 +7264,14 @@ function openAllRewards() {
       }
       case "exchange_target_chance": {
         const isHit = Math.random() < (reward.chance || 0.1);
+        const rewardCandidates =
+          Array.isArray(reward.candidateNames) && reward.candidateNames.length > 0
+            ? reward.candidateNames
+            : reward.targetName
+            ? [reward.targetName]
+            : [];
         const card = isHit
-          ? createEmpoweredCard(reward.targetName)
+          ? createEmpoweredCard(randomFromArray(rewardCandidates))
           : createFiveStarCard();
         recordSingleDraw(card, toRewardSourceText(reward), {
           countTowardsTotal: false,
@@ -7435,6 +7602,25 @@ function renderProbabilities() {
           },
         ];
         extraRows.forEach((item) => {
+          const tr = document.createElement("tr");
+          const tdName = document.createElement("td");
+          const tdProb = document.createElement("td");
+          tdName.textContent = item.label;
+          tdProb.textContent = formatPercent(item.probability);
+          tr.appendChild(tdName);
+          tr.appendChild(tdProb);
+          tbody.appendChild(tr);
+        });
+      }
+      const bonusGiftCfg = isExchangePool() ? getExchangeBonusGiftConfig() : null;
+      if (bonusGiftCfg) {
+        [
+          { label: "10%随机史诗包：史诗球员", probability: bonusGiftCfg.chance },
+          {
+            label: "10%随机史诗包：五星普卡",
+            probability: clamp01(1 - bonusGiftCfg.chance),
+          },
+        ].forEach((item) => {
           const tr = document.createElement("tr");
           const tdName = document.createElement("td");
           const tdProb = document.createElement("td");
@@ -8272,12 +8458,19 @@ function renderMilestonesTable() {
 
   if (isExchangePool()) {
     const cfg = getExchangeConfig();
+    const bonusGiftCfg = getExchangeBonusGiftConfig();
     const specificText = (cfg.specificPlayers || []).join("/");
     const exchangeRows = [
       { pulls: "每 10 抽", text: "赠送 1 个徽章" },
       { pulls: "6 徽章", text: `兑换 10% 特定增能球员卡（${specificText}）` },
       { pulls: "25 徽章", text: "兑换随机增能卡必得券" },
     ];
+    if (bonusGiftCfg) {
+      exchangeRows.push({
+        pulls: `每 ${bonusGiftCfg.everyPulls} 抽`,
+        text: bonusGiftCfg.label,
+      });
+    }
     if (cfg.fixedSelect42) {
       exchangeRows.push({ pulls: "42 徽章", text: `兑换${cfg.fixedSelect42}自选` });
     }
