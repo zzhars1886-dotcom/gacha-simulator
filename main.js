@@ -739,6 +739,32 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  summit_duel_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "巅峰对决兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["赖斯", "帕乔", "萨利巴", "哈基米", "约克雷斯", "登贝莱", "加布里埃尔"],
+    exchangeConfig: {
+      specificPlayers: ["加布里埃尔", "登贝莱", "萨利巴"],
+      fixedSelect42: null,
+      select47Players: ["加布里埃尔", "登贝莱", "萨利巴"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["加布里埃尔", "登贝莱", "萨利巴"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   genius_chain_bundle: {
     poolType: "chain_bundle",
     progressionType: "chain_tier",
@@ -1224,6 +1250,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.summit_duel_exchange && "summit_duel_exchange") ||
   (POOLS.apennine_glory_exchange && "apennine_glory_exchange") ||
   (POOLS.surface_strongest_exchange && "surface_strongest_exchange") ||
   (POOLS.next_year_rematch && "next_year_rematch") ||
@@ -1281,6 +1308,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   northern_campaign_exchange: ["assets/北伐争五"],
   pitch_maestro_exchange: ["assets/球场主宰"],
   apennine_glory_exchange: ["assets/亚平宁光辉"],
+  summit_duel_exchange: ["assets/巅峰对决"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
   immortal_legends_chain_bundle: ["assets/不朽传奇"],
@@ -1512,6 +1540,15 @@ const POOL_PLAYER_META = {
     加图索: { type: "史诗", position: "后腰" },
     鲁伊科斯塔: { type: "史诗", position: "中前卫" },
     奥多: { type: "史诗", position: "右后卫" },
+  },
+  summit_duel_exchange: {
+    赖斯: { type: "ST", position: "后腰" },
+    帕乔: { type: "ST", position: "中后卫" },
+    萨利巴: { type: "ST", position: "中后卫" },
+    哈基米: { type: "ST", position: "右后卫" },
+    约克雷斯: { type: "ST", position: "中锋" },
+    登贝莱: { type: "ST", position: "中锋" },
+    加布里埃尔: { type: "BT", position: "中后卫" },
   },
   genius_chain_bundle: {
     贝斯特: { type: "BT", position: "右边锋" },
