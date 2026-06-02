@@ -765,6 +765,32 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  blue_warrior_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "蓝衣战神兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["托蒂", "内斯塔", "博努奇", "佐拉", "维埃里", "塞门约", "麦克托米奈"],
+    exchangeConfig: {
+      specificPlayers: ["内斯塔", "塞门约", "佐拉"],
+      fixedSelect42: null,
+      select47Players: ["内斯塔", "塞门约", "佐拉"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["内斯塔", "塞门约", "佐拉"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   genius_chain_bundle: {
     poolType: "chain_bundle",
     progressionType: "chain_tier",
@@ -1250,6 +1276,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.blue_warrior_exchange && "blue_warrior_exchange") ||
   (POOLS.summit_duel_exchange && "summit_duel_exchange") ||
   (POOLS.apennine_glory_exchange && "apennine_glory_exchange") ||
   (POOLS.surface_strongest_exchange && "surface_strongest_exchange") ||
@@ -1309,6 +1336,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   pitch_maestro_exchange: ["assets/球场主宰"],
   apennine_glory_exchange: ["assets/亚平宁光辉"],
   summit_duel_exchange: ["assets/巅峰对决"],
+  blue_warrior_exchange: ["assets/蓝衣战神"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
   immortal_legends_chain_bundle: ["assets/不朽传奇"],
@@ -1549,6 +1577,15 @@ const POOL_PLAYER_META = {
     约克雷斯: { type: "ST", position: "中锋" },
     登贝莱: { type: "ST", position: "中锋" },
     加布里埃尔: { type: "BT", position: "中后卫" },
+  },
+  blue_warrior_exchange: {
+    托蒂: { type: "史诗", position: "前腰" },
+    内斯塔: { type: "史诗", position: "中后卫" },
+    博努奇: { type: "史诗", position: "中后卫" },
+    佐拉: { type: "史诗", position: "影锋" },
+    维埃里: { type: "史诗", position: "中锋" },
+    塞门约: { type: "BT", position: "左前卫" },
+    麦克托米奈: { type: "BT", position: "中前卫" },
   },
   genius_chain_bundle: {
     贝斯特: { type: "BT", position: "右边锋" },
