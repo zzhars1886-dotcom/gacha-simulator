@@ -791,6 +791,32 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  rebuild_glory_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "重塑辉煌兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["舍什科", "库尼亚", "姆伯莫", "B.费尔南德斯", "费迪南德", "埃尔文", "罗布森"],
+    exchangeConfig: {
+      specificPlayers: ["B.费尔南德斯", "费迪南德", "舍什科"],
+      fixedSelect42: null,
+      select47Players: ["B.费尔南德斯", "费迪南德", "舍什科"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["B.费尔南德斯", "费迪南德", "舍什科"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   genius_chain_bundle: {
     poolType: "chain_bundle",
     progressionType: "chain_tier",
@@ -1276,6 +1302,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.rebuild_glory_exchange && "rebuild_glory_exchange") ||
   (POOLS.blue_warrior_exchange && "blue_warrior_exchange") ||
   (POOLS.summit_duel_exchange && "summit_duel_exchange") ||
   (POOLS.apennine_glory_exchange && "apennine_glory_exchange") ||
@@ -1337,6 +1364,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   apennine_glory_exchange: ["assets/亚平宁光辉"],
   summit_duel_exchange: ["assets/巅峰对决"],
   blue_warrior_exchange: ["assets/蓝衣战神"],
+  rebuild_glory_exchange: ["assets/重塑辉煌"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
   immortal_legends_chain_bundle: ["assets/不朽传奇"],
@@ -1586,6 +1614,15 @@ const POOL_PLAYER_META = {
     维埃里: { type: "史诗", position: "中锋" },
     塞门约: { type: "BT", position: "左前卫" },
     麦克托米奈: { type: "BT", position: "中前卫" },
+  },
+  rebuild_glory_exchange: {
+    舍什科: { type: "ST", position: "中锋" },
+    库尼亚: { type: "ST", position: "前腰" },
+    姆伯莫: { type: "ST", position: "右边锋" },
+    "B.费尔南德斯": { type: "BT", position: "前腰" },
+    费迪南德: { type: "史诗", position: "中后卫" },
+    埃尔文: { type: "史诗", position: "左后卫" },
+    罗布森: { type: "史诗", position: "中前卫" },
   },
   genius_chain_bundle: {
     贝斯特: { type: "BT", position: "右边锋" },
