@@ -189,6 +189,33 @@ const POOLS = {
     bonusHitMode: "empowered_or_selected_weighted",
     selectedCardCountForBonus: 16,
   }),
+  summer_pearls_gift: createCarnivalPool({
+    name: "盛夏遗珠狂欢赠礼",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (8 / 40) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (32 / 40) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: [
+      "麦克马纳曼",
+      "迪马尔科",
+      "奥巴梅扬",
+      "贝斯特",
+      "k77",
+      "奥斯梅恩",
+      "多纳鲁马",
+      "埃基蒂克",
+    ],
+    milestones: createMilestones({
+      chance10: "10% 增能卡券",
+      chance30: "30% 增能卡券",
+      empoweredRandom: "随机增能卡必得券",
+      empoweredSelect: "增能卡自选券",
+    }),
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  }),
   blue_old_friend: createCarnivalPool({
     name: "蓝衣故人狂欢赠礼",
     poolConfig: [
@@ -1302,6 +1329,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.summer_pearls_gift && "summer_pearls_gift") ||
   (POOLS.rebuild_glory_exchange && "rebuild_glory_exchange") ||
   (POOLS.blue_warrior_exchange && "blue_warrior_exchange") ||
   (POOLS.summit_duel_exchange && "summit_duel_exchange") ||
@@ -1342,6 +1370,7 @@ const POOL_TYPE_LABELS = {
 
 const POOL_CINEMATIC_ASSET_FOLDERS = {
   xinzai_jinxiu: ["assets/新载锦绣"],
+  summer_pearls_gift: ["assets/盛夏遗珠"],
   blue_old_friend: ["assets/蓝衣故人"],
   british_rivalry: ["assets/英伦争霸"],
   double_end_reunion: ["assets/双端齐聚"],
@@ -1389,6 +1418,16 @@ const POOL_PLAYER_META = {
     多库: { type: "ST", position: "左边锋" },
     库尔图瓦: { type: "ST", position: "门将" },
     图拉姆: { type: "ST", position: "中锋" },
+  },
+  summer_pearls_gift: {
+    麦克马纳曼: { type: "史诗", position: "右前卫" },
+    迪马尔科: { type: "BT", position: "左前卫" },
+    奥巴梅扬: { type: "史诗", position: "中锋" },
+    贝斯特: { type: "BT", position: "右边锋" },
+    k77: { type: "BT", position: "左边锋" },
+    奥斯梅恩: { type: "BT", position: "中锋" },
+    多纳鲁马: { type: "ST", position: "门将" },
+    埃基蒂克: { type: "ST", position: "中锋" },
   },
   blue_old_friend: {
     兰帕德: { type: "史诗", position: "中前卫" },
