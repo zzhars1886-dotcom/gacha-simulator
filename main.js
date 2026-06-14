@@ -1456,6 +1456,29 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  first_round_focus_discount: {
+    poolType: "discount_no_guarantee",
+    progressionType: "discount_limited",
+    name: "首轮焦点",
+    pricePerPull: 100,
+    maxPullsPerReset: 0,
+    allowedDrawBatch: 10,
+    nonRepeatEmpowered: true,
+    bonusFreePullConfig: {
+      paidPulls: 20,
+      freePulls: 10,
+    },
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["赖斯", "范戴克", "阿扎尔", "西多夫", "萨拉赫", "莫德里奇", "埃利奥特安德森"],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   defense_spring_shop: {
     poolType: "shop_package",
     progressionType: "shop_package",
@@ -1493,6 +1516,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.first_round_focus_discount && "first_round_focus_discount") ||
   (POOLS.world_stage_chain_bundle && "world_stage_chain_bundle") ||
   (POOLS.new_king_road_one_exchange && "new_king_road_one_exchange") ||
   (POOLS.summer_pearls_gift && "summer_pearls_gift") ||
@@ -1573,6 +1597,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   oriental_dragon_fengxiaoting: ["assets/东方巨龙"],
   midfield_master_halfprice: ["assets/中路致胜5折"],
   era_heroes_discount: ["assets/时代英杰"],
+  first_round_focus_discount: ["assets/首轮焦点"],
   defense_spring_shop: ["assets/防守教学春日礼包"],
 };
 
@@ -1949,6 +1974,15 @@ const POOL_PLAYER_META = {
     戴维斯: { type: "史诗", position: "后腰" },
     斯内德: { type: "史诗", position: "前腰" },
     古蒂: { type: "史诗", position: "中前卫" },
+  },
+  first_round_focus_discount: {
+    赖斯: { type: "BT", position: "中前卫" },
+    范戴克: { type: "ST", position: "中后卫" },
+    阿扎尔: { type: "史诗", position: "前腰" },
+    西多夫: { type: "史诗", position: "中前卫" },
+    萨拉赫: { type: "ST", position: "右边锋" },
+    莫德里奇: { type: "ST", position: "中前卫" },
+    埃利奥特安德森: { type: "ST", position: "后腰" },
   },
   defense_spring_shop: {
     瓦拉内: { type: "史诗", position: "中后卫" },
@@ -2338,7 +2372,7 @@ function calcExchangeWithGiftExpected(pool) {
     const refTarget = (pool.empoweredCards || [])[0] || "";
     return {
       any,
-      specific: refTarget ? calcNonRepeatExchangeSpecificExpected(pool, refTarget) : 0,
+      specific: refTarget ? calcNonRepeatEmpoweredSpecificExpected(pool, refTarget) : 0,
     };
   }
   const cfg = getExchangeConfig(pool);
@@ -2447,8 +2481,8 @@ function calcAtLeastFromIndependentSources(sources, fixedGain, targetCount) {
 }
 
 function calcExchangeSpecificHitCDF(pool, drawCount, targetName) {
-  if (isNonRepeatExchangePool(pool)) {
-    return calcNonRepeatExchangeSpecificHitCDF(pool, drawCount, targetName);
+  if (isNonRepeatEmpoweredPool(pool)) {
+    return calcNonRepeatEmpoweredSpecificHitCDF(pool, drawCount, targetName);
   }
   drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
   if (drawCount <= 0 || !targetName) return 0;
@@ -2493,8 +2527,8 @@ function calcExchangeEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
 }
 
 function calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount) {
-  if (isNonRepeatExchangePool(pool)) {
-    return calcNonRepeatExchangeSpecificCountAtLeastCDF(
+  if (isNonRepeatEmpoweredPool(pool)) {
+    return calcNonRepeatEmpoweredSpecificCountAtLeastCDF(
       pool,
       drawCount,
       targetName,
@@ -2529,7 +2563,7 @@ function calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, target
   );
 }
 
-function calcNonRepeatExchangeSpecificHitCDF(pool, drawCount, targetName) {
+function calcNonRepeatEmpoweredSpecificHitCDF(pool, drawCount, targetName) {
   drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
   if (drawCount <= 0 || !targetName) return 0;
   const allNames = pool.empoweredCards || [];
@@ -2575,7 +2609,7 @@ function calcNonRepeatExchangeSpecificHitCDF(pool, drawCount, targetName) {
       }
     });
 
-    if (draw === 470) {
+    if (pool.progressionType === "exchange_badge" && draw === 470) {
       const selectPool = getExchangeSelectPoolForCap(pool, 470);
       if (selectPool.includes(targetName)) {
         const afterSelect = new Map();
@@ -2601,7 +2635,7 @@ function calcNonRepeatExchangeSpecificHitCDF(pool, drawCount, targetName) {
   return clamp01(cdf);
 }
 
-function calcNonRepeatExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount) {
+function calcNonRepeatEmpoweredSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount) {
   drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
   targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
   if (targetCount <= 0) return 1;
@@ -2655,7 +2689,7 @@ function calcNonRepeatExchangeSpecificCountAtLeastCDF(pool, drawCount, targetNam
     });
 
     let statesAfter = next;
-    if (draw === 470) {
+    if (pool.progressionType === "exchange_badge" && draw === 470) {
       const selectPool = getExchangeSelectPoolForCap(pool, 470);
       if (selectPool.includes(targetName)) {
         const afterSelect = new Map();
@@ -2681,7 +2715,7 @@ function calcNonRepeatExchangeSpecificCountAtLeastCDF(pool, drawCount, targetNam
   return clamp01(cdf);
 }
 
-function calcNonRepeatExchangeSpecificExpected(pool, targetName) {
+function calcNonRepeatEmpoweredSpecificExpected(pool, targetName) {
   const allNames = pool.empoweredCards || [];
   const targetIdx = allNames.indexOf(targetName);
   if (targetIdx === -1) return 0;
@@ -2692,7 +2726,11 @@ function calcNonRepeatExchangeSpecificExpected(pool, targetName) {
   let expected = 0;
   let states = new Map([[presetMask, 1]]);
 
-  for (let draw = 1; draw <= 470; draw += 1) {
+  const maxDraw =
+    pool.progressionType === "exchange_badge"
+      ? 470
+      : Math.max(1200, Math.ceil((allNames.length / Math.max(pAny, 0.0001)) * 4));
+  for (let draw = 1; draw <= maxDraw; draw += 1) {
     let survival = 0;
     states.forEach((prob, mask) => {
       if ((mask & (1 << targetIdx)) === 0) survival += prob;
@@ -2726,7 +2764,7 @@ function calcNonRepeatExchangeSpecificExpected(pool, targetName) {
       }
     });
 
-    if (draw === 470) {
+    if (pool.progressionType === "exchange_badge" && draw === 470) {
       const selectPool = getExchangeSelectPoolForCap(pool, 470);
       if (selectPool.includes(targetName)) {
         return expected;
@@ -2738,7 +2776,7 @@ function calcNonRepeatExchangeSpecificExpected(pool, targetName) {
   return expected;
 }
 
-function calcNonRepeatExchangeFavoredSetMetrics(pool, selectedNames) {
+function calcNonRepeatEmpoweredFavoredSetMetrics(pool, selectedNames) {
   const allNames = pool.empoweredCards || [];
   const selected = Array.from(new Set((selectedNames || []).filter((name) => allNames.includes(name))));
   if (!selected.length) return { anyExpected: 0, allExpected: 0, allProbAtCap: 0 };
@@ -2747,7 +2785,10 @@ function calcNonRepeatExchangeFavoredSetMetrics(pool, selectedNames) {
   const presetMask = getPresetOwnedMask(pool);
   const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
   const cap = getFavoredProgressCap(pool, selected);
-  const maxDraw = Math.max(cap * 4, 1200);
+  const maxDraw =
+    isNonRepeatEmpoweredPool(pool) && pool.progressionType !== "exchange_badge"
+      ? Math.max(1200, Math.ceil((allNames.length / Math.max(pAny, 0.0001)) * 4))
+      : Math.max(cap * 4, 1200);
   let states = new Map([[presetMask, 1]]);
   let prevAnyCDF = (presetMask & selectedMask) !== 0 ? 1 : 0;
   let prevAllCDF = (presetMask & selectedMask) === selectedMask ? 1 : 0;
@@ -2773,7 +2814,7 @@ function calcNonRepeatExchangeFavoredSetMetrics(pool, selectedNames) {
       }
     });
 
-    if (draw === cap) {
+    if (pool.progressionType === "exchange_badge" && draw === cap) {
       const selectPool = getExchangeSelectPoolForCap(pool, cap);
       const selectMask = selectPool.reduce((mask, name) => {
         const idx = allNames.indexOf(name);
@@ -3456,6 +3497,20 @@ function getPullCostForRange(startPulls, count, pool = getCurrentPool()) {
   const total = Math.max(0, Math.floor(Number(count) || 0));
   if (total <= 0) return 0;
   const basePrice = getPoolPricePerPull(pool);
+  const freeCfg = pool.bonusFreePullConfig || null;
+  if (freeCfg) {
+    const paidPulls = Math.max(0, Math.floor(Number(freeCfg.paidPulls) || 0));
+    const freePulls = Math.max(0, Math.floor(Number(freeCfg.freePulls) || 0));
+    const cycle = paidPulls + freePulls;
+    if (cycle > 0 && paidPulls > 0) {
+      let paidCount = 0;
+      for (let offset = 0; offset < total; offset += 1) {
+        const cycleIndex = (start + offset) % cycle;
+        if (cycleIndex < paidPulls) paidCount += 1;
+      }
+      return paidCount * basePrice;
+    }
+  }
   if (!isDiscountLimitedPool(pool) || !pool.discountPullLimit || !pool.discountPricePerPull) {
     return total * basePrice;
   }
@@ -3500,7 +3555,9 @@ function getFavoredHitProbabilityByDrawCount(drawCount) {
   }
 
   let cdf = 0;
-  if (isChainPool()) {
+  if (isNonRepeatEmpoweredPool(pool)) {
+    cdf = calcNonRepeatEmpoweredSpecificHitCDF(pool, drawCount, normalizedTarget);
+  } else if (isChainPool()) {
     cdf = calcChainSpecificCDF(drawCount, normalizedTarget);
   } else if (isShopPackagePool(pool)) {
     cdf = calcShopPackageSpecificHitCDF(pool, drawCount, normalizedTarget);
@@ -3534,7 +3591,9 @@ function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
   }
 
   let cdf = 0;
-  if (isChainPool()) {
+  if (isNonRepeatEmpoweredPool(pool)) {
+    cdf = calcNonRepeatEmpoweredSpecificHitCDF(pool, drawCount, targetName);
+  } else if (isChainPool()) {
     cdf = calcChainSpecificCDF(drawCount, targetName);
   } else if (isShopPackagePool(pool)) {
     cdf = calcShopPackageSpecificHitCDF(pool, drawCount, targetName);
@@ -3888,8 +3947,8 @@ function calcShopPackageFavoredSetMetrics(pool, selectedNames) {
 
 function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
   const selected = Array.from(new Set((selectedNames || []).filter(Boolean)));
-  if (isNonRepeatExchangePool(pool)) {
-    return calcNonRepeatExchangeFavoredSetMetrics(pool, selected);
+  if (isNonRepeatEmpoweredPool(pool)) {
+    return calcNonRepeatEmpoweredFavoredSetMetrics(pool, selected);
   }
   const cap = getFavoredProgressCap(pool, selected);
   const maxDraw = Math.max(cap * 4, 1200);
@@ -4242,12 +4301,12 @@ function getFavoredSetExpectedMetrics(selectedNames) {
     };
     return favoredSetMetricsCache[key];
   }
-  if (isNonRepeatExchangePool(pool)) {
+  if (isNonRepeatEmpoweredPool(pool)) {
     const normalizedNames = uniq.slice().sort();
     const key = `${getProbabilityVariantKey(pool)}|${normalizedNames.join(",")}`;
     if (favoredSetMetricsCache[key]) return favoredSetMetricsCache[key];
     const cap = getFavoredProgressCap(pool, normalizedNames);
-    const exact = calcNonRepeatExchangeFavoredSetMetrics(pool, normalizedNames);
+    const exact = calcNonRepeatEmpoweredFavoredSetMetrics(pool, normalizedNames);
     favoredSetMetricsCache[key] = {
       anyExpected: exact.anyExpected,
       allExpected: exact.allExpected,
@@ -4566,7 +4625,9 @@ function getSpecificCountAtLeastProbabilityByDrawCount(drawCount, targetName, ta
   }
 
   let cdf = 0;
-  if (pool.progressionType === "accumulated_target") {
+  if (isNonRepeatEmpoweredPool(pool)) {
+    cdf = calcNonRepeatEmpoweredSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
+  } else if (pool.progressionType === "accumulated_target") {
     cdf = calcAccumulatedGuaranteeSpecificCountAtLeastCDF(pool, drawCount, targetCount);
   } else if (isShopPackagePool(pool)) {
     cdf = calcShopPackageSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
@@ -4717,12 +4778,12 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
     return clamp01(cdf);
   }
 
-  if (isNonRepeatExchangePool(pool)) {
+  if (isNonRepeatEmpoweredPool(pool)) {
     const initialOwned = getPresetOwnedNames().length;
     const total = allNames.length;
     if (targetUniqueCount <= initialOwned) return 1;
     const pAny = clamp01(getBaseEmpoweredProbability(pool.poolConfig || []));
-    const cap = 470;
+    const cap = pool.progressionType === "exchange_badge" ? 470 : Infinity;
     let cdf = 0;
     for (let hits = 0; hits <= progressCount; hits += 1) {
       const hitProb =
@@ -4736,7 +4797,7 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
             calcBinomialAtLeast(progressCount, pAny, hits + 1);
       if (pmf <= 0) continue;
       let uniqueCount = initialOwned + Math.min(hits, Math.max(0, total - initialOwned));
-      if (progressCount >= cap && uniqueCount < total) {
+      if (Number.isFinite(cap) && progressCount >= cap && uniqueCount < total) {
         uniqueCount += 1;
       }
       if (uniqueCount >= targetUniqueCount) cdf += pmf;
@@ -5013,6 +5074,16 @@ function getExpectedDrawMetrics() {
     };
   }
 
+  if (isNonRepeatEmpoweredPool(pool)) {
+    const refTarget = getCurrentFavoredTargetName() || (pool.empoweredCards || [])[0] || "";
+    return {
+      baseAny,
+      baseSpecific,
+      giftAny: baseAny,
+      giftSpecific: refTarget ? calcNonRepeatEmpoweredSpecificExpected(pool, refTarget) : baseSpecific,
+    };
+  }
+
   if (pool.progressionType === "milestone") {
     const withGift = calcMilestoneWithGiftExpected(pool, empoweredCount);
     return {
@@ -5048,6 +5119,7 @@ function getFavoredExpectedSpecific() {
   if (
     isSeasonPool() ||
     isAccumulatedGuaranteePool() ||
+    isNonRepeatEmpoweredPool() ||
     getCurrentPool().progressionType === "milestone" ||
     getCurrentPool().progressionType === "exchange_badge"
   ) {
@@ -6109,11 +6181,14 @@ function getCurrentRollPoolConfig() {
   return boostedConfig;
 }
 
-function rollBaseCard() {
+function rollBaseCard(excludedEmpoweredNames = []) {
   const pool = getCurrentPool();
-  const empoweredCards = isNonRepeatExchangePool(pool)
+  const excluded = new Set(excludedEmpoweredNames || []);
+  const baseEmpoweredCards = isNonRepeatEmpoweredPool(pool)
     ? getCurrentAvailableEmpoweredNames(pool)
     : pool.empoweredCards || [];
+  let empoweredCards = baseEmpoweredCards.filter((name) => !excluded.has(name));
+  if (!empoweredCards.length) empoweredCards = baseEmpoweredCards;
   const poolConfig = getCurrentRollPoolConfig();
   const r = Math.random();
   let cumulative = 0;
@@ -6145,7 +6220,7 @@ function createEmpoweredCard(specifiedName) {
   const pool = getCurrentPool();
   const empoweredCards = pool.empoweredCards || [];
   const candidateNames =
-    specifiedName || !isNonRepeatExchangePool(pool)
+    specifiedName || !isNonRepeatEmpoweredPool(pool)
       ? empoweredCards
       : getCurrentAvailableEmpoweredNames(pool);
   const name = specifiedName || randomFromArray(candidateNames);
@@ -6716,9 +6791,14 @@ function tenPull() {
   pendingFavoredHitEvent = null;
   if (!spendGoldForPulls(10)) return;
   const batch = [];
+  const batchEmpoweredNames = [];
 
   for (let i = 0; i < 10; i += 1) {
-    batch.push(rollBaseCard());
+    const card = rollBaseCard(batchEmpoweredNames);
+    batch.push(card);
+    if (card.type === "empowered" && card.name) {
+      batchEmpoweredNames.push(card.name);
+    }
   }
 
   if (TEN_PULL_GUARANTEE_ENABLED) {
@@ -7112,6 +7192,10 @@ function isNonRepeatExchangePool(pool = getCurrentPool()) {
   );
 }
 
+function isNonRepeatEmpoweredPool(pool = getCurrentPool()) {
+  return isNonRepeatExchangePool(pool) || Boolean(pool.nonRepeatEmpowered);
+}
+
 function getOwnedEmpoweredMap(stateObj = state, pool = getCurrentPool()) {
   const names = pool.empoweredCards || [];
   const base = stateObj?.ownedEmpoweredNames || {};
@@ -7133,7 +7217,7 @@ function getPresetOwnedKey(pool = getCurrentPool(), stateObj = state) {
 }
 
 function getProbabilityVariantKey(pool = getCurrentPool(), stateObj = state) {
-  if (!isNonRepeatExchangePool(pool)) return activePoolKey;
+  if (!isNonRepeatEmpoweredPool(pool)) return activePoolKey;
   return `${activePoolKey}|owned:${getPresetOwnedKey(pool, stateObj)}`;
 }
 
@@ -7147,7 +7231,7 @@ function getCurrentOwnedEmpoweredNames(pool = getCurrentPool(), stateObj = state
 
 function getCurrentAvailableEmpoweredNames(pool = getCurrentPool(), stateObj = state) {
   const names = (pool.empoweredCards || []).slice();
-  if (!isNonRepeatExchangePool(pool)) return names;
+  if (!isNonRepeatEmpoweredPool(pool)) return names;
   const owned = getCurrentOwnedEmpoweredNames(pool, stateObj);
   if (owned.size >= names.length) return names;
   return names.filter((name) => !owned.has(name));
@@ -8000,7 +8084,7 @@ function renderProbabilities() {
           tbody.appendChild(tr);
         });
       }
-      if (isNonRepeatExchangePool()) {
+      if (isNonRepeatEmpoweredPool()) {
         const ownedNames = getCurrentOwnedEmpoweredNames();
         namesSpan.textContent = empoweredCards
           .map((name) => (ownedNames.has(name) ? `${name}（已拥有）` : name))
@@ -8365,6 +8449,20 @@ function renderPityTracker() {
   if (isDiscountLimitedPool()) {
     const cap = getPoolPullCap();
     const total = Math.max(0, Number(state.totalPulls) || 0);
+    const freeCfg = getCurrentPool().bonusFreePullConfig || null;
+    if (freeCfg) {
+      const paidPulls = Math.max(0, Math.floor(Number(freeCfg.paidPulls) || 0));
+      const freePulls = Math.max(0, Math.floor(Number(freeCfg.freePulls) || 0));
+      const cycle = paidPulls + freePulls;
+      const cycleIndex = cycle > 0 ? total % cycle : 0;
+      const nextTenCost = getPullCostForRange(total, 10);
+      textEl.textContent =
+        cycle > 0
+          ? `买${paidPulls}送${freePulls}：本轮第 ${cycleIndex + 1}/${cycle} 抽，下一次十连 ${nextTenCost} 金币`
+          : `下一次十连 ${nextTenCost} 金币`;
+      fillEl.style.width = cycle > 0 ? `${Math.max(0, Math.min(100, (cycleIndex / cycle) * 100))}%` : "0%";
+      return;
+    }
     if (cap <= 0) {
       const discountLimit = Math.max(0, Number(getCurrentPool().discountPullLimit) || 0);
       const remainingDiscount = Math.max(0, discountLimit - total);
@@ -8772,6 +8870,7 @@ function renderMilestonesTable() {
     const pool = getCurrentPool();
     const cap = getPoolPullCap(pool);
     const discountLimit = Math.max(0, Number(pool.discountPullLimit) || 0);
+    const freeCfg = pool.bonusFreePullConfig || null;
     const rows = [
       { pulls: "每次十连", text: "保证至少 1 名 5星球员" },
       {
@@ -8780,11 +8879,16 @@ function renderMilestonesTable() {
       },
       {
         pulls: "折扣说明",
-        text: discountLimit > 0
+        text: freeCfg
+          ? `买 ${freeCfg.paidPulls} 抽送 ${freeCfg.freePulls} 抽，赠送抽不消耗金币`
+          : discountLimit > 0
           ? `前 ${discountLimit} 抽 7 折，之后恢复原价`
           : `单次十连消耗 ${getPullCostForRange(0, 10, pool)} 金币`,
       },
     ];
+    if (isNonRepeatEmpoweredPool(pool)) {
+      rows.push({ pulls: "增能机制", text: "增能卡不重复，集齐前不会重复获得已出的增能卡" });
+    }
     if (isHighlightTicketPool()) {
       rows.push({ pulls: "高光券", text: getHighlightTicketDescription().replace(/^高光券：/, "") });
     }
