@@ -1901,7 +1901,7 @@ const POOL_PLAYER_META = {
     尼科帕斯: { type: "ST", position: "前腰" },
     伊尔迪兹: { type: "ST", position: "左前卫" },
     内托: { type: "ST", position: "左前卫" },
-    阿利松: { type: "BT", position: "门将" },
+    阿利松: { type: "ST", position: "门将" },
   },
   genius_chain_bundle: {
     贝斯特: { type: "BT", position: "右边锋" },
