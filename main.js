@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.06.19.1";
+  "2026.06.21.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -844,6 +844,32 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  missing_shield_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "缺失的坚盾兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["布冯", "托纳利", "卡拉菲奥里", "卡纳瓦罗", "马尔蒂尼", "基耶利尼", "帕努奇"],
+    exchangeConfig: {
+      specificPlayers: ["布冯", "卡纳瓦罗", "马尔蒂尼"],
+      fixedSelect42: null,
+      select47Players: ["布冯", "卡纳瓦罗", "马尔蒂尼"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["布冯", "卡纳瓦罗", "马尔蒂尼"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   five_star_samba_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -1568,6 +1594,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.missing_shield_exchange && "missing_shield_exchange") ||
   (POOLS.five_star_samba_exchange && "five_star_samba_exchange") ||
   (POOLS.lonely_hero_exchange && "lonely_hero_exchange") ||
   (POOLS.first_round_focus_discount && "first_round_focus_discount") ||
@@ -1638,6 +1665,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   summit_duel_exchange: ["assets/巅峰对决"],
   blue_warrior_exchange: ["assets/蓝衣战神"],
   rebuild_glory_exchange: ["assets/重塑辉煌"],
+  missing_shield_exchange: ["assets/缺失的坚盾"],
   five_star_samba_exchange: ["assets/五星桑巴"],
   lonely_hero_exchange: ["assets/孤胆英雄"],
   new_king_road_one_exchange: ["assets/新王之路壹"],
@@ -1911,6 +1939,15 @@ const POOL_PLAYER_META = {
     费迪南德: { type: "史诗", position: "中后卫" },
     埃尔文: { type: "史诗", position: "左后卫" },
     罗布森: { type: "史诗", position: "中前卫" },
+ },
+ missing_shield_exchange: {
+   布冯: { type: "BT", position: "门将" },
+   托纳利: { type: "ST", position: "中前卫" },
+   卡拉菲奥里: { type: "ST", position: "左后卫" },
+   卡纳瓦罗: { type: "史诗", position: "中后卫" },
+   马尔蒂尼: { type: "史诗", position: "左后卫" },
+   基耶利尼: { type: "史诗", position: "中后卫" },
+   帕努奇: { type: "史诗", position: "右后卫" },
  },
  five_star_samba_exchange: {
    贝利: { type: "史诗", position: "中锋" },
