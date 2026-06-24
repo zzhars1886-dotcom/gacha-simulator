@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.06.21.1";
+  "2026.06.24.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -844,6 +844,31 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  final_round_breakout_gift: {
+    poolType: "accumulated_gift",
+    progressionType: "milestone",
+    name: "末轮突围累抽赠礼",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["蒂亚戈", "菲戈", "科尔多巴", "科勒", "里贝里", "马凯", "马克思"],
+    exchangeBonusGiftConfig: {
+      everyPulls: 30,
+      chance: 0.1,
+      label: "10%随机增能卡包",
+      sourceLabel: "每30抽10%随机增能卡包",
+    },
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   missing_shield_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -1594,6 +1619,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.final_round_breakout_gift && "final_round_breakout_gift") ||
   (POOLS.missing_shield_exchange && "missing_shield_exchange") ||
   (POOLS.five_star_samba_exchange && "five_star_samba_exchange") ||
   (POOLS.lonely_hero_exchange && "lonely_hero_exchange") ||
@@ -1665,6 +1691,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   summit_duel_exchange: ["assets/巅峰对决"],
   blue_warrior_exchange: ["assets/蓝衣战神"],
   rebuild_glory_exchange: ["assets/重塑辉煌"],
+  final_round_breakout_gift: ["assets/末轮突围"],
   missing_shield_exchange: ["assets/缺失的坚盾"],
   five_star_samba_exchange: ["assets/五星桑巴"],
   lonely_hero_exchange: ["assets/孤胆英雄"],
@@ -1939,6 +1966,15 @@ const POOL_PLAYER_META = {
     费迪南德: { type: "史诗", position: "中后卫" },
     埃尔文: { type: "史诗", position: "左后卫" },
     罗布森: { type: "史诗", position: "中前卫" },
+ },
+ final_round_breakout_gift: {
+   蒂亚戈: { type: "史诗", position: "中前卫" },
+   菲戈: { type: "史诗", position: "右边锋" },
+   科尔多巴: { type: "史诗", position: "中后卫" },
+   科勒: { type: "史诗", position: "中锋" },
+   里贝里: { type: "史诗", position: "左前卫" },
+   马凯: { type: "史诗", position: "中锋" },
+   马克思: { type: "史诗", position: "中后卫" },
  },
  missing_shield_exchange: {
    布冯: { type: "BT", position: "门将" },
@@ -3046,9 +3082,16 @@ function calcMilestoneWithGiftExpected(pool, empoweredCount) {
 
   const stepProbsAny = [];
   const stepProbsSpecific = [];
+  const bonusCfg = getExchangeBonusGiftConfig(pool);
+  const bonusAny = bonusCfg ? bonusCfg.chance : 0;
+  const bonusSpecific = bonusCfg && empoweredCount > 0 ? bonusCfg.chance / empoweredCount : 0;
   for (let pulls = 1; pulls <= 500; pulls += 1) {
     let failAny = 1 - drawAny;
     let failSpecific = 1 - drawSpecific;
+    if (bonusCfg && pulls % bonusCfg.everyPulls === 0) {
+      failAny *= 1 - bonusAny;
+      failSpecific *= 1 - bonusSpecific;
+    }
     const rewards = rewardsByPull[pulls] || [];
     rewards.forEach((reward) => {
       const hit = getMilestoneRewardHitProb(reward, pool, empoweredCount);
@@ -3458,9 +3501,14 @@ function calcMilestoneSpecificHitCDF(pool, targetDraws, targetName = "") {
       rewardsByPull[m.pulls].push(m);
     });
 
+  const bonusGiftCfg = getExchangeBonusGiftConfig(pool);
+  const bonusGiftSpecific = bonusGiftCfg && empoweredCount > 0 ? bonusGiftCfg.chance / empoweredCount : 0;
   let survive = 1;
   for (let pull = 1; pull <= targetDraws; pull += 1) {
     let failThisPull = 1 - drawSpecific;
+    if (bonusGiftCfg && pull % bonusGiftCfg.everyPulls === 0) {
+      failThisPull *= 1 - bonusGiftSpecific;
+    }
     const rewards = rewardsByPull[pull] || [];
     rewards.forEach((reward) => {
       if (reward.type === "empowered_chance") {
@@ -6536,6 +6584,7 @@ function processProgressionRewardsIfNeeded() {
     unlockAccumulatedGuaranteeIfNeeded();
     return;
   }
+  unlockExchangeBonusGiftsIfNeeded();
   unlockMilestonesIfNeeded();
 }
 
