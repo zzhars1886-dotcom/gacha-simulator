@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.06.24.1";
+  "2026.06.26.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -844,6 +844,32 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  needle_against_wheat_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "针尖对麦芒兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["楚阿梅尼", "厄德高", "哈兰德", "坎通纳", "马克莱莱", "萨利巴", "图拉姆"],
+    exchangeConfig: {
+      specificPlayers: ["坎通纳", "马克莱莱", "图拉姆"],
+      fixedSelect42: null,
+      select47Players: ["坎通纳", "马克莱莱", "图拉姆"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["坎通纳", "马克莱莱", "图拉姆"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   final_round_breakout_gift: {
     poolType: "accumulated_gift",
     progressionType: "milestone",
@@ -1619,6 +1645,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.needle_against_wheat_exchange && "needle_against_wheat_exchange") ||
   (POOLS.final_round_breakout_gift && "final_round_breakout_gift") ||
   (POOLS.missing_shield_exchange && "missing_shield_exchange") ||
   (POOLS.five_star_samba_exchange && "five_star_samba_exchange") ||
@@ -1691,6 +1718,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   summit_duel_exchange: ["assets/巅峰对决"],
   blue_warrior_exchange: ["assets/蓝衣战神"],
   rebuild_glory_exchange: ["assets/重塑辉煌"],
+  needle_against_wheat_exchange: ["assets/针尖对麦芒"],
   final_round_breakout_gift: ["assets/末轮突围"],
   missing_shield_exchange: ["assets/缺失的坚盾"],
   five_star_samba_exchange: ["assets/五星桑巴"],
@@ -1966,6 +1994,15 @@ const POOL_PLAYER_META = {
     费迪南德: { type: "史诗", position: "中后卫" },
     埃尔文: { type: "史诗", position: "左后卫" },
     罗布森: { type: "史诗", position: "中前卫" },
+ },
+ needle_against_wheat_exchange: {
+   楚阿梅尼: { type: "ST", position: "后腰" },
+   厄德高: { type: "ST", position: "中前卫" },
+   哈兰德: { type: "ST", position: "中锋" },
+   坎通纳: { type: "史诗", position: "中锋" },
+   马克莱莱: { type: "史诗", position: "后腰" },
+   萨利巴: { type: "ST", position: "中后卫" },
+   图拉姆: { type: "史诗", position: "右后卫" },
  },
  final_round_breakout_gift: {
    蒂亚戈: { type: "史诗", position: "中前卫" },
