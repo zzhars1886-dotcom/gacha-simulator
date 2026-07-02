@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.06.26.1";
+  "2026.07.02.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -844,6 +844,30 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  knockout_road_discount: {
+    poolType: "discount_no_guarantee",
+    progressionType: "discount_limited",
+    name: "淘汰赛之路7折",
+    pricePerPull: 100,
+    discountPricePerPull: 70,
+    discountPullLimit: 30,
+    maxPullsPerReset: 0,
+    allowedDrawBatch: 10,
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["阿尔巴", "巴蒂斯图塔", "巴尔胡安", "杰拉德", "卡布伦", "内德维德", "斯塔姆"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   needle_against_wheat_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -1645,6 +1669,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.knockout_road_discount && "knockout_road_discount") ||
   (POOLS.needle_against_wheat_exchange && "needle_against_wheat_exchange") ||
   (POOLS.final_round_breakout_gift && "final_round_breakout_gift") ||
   (POOLS.missing_shield_exchange && "missing_shield_exchange") ||
@@ -1718,6 +1743,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   summit_duel_exchange: ["assets/巅峰对决"],
   blue_warrior_exchange: ["assets/蓝衣战神"],
   rebuild_glory_exchange: ["assets/重塑辉煌"],
+  knockout_road_discount: ["assets/淘汰赛之路"],
   needle_against_wheat_exchange: ["assets/针尖对麦芒"],
   final_round_breakout_gift: ["assets/末轮突围"],
   missing_shield_exchange: ["assets/缺失的坚盾"],
@@ -1994,6 +2020,15 @@ const POOL_PLAYER_META = {
     费迪南德: { type: "史诗", position: "中后卫" },
     埃尔文: { type: "史诗", position: "左后卫" },
     罗布森: { type: "史诗", position: "中前卫" },
+ },
+ knockout_road_discount: {
+   阿尔巴: { type: "史诗", position: "左后卫" },
+   巴蒂斯图塔: { type: "史诗", position: "中锋" },
+   巴尔胡安: { type: "史诗", position: "左后卫" },
+   杰拉德: { type: "史诗", position: "中前卫" },
+   卡布伦: { type: "史诗", position: "右前卫" },
+   内德维德: { type: "史诗", position: "前腰" },
+   斯塔姆: { type: "史诗", position: "中后卫" },
  },
  needle_against_wheat_exchange: {
    楚阿梅尼: { type: "ST", position: "后腰" },
