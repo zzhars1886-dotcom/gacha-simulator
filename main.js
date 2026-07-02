@@ -844,6 +844,32 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  pitch_dragon_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "球场游龙兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["阿扎尔", "K77", "多纳多尼", "普斯卡什", "埃基蒂克", "居莱尔", "维蒂尼亚"],
+    exchangeConfig: {
+      specificPlayers: ["阿扎尔", "K77", "维蒂尼亚"],
+      fixedSelect42: null,
+      select47Players: ["阿扎尔", "K77", "维蒂尼亚"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["阿扎尔", "K77", "维蒂尼亚"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   knockout_road_discount: {
     poolType: "discount_no_guarantee",
     progressionType: "discount_limited",
@@ -1669,6 +1695,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.pitch_dragon_exchange && "pitch_dragon_exchange") ||
   (POOLS.knockout_road_discount && "knockout_road_discount") ||
   (POOLS.needle_against_wheat_exchange && "needle_against_wheat_exchange") ||
   (POOLS.final_round_breakout_gift && "final_round_breakout_gift") ||
@@ -1743,6 +1770,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   summit_duel_exchange: ["assets/巅峰对决"],
   blue_warrior_exchange: ["assets/蓝衣战神"],
   rebuild_glory_exchange: ["assets/重塑辉煌"],
+  pitch_dragon_exchange: ["assets/球场游龙"],
   knockout_road_discount: ["assets/淘汰赛之路"],
   needle_against_wheat_exchange: ["assets/针尖对麦芒"],
   final_round_breakout_gift: ["assets/末轮突围"],
@@ -2029,6 +2057,15 @@ const POOL_PLAYER_META = {
    卡布伦: { type: "史诗", position: "右前卫" },
    内德维德: { type: "史诗", position: "前腰" },
    斯塔姆: { type: "史诗", position: "中后卫" },
+ },
+ pitch_dragon_exchange: {
+   阿扎尔: { type: "BT", position: "前腰" },
+   K77: { type: "BT", position: "左边锋" },
+   多纳多尼: { type: "史诗", position: "中前卫" },
+   普斯卡什: { type: "史诗", position: "中锋" },
+   埃基蒂克: { type: "ST", position: "中锋" },
+   居莱尔: { type: "ST", position: "前腰" },
+   维蒂尼亚: { type: "ST", position: "后腰" },
  },
  needle_against_wheat_exchange: {
    楚阿梅尼: { type: "ST", position: "后腰" },
