@@ -870,6 +870,33 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  pitch_spirit_hall_road: {
+    poolType: "hall_road",
+    progressionType: "hall_road",
+    name: "球场精灵殿堂之路",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.01 },
+      { type: "star5", label: "五星普卡", probability: 0.04 },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: [
+      "内马尔","科曼","德罗西","卡福","巴乔","克鲁伊夫",
+      "欧文","安布罗西尼","埃德米尔森","奥多","朴智星","菲奥雷","比利亚","劳尔",
+      "范布隆克霍斯特","佩鲁齐","因扎吉","李金羽","郜林","冯潇霆",
+      "贝克汉姆","瓜迪奥拉","罗西基","拜亚","阿比亚蒂","埃尔文","加西亚","科斯塔",
+      "塞尔吉奥","贝尔","西尔维斯特","阿扎尔","范尼","马克斯","索乌","邓普西",
+      "阿布拉杜","科尔","车范根","萨利",
+    ],
+    hallRoadLegend: "小罗",
+    hallRoadSuperstar: ["内马尔","科曼","德罗西","卡福","巴乔","克鲁伊夫"],
+    hallRoadSuper: ["欧文","安布罗西尼","埃德米尔森","奥多","朴智星","菲奥雷","比利亚","劳尔","范布隆克霍斯特","佩鲁齐","因扎吉","李金羽","郜林","冯潇霆"],
+    hallRoadElite: ["贝克汉姆","瓜迪奥拉","罗西基","拜亚","阿比亚蒂","埃尔文","加西亚","科斯塔","塞尔吉奥","贝尔","西尔维斯特","阿扎尔","范尼","马克斯","索乌","邓普西","阿布拉杜","科尔","车范根","萨利"],
+    highlightTicketConfig: { probability: 0.1, batchSize: 10 },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   knockout_road_discount: {
     poolType: "discount_no_guarantee",
     progressionType: "discount_limited",
@@ -1695,6 +1722,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.pitch_spirit_hall_road && "pitch_spirit_hall_road") ||
   (POOLS.pitch_dragon_exchange && "pitch_dragon_exchange") ||
   (POOLS.knockout_road_discount && "knockout_road_discount") ||
   (POOLS.needle_against_wheat_exchange && "needle_against_wheat_exchange") ||
@@ -1742,6 +1770,7 @@ const POOL_TYPE_LABELS = {
   chain_bundle: "连锁礼包",
   season_carryover: "赛季累抽继承",
   accumulated_guarantee: "累抽必得",
+  hall_road: "殿堂之路",
 };
 
 const POOL_CINEMATIC_ASSET_FOLDERS = {
@@ -1759,6 +1788,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   wall_of_sighs_exchange: ["assets/叹息之墙"],
   red_black_eternal_exchange: ["assets/红黑不熄"],
   team_cornerstone_exchange: ["assets/球队基石"],
+  pitch_spirit_hall_road: ["assets/球场精灵"],
   double_red_meeting_exchange: ["assets/双红际会"],
   muscle_forest_exchange: ["assets/肌肉森林"],
   all_round_commander_exchange: ["assets/全能指挥官"],
@@ -2058,6 +2088,49 @@ const POOL_PLAYER_META = {
    内德维德: { type: "史诗", position: "前腰" },
    斯塔姆: { type: "史诗", position: "中后卫" },
  },
+ pitch_spirit_hall_road: {
+   小罗: { type: "史诗", position: "左边锋" },
+   内马尔: { type: "史诗", position: "左边锋" },
+   科曼: { type: "史诗", position: "中后卫" },
+   德罗西: { type: "史诗", position: "后腰" },
+   卡福: { type: "史诗", position: "右后卫" },
+   巴乔: { type: "史诗", position: "前腰" },
+   克鲁伊夫: { type: "史诗", position: "中锋" },
+   欧文: { type: "史诗", position: "中锋" },
+   安布罗西尼: { type: "史诗", position: "后腰" },
+   埃德米尔森: { type: "史诗", position: "后腰" },
+   奥多: { type: "史诗", position: "右后卫" },
+   朴智星: { type: "史诗", position: "左前卫" },
+   菲奥雷: { type: "史诗", position: "右前卫" },
+   比利亚: { type: "史诗", position: "中锋" },
+   劳尔: { type: "史诗", position: "中锋" },
+   范布隆克霍斯特: { type: "史诗", position: "左后卫" },
+   佩鲁齐: { type: "史诗", position: "门将" },
+   因扎吉: { type: "史诗", position: "中锋" },
+   李金羽: { type: "BT", position: "中锋" },
+   郜林: { type: "BT", position: "中锋" },
+   冯潇霆: { type: "BT", position: "中后卫" },
+   贝克汉姆: { type: "史诗", position: "右前卫" },
+   瓜迪奥拉: { type: "史诗", position: "后腰" },
+   罗西基: { type: "史诗", position: "前腰" },
+   拜亚: { type: "史诗", position: "门将" },
+   阿比亚蒂: { type: "史诗", position: "门将" },
+   埃尔文: { type: "史诗", position: "左后卫" },
+   加西亚: { type: "史诗", position: "右边锋" },
+   科斯塔: { type: "史诗", position: "中后卫" },
+   塞尔吉奥: { type: "史诗", position: "左前卫" },
+   贝尔: { type: "史诗", position: "右边锋" },
+   西尔维斯特: { type: "史诗", position: "左后卫" },
+   阿扎尔: { type: "史诗", position: "前腰" },
+   范尼: { type: "史诗", position: "中锋" },
+   马克斯: { type: "史诗", position: "中后卫" },
+   索乌: { type: "史诗", position: "中前卫" },
+   邓普西: { type: "史诗", position: "前腰" },
+   阿布拉杜: { type: "史诗", position: "中锋" },
+   科尔: { type: "史诗", position: "中锋" },
+   车范根: { type: "史诗", position: "中锋" },
+   萨利: { type: "史诗", position: "右后卫" },
+ },
  pitch_dragon_exchange: {
    阿扎尔: { type: "BT", position: "前腰" },
    K77: { type: "BT", position: "左边锋" },
@@ -2349,6 +2422,10 @@ function createInitialState(empoweredCards) {
     keyMoments: [],
     resetCount: 0,
     ownedEmpoweredNames,
+    hallPoints: 300,
+    hallDrawnPlayers: {},
+    hallSacrificeCounts: {},
+    hallMilestonesGranted: [],
   };
 }
 
@@ -3837,6 +3914,12 @@ function getFavoredHitProbabilityByDrawCount(drawCount) {
     cdf = calcMilestoneSpecificHitCDF(pool, drawCount, normalizedTarget);
   } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeSpecificHitCDF(pool, drawCount, normalizedTarget);
+  } else if (isHallRoadPool(pool)) {
+    const drawableNames = (pool.empoweredCards || []).filter(n => n !== (pool.hallRoadLegend || ""));
+    const n = drawableNames.length || 1;
+    const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
+    const pSpecific = drawableNames.includes(normalizedTarget) ? pAny / n : 0;
+    cdf = 1 - (1 - pSpecific) ** drawCount;
   } else {
     const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
     const pSpecific = names.length > 0 ? pAny / names.length : 0;
@@ -3873,6 +3956,12 @@ function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
     cdf = calcMilestoneSpecificHitCDF(pool, drawCount, targetName);
   } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeSpecificHitCDF(pool, drawCount, targetName);
+  } else if (isHallRoadPool(pool)) {
+    const drawableNames = (pool.empoweredCards || []).filter(n => n !== (pool.hallRoadLegend || ""));
+    const n = drawableNames.length || 1;
+    const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
+    const pSpecific = drawableNames.includes(targetName) ? pAny / n : 0;
+    cdf = 1 - (1 - pSpecific) ** drawCount;
   } else {
     const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
     const pSpecific = names.length > 0 ? pAny / names.length : 0;
@@ -6551,6 +6640,9 @@ function recordSingleDraw(card, source = "normal", options = {}) {
           state.empoweredCounts[card.name] = 0;
         }
         state.empoweredCounts[card.name] += 1;
+        if (isHallRoadPool() && countTowardsTotal) {
+          addHallPointsOnDraw(card.name);
+        }
         if (!state.empoweredDetails[card.name]) {
           state.empoweredDetails[card.name] = [];
         }
@@ -6676,6 +6768,10 @@ function recordSingleDraw(card, source = "normal", options = {}) {
 
 function processProgressionRewardsIfNeeded() {
   const pool = getCurrentPool();
+  if (pool.progressionType === "hall_road") {
+    unlockHallRoadMilestonesIfNeeded();
+    return;
+  }
   if (pool.progressionType === "shop_package") {
     unlockShopPackageRewardsIfNeeded();
     return;
@@ -7384,6 +7480,10 @@ function isAccumulatedGuaranteePool() {
 
 function isShopPackagePool(pool = getCurrentPool()) {
   return pool.progressionType === "shop_package";
+}
+
+function isHallRoadPool(pool = getCurrentPool()) {
+  return (pool || getCurrentPool()).progressionType === "hall_road";
 }
 
 function isHighlightTicketPool(pool = getCurrentPool()) {
@@ -9520,6 +9620,7 @@ function renderAll() {
   renderQuickButtonsByPool();
   renderDrawPanelByPool();
   renderResults();
+  renderHallRoadPanel();
   renderMomentPreview();
   const btnSingle = document.getElementById("btnSingle");
   const btnTen = document.getElementById("btnTen");
@@ -9979,9 +10080,148 @@ function bindEvents() {
       exchangeAnySelectWithSkinReward();
     });
   }
+  const btnHallSacrifice = document.getElementById("btnHallSacrifice");
+  if (btnHallSacrifice) {
+    btnHallSacrifice.addEventListener("click", () => {
+      const sel = document.getElementById("hallSacrificeChoice");
+      if (sel && sel.value) sacrificeHallPlayer(sel.value);
+    });
+  }
 }
 
 // ================= 初始化 =================
+
+// ================= 殿堂之路系统 =================
+
+function getHallSacrificeValue(name, pool = getCurrentPool()) {
+  if (!isHallRoadPool(pool)) return 0;
+  if ((pool.hallRoadLegend || "") === name) return 1000;
+  const base = (pool.hallRoadSuperstar || []).includes(name) ? 600
+    : (pool.hallRoadSuper || []).includes(name) ? 500
+    : 400;
+  const times = (state.hallSacrificeCounts || {})[name] || 0;
+  const extra = times > 0 ? 180 : 0;
+  return base + extra;
+}
+
+function getHallDrawPointValue(name, pool = getCurrentPool()) {
+  if (!isHallRoadPool(pool)) return 0;
+  if ((pool.hallRoadLegend || "") === name) return 1000;
+  const drawn = state.hallDrawnPlayers || {};
+  const alreadyDrawn = Array.from(new Set(Object.keys(drawn).filter(k => drawn[k])));
+  if (alreadyDrawn.includes(name)) return 150;
+  return alreadyDrawn.length < 3 ? 300 : 150;
+}
+
+function addHallPointsOnDraw(name, pool = getCurrentPool()) {
+  if (!isHallRoadPool(pool)) return;
+  if ((pool.hallRoadLegend || "") === name) return;
+  state.hallDrawnPlayers = state.hallDrawnPlayers || {};
+  if (!state.hallDrawnPlayers[name]) state.hallDrawnPlayers[name] = 0;
+  state.hallDrawnPlayers[name] += 1;
+  const pts = getHallDrawPointValue(name, pool);
+  state.hallPoints = Math.max(0, (state.hallPoints || 300)) + pts;
+  unlockHallRoadMilestonesIfNeeded();
+  renderAll();
+}
+
+function sacrificeHallPlayer(name) {
+  const pool = getCurrentPool();
+  if (!isHallRoadPool(pool) || !name) return;
+  const points = getHallSacrificeValue(name, pool);
+  state.hallSacrificeCounts = state.hallSacrificeCounts || {};
+  state.hallSacrificeCounts[name] = (state.hallSacrificeCounts[name] || 0) + 1;
+  state.hallPoints = Math.max(0, (state.hallPoints || 300)) + points;
+  const empoweredCounts = state.empoweredCounts || {};
+  const empoweredDetails = state.empoweredDetails || {};
+  if (empoweredCounts[name] > 0) {
+    empoweredCounts[name] -= 1;
+    if (empoweredDetails[name] && empoweredDetails[name].length > 0) {
+      empoweredDetails[name].pop();
+    }
+    state.stats.empowered = Math.max(0, (state.stats.empowered || 0) - 1);
+    const goldStats = getGoldStats();
+    goldStats.empowered = Math.max(0, (goldStats.empowered || 0) - 1);
+    const goldCounts = getGoldEmpoweredCounts();
+    if (goldCounts[name] != null && goldCounts[name] > 0) goldCounts[name] -= 1;
+  }
+  unlockHallRoadMilestonesIfNeeded();
+  renderAll();
+}
+
+function unlockHallRoadMilestonesIfNeeded() {
+  const pool = getCurrentPool();
+  if (!isHallRoadPool(pool)) return;
+  const pts = Math.max(0, state.hallPoints || 300);
+  const milestones = [500, 1000, 2000, 3000, 5500];
+  state.hallMilestonesGranted = state.hallMilestonesGranted || [];
+  milestones.forEach((target) => {
+    if (pts >= target && !state.hallMilestonesGranted.includes(target)) {
+      state.hallMilestonesGranted.push(target);
+      if (target === 5500) {
+        const card = createEmpoweredCard(pool.hallRoadLegend || "小罗");
+        recordSingleDraw(card, `殿堂值满${target}`, { countTowardsTotal: false });
+      } else if (target === 3000) {
+        state.pendingSelectRewardCount = (state.pendingSelectRewardCount || 0) + 1;
+        state.pendingSelectMilestones = state.pendingSelectMilestones || [];
+        state.pendingSelectMilestones.push({
+          pulls: target,
+          sourceLabel: `殿堂值满${target}自选`,
+          candidateNames: (pool.empoweredCards || []).slice(),
+        });
+      } else {
+        const draws = Math.round(target / 50);
+        for (let i = 0; i < draws; i += 1) {
+          const card = createEmpoweredCard();
+          recordSingleDraw(card, `殿堂值${target}奖励`, { countTowardsTotal: false });
+        }
+      }
+    }
+  });
+}
+
+function getHallSacrificeCandidates() {
+  const pool = getCurrentPool();
+  if (!isHallRoadPool(pool)) return [];
+  const counts = state.empoweredCounts || {};
+  return (pool.empoweredCards || []).filter(name => (counts[name] || 0) > 0);
+}
+
+function renderHallRoadPanel() {
+  const panel = document.getElementById("hallRoadPanel");
+  if (!panel) return;
+  const pool = getCurrentPool();
+  if (!isHallRoadPool(pool)) { panel.classList.add("hidden"); return; }
+  panel.classList.remove("hidden");
+  const pts = Math.max(0, state.hallPoints || 300);
+  const ptsEl = document.getElementById("hallPointsValue");
+  if (ptsEl) ptsEl.textContent = pts;
+  const pct = Math.min(100, (pts / 5500) * 100);
+  const fill = document.getElementById("hallPointsFill");
+  if (fill) fill.style.width = pct + "%";
+  const milestones = [500, 1000, 2000, 3000, 5500];
+  const milestonesList = document.getElementById("hallMilestonesList");
+  if (milestonesList) {
+    milestonesList.innerHTML = milestones.map((m) => {
+      const achieved = pts >= m || (state.hallMilestonesGranted || []).includes(m);
+      let label = m === 5500 ? `${m} 殿堂值 - 获得小罗` :
+        m === 3000 ? `${m} 殿堂值 - 自选40增能卡之一` :
+        `${m} 殿堂值 - 送10抽`;
+      return `<li class="${achieved ? 'achieved' : ''}">${achieved ? '✅ ' : ''}${label}</li>`;
+    }).join("");
+  }
+  const sacrificeSel = document.getElementById("hallSacrificeChoice");
+  if (sacrificeSel) {
+    const candidates = getHallSacrificeCandidates();
+    sacrificeSel.innerHTML = candidates.map((name) => {
+      const value = getHallSacrificeValue(name);
+      const count = (state.empoweredCounts || {})[name] || 0;
+      return `<option value="${name}">${name} (×${count}, +${value}殿堂值)</option>`;
+    }).join("");
+    const btn = document.getElementById("btnHallSacrifice");
+    if (btn) btn.disabled = candidates.length === 0;
+  }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAppSync();
