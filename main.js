@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.05.1";
+  "2026.07.05.2";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -3889,7 +3889,7 @@ function getRemainingPullSlots(pool = getCurrentPool()) {
 
 function getFavoredHitProbabilityByDrawCount(drawCount) {
   const pool = getCurrentPool();
-  const names = isChainPool() ? getEmpoweredStatNames() : pool.empoweredCards || [];
+  const names = getEmpoweredStatNames();
   if (!names.length || drawCount <= 0) return 0;
   const targetName = getCurrentFavoredTargetName();
   const normalizedTarget = targetName && names.includes(targetName) ? targetName : names[0];
@@ -3915,11 +3915,7 @@ function getFavoredHitProbabilityByDrawCount(drawCount) {
   } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeSpecificHitCDF(pool, drawCount, normalizedTarget);
   } else if (isHallRoadPool(pool)) {
-    const drawableNames = (pool.empoweredCards || []).filter(n => n !== (pool.hallRoadLegend || ""));
-    const n = drawableNames.length || 1;
-    const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
-    const pSpecific = drawableNames.includes(normalizedTarget) ? pAny / n : 0;
-    cdf = 1 - (1 - pSpecific) ** drawCount;
+    cdf = simulateHallRoadSpecificCDF(pool, drawCount, normalizedTarget);
   } else {
     const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
     const pSpecific = names.length > 0 ? pAny / names.length : 0;
@@ -3932,7 +3928,7 @@ function getFavoredHitProbabilityByDrawCount(drawCount) {
 
 function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
   const pool = getCurrentPool();
-  const names = isChainPool() ? getEmpoweredStatNames() : pool.empoweredCards || [];
+  const names = getEmpoweredStatNames();
   drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
   if (!names.length || drawCount <= 0 || !targetName || !names.includes(targetName)) return 0;
 
@@ -3957,11 +3953,7 @@ function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
   } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeSpecificHitCDF(pool, drawCount, targetName);
   } else if (isHallRoadPool(pool)) {
-    const drawableNames = (pool.empoweredCards || []).filter(n => n !== (pool.hallRoadLegend || ""));
-    const n = drawableNames.length || 1;
-    const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
-    const pSpecific = drawableNames.includes(targetName) ? pAny / n : 0;
-    cdf = 1 - (1 - pSpecific) ** drawCount;
+    cdf = simulateHallRoadSpecificCDF(pool, drawCount, targetName);
   } else {
     const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
     const pSpecific = names.length > 0 ? pAny / names.length : 0;
@@ -4677,12 +4669,7 @@ function getFavoredSetExpectedMetrics(selectedNames) {
     const normalizedNames = uniq.slice().sort();
     const key = `${activePoolKey}|hall|${normalizedNames.join(",")}`;
     if (favoredSetMetricsCache[key]) return favoredSetMetricsCache[key];
-    const metrics = { anyExpected: 0, allExpected: 0 };
-    normalizedNames.forEach((name) => {
-      metrics.anyExpected = Math.max(metrics.anyExpected, simulateHallRoadGoal(name));
-    });
-    metrics.allExpected = metrics.anyExpected;
-    metrics.allProbAtCap = 0;
+    const metrics = simulateHallRoadFavoredSetMetrics(pool, normalizedNames);
     const result = { ...metrics, cap: 5500, unit: "抽" };
     favoredSetMetricsCache[key] = result;
     return result;
@@ -4969,6 +4956,8 @@ function getEmpoweredAtLeastProbabilityByDrawCount(drawCount, targetCount) {
     cdf = calcMilestoneEmpoweredAtLeastCDF(pool, drawCount, targetCount);
   } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeEmpoweredAtLeastCDF(pool, drawCount, targetCount);
+  } else if (isHallRoadPool(pool)) {
+    cdf = simulateHallRoadEmpoweredAtLeastCDF(pool, drawCount, targetCount);
   } else {
     const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
     cdf = calcBinomialAtLeast(drawCount, pAny, targetCount);
@@ -4984,7 +4973,7 @@ function getBeforeProgress(progress) {
 
 function getSpecificCountAtLeastProbabilityByDrawCount(drawCount, targetName, targetCount) {
   const pool = getCurrentPool();
-  const names = isChainPool() ? getEmpoweredStatNames() : pool.empoweredCards || [];
+  const names = getEmpoweredStatNames();
   drawCount = Math.max(0, Math.floor(Number(drawCount) || 0));
   targetCount = Math.max(0, Math.floor(Number(targetCount) || 0));
   if (targetCount <= 0) return 1;
@@ -5004,6 +4993,8 @@ function getSpecificCountAtLeastProbabilityByDrawCount(drawCount, targetName, ta
     cdf = calcShopPackageSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
   } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
+  } else if (isHallRoadPool(pool)) {
+    cdf = simulateHallRoadSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
   } else {
     const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
     const pSpecific = names.length > 0 ? pAny / names.length : 0;
@@ -5455,6 +5446,16 @@ function getExpectedDrawMetrics() {
     };
   }
 
+  if (isHallRoadPool(pool)) {
+    const refTarget = getCurrentFavoredTargetName() || getHallRoadFeaturedNames(pool)[0] || (pool.empoweredCards || [])[0] || "";
+    return {
+      baseAny,
+      baseSpecific,
+      giftAny: baseAny,
+      giftSpecific: refTarget ? simulateHallRoadGoal(refTarget) : baseSpecific,
+    };
+  }
+
   if (pool.progressionType === "milestone") {
     const withGift = calcMilestoneWithGiftExpected(pool, empoweredCount);
     return {
@@ -5491,6 +5492,7 @@ function getFavoredExpectedSpecific() {
     isSeasonPool() ||
     isAccumulatedGuaranteePool() ||
     isNonRepeatEmpoweredPool() ||
+    isHallRoadPool() ||
     getCurrentPool().progressionType === "milestone" ||
     getCurrentPool().progressionType === "exchange_badge"
   ) {
@@ -6654,7 +6656,7 @@ function recordSingleDraw(card, source = "normal", options = {}) {
           state.empoweredCounts[card.name] = 0;
         }
         state.empoweredCounts[card.name] += 1;
-        if (isHallRoadPool() && countTowardsTotal) {
+        if (isHallRoadPool()) {
           addHallPointsOnDraw(card.name);
         }
         if (!state.empoweredDetails[card.name]) {
@@ -7327,6 +7329,13 @@ function hasSelectRewardAvailable() {
 }
 
 function canExchangeToFavored(targetName) {
+  if (isHallRoadPool()) {
+    const pool = getCurrentPool();
+    return (
+      targetName === (pool.hallRoadLegend || "小罗") &&
+      state.rewards.some((reward) => reward.type === "hall_legend")
+    );
+  }
   if (!isExchangePool()) return false;
   const cfg = getExchangeConfig();
   if (cfg.fixedSelect42 && targetName === cfg.fixedSelect42) {
@@ -7530,6 +7539,7 @@ function getChainTierSpentGold() {
 function getEmpoweredStatNames() {
   const pool = getCurrentPool();
   const base = (pool.empoweredCards || []).slice();
+  if (isHallRoadPool(pool)) return getHallRoadStatNames(pool);
   if (!isChainPool()) return base;
 
   const merged = [];
@@ -8243,6 +8253,25 @@ function openAllRewards() {
         }
         break;
       }
+      case "hall_legend": {
+        const legendName = getCurrentPool().hallRoadLegend || "小罗";
+        const card = createEmpoweredCard(legendName);
+        recordSingleDraw(card, toRewardSourceText(reward), {
+          countTowardsTotal: false,
+          milestonePulls: reward.pulls,
+        });
+        break;
+      }
+      case "free_ten": {
+        for (let i = 0; i < 10; i += 1) {
+          const card = rollBaseCard();
+          recordSingleDraw(card, toRewardSourceText(reward), {
+            countTowardsTotal: false,
+            milestonePulls: reward.pulls,
+          });
+        }
+        break;
+      }
       default:
         break;
     }
@@ -8545,7 +8574,7 @@ function renderProbabilities() {
   if (favSelect) {
     const currentValues = Array.from(favSelect.selectedOptions || []).map((o) => o.value);
     favSelect.innerHTML = "";
-    const hallFavCandidates = isHallRoadPool() ? ["小罗","克鲁伊夫"] : null;
+    const hallFavCandidates = isHallRoadPool() ? getHallRoadFeaturedNames() : null;
     const displayCards = hallFavCandidates || empoweredCards;
     displayCards.forEach((name) => {
       const opt = document.createElement("option");
@@ -10141,64 +10170,227 @@ function getHallSacrificeValue(name, pool = getCurrentPool()) {
 
 function getHallDrawPointValue(name, pool = getCurrentPool()) {
   if (!isHallRoadPool(pool)) return 0;
-  if ((pool.hallRoadLegend || "") === name) return 1000;
   const drawn = state.hallDrawnPlayers || {};
   const alreadyDrawn = Array.from(new Set(Object.keys(drawn).filter(k => drawn[k])));
   if (alreadyDrawn.includes(name)) return 0;
+  if ((pool.hallRoadLegend || "") === name) return 1000;
   return alreadyDrawn.length < 3 ? 300 : 150;
+}
+
+function getHallRoadStatNames(pool = getCurrentPool()) {
+  const names = [];
+  const push = (name) => {
+    if (name && !names.includes(name)) names.push(name);
+  };
+  push(pool.hallRoadLegend || "");
+  (pool.empoweredCards || []).forEach(push);
+  return names;
+}
+
+function getHallRoadFeaturedNames(pool = getCurrentPool()) {
+  const names = [];
+  const push = (name) => {
+    if (name && getHallRoadStatNames(pool).includes(name) && !names.includes(name)) {
+      names.push(name);
+    }
+  };
+  (pool.hallRoadFeaturedTargets || []).forEach(push);
+  push(pool.hallRoadLegend || "");
+  push("克鲁伊夫");
+  if (names.length < 2) {
+    (pool.hallRoadSuperstar || []).forEach(push);
+  }
+  return names.length ? names : getHallRoadStatNames(pool);
+}
+
+function createHallRoadSimulator(pool, targetNames = [], options = {}) {
+  const legend = pool.hallRoadLegend || "小罗";
+  const poolCards = (pool.empoweredCards || []).slice();
+  const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
+  const sacrificeAll = Boolean(options.sacrificeAll);
+  const targets = targetNames.filter(Boolean);
+  const targetCounts = {};
+  const lit = {};
+  const sacrificeCounts = {};
+  const milestones = {};
+  let paidDraws = 0;
+  let points = 300;
+  let totalEmpowered = 0;
+
+  const getLitCount = () => Object.keys(lit).filter((name) => lit[name]).length;
+  const getSacrificeValue = (name) => {
+    if (!poolCards.includes(name)) return 0;
+    const base = (pool.hallRoadSuperstar || []).includes(name) ? 600
+      : (pool.hallRoadSuper || []).includes(name) ? 500
+      : 400;
+    return base + ((sacrificeCounts[name] || 0) > 0 ? 180 : 0);
+  };
+  const addCard = (name) => {
+    if (!name) return;
+    totalEmpowered += 1;
+    targetCounts[name] = (targetCounts[name] || 0) + 1;
+    if (!lit[name]) {
+      const litCount = getLitCount();
+      lit[name] = true;
+      points += name === legend ? 1000 : litCount < 3 ? 300 : 150;
+    }
+    if (sacrificeAll && poolCards.includes(name)) {
+      points += getSacrificeValue(name);
+      sacrificeCounts[name] = (sacrificeCounts[name] || 0) + 1;
+    }
+  };
+  const drawExtra = (count) => {
+    for (let i = 0; i < count; i += 1) {
+      if (Math.random() < pAny && poolCards.length > 0) {
+        addCard(poolCards[Math.floor(Math.random() * poolCards.length)]);
+        openMilestones();
+      }
+    }
+  };
+  const chooseSelectTarget = () => {
+    const missingTarget = targets.find(
+      (name) => name !== legend && poolCards.includes(name) && !targetCounts[name]
+    );
+    if (missingTarget) return missingTarget;
+    return poolCards.length > 0 ? poolCards[Math.floor(Math.random() * poolCards.length)] : "";
+  };
+  function openMilestones() {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      if (points >= 500 && !milestones[500]) {
+        milestones[500] = true;
+        changed = true;
+        drawExtra(10);
+      }
+      if (points >= 1000 && !milestones[1000]) {
+        milestones[1000] = true;
+        changed = true;
+        drawExtra(10);
+      }
+      if (points >= 2000 && !milestones[2000]) {
+        milestones[2000] = true;
+        changed = true;
+        drawExtra(10);
+      }
+      if (points >= 3000 && !milestones[3000]) {
+        milestones[3000] = true;
+        changed = true;
+        addCard(chooseSelectTarget());
+      }
+      if (points >= 5500 && !milestones[5500]) {
+        milestones[5500] = true;
+        changed = true;
+        addCard(legend);
+      }
+    }
+  }
+  const drawPaid = () => {
+    paidDraws += 1;
+    if (Math.random() < pAny && poolCards.length > 0) {
+      addCard(poolCards[Math.floor(Math.random() * poolCards.length)]);
+    }
+    openMilestones();
+  };
+  return {
+    drawPaid,
+    get paidDraws() { return paidDraws; },
+    get totalEmpowered() { return totalEmpowered; },
+    hasTarget(name) { return (targetCounts[name] || 0) > 0; },
+    targetCount(name) { return targetCounts[name] || 0; },
+    hasAnyTarget() { return targets.some((name) => (targetCounts[name] || 0) > 0); },
+    hasAllTargets() { return targets.every((name) => (targetCounts[name] || 0) > 0); },
+  };
+}
+
+function simulateHallRoadSpecificCDF(pool, drawCount, targetName, runs = 4000) {
+  if (!isHallRoadPool(pool)) return 0;
+  if (!getHallRoadStatNames(pool).includes(targetName)) return 0;
+  let hits = 0;
+  for (let run = 0; run < runs; run += 1) {
+    const sim = createHallRoadSimulator(pool, [targetName], { sacrificeAll: true });
+    for (let draw = 0; draw < drawCount; draw += 1) sim.drawPaid();
+    if (sim.hasTarget(targetName)) hits += 1;
+  }
+  return hits / runs;
+}
+
+function simulateHallRoadSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount, runs = 4000) {
+  if (!isHallRoadPool(pool)) return 0;
+  if (!getHallRoadStatNames(pool).includes(targetName)) return 0;
+  let hits = 0;
+  for (let run = 0; run < runs; run += 1) {
+    const sim = createHallRoadSimulator(pool, [targetName], { sacrificeAll: true });
+    for (let draw = 0; draw < drawCount; draw += 1) sim.drawPaid();
+    if (sim.targetCount(targetName) >= targetCount) hits += 1;
+  }
+  return hits / runs;
+}
+
+function simulateHallRoadEmpoweredAtLeastCDF(pool, drawCount, targetCount, runs = 4000) {
+  if (!isHallRoadPool(pool)) return 0;
+  let hits = 0;
+  for (let run = 0; run < runs; run += 1) {
+    const sim = createHallRoadSimulator(pool, [], { sacrificeAll: true });
+    for (let draw = 0; draw < drawCount; draw += 1) sim.drawPaid();
+    if (sim.totalEmpowered >= targetCount) hits += 1;
+  }
+  return hits / runs;
 }
 
 function simulateHallRoadGoal(targetName) {
   const pool = getCurrentPool();
   if (!isHallRoadPool(pool)) return 0;
-  const legend = pool.hallRoadLegend || "小罗";
-  const poolCards = (pool.empoweredCards || []).slice();
-  const n = poolCards.length;
-  const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
-  const isLegendGoal = targetName === legend;
-
   let totalDraws = 0;
-  const RUNS = 500;
-  for (let run = 0; run < RUNS; run++) {
-    let draws = 0;
-    let points = 300;
-    let lit = {};
-    let litCount = 0;
-    let gotTarget = false;
-    let m500 = false, m1000 = false, m2000 = false, m3000 = false;
-
-    const doOneDraw = () => {
-      draws += 1;
-      if (Math.random() < pAny) {
-        const card = poolCards[Math.floor(Math.random() * n)];
-        if (!lit[card]) { lit[card] = true; litCount += 1; points += litCount <= 3 ? 300 : 150; }
-        if (card === targetName) gotTarget = true;
-      }
-    };
-
-    while (!gotTarget && !(isLegendGoal && points >= 5500)) {
-      doOneDraw();
-      if (gotTarget) break;
-      if (points >= 3000 && !isLegendGoal && !m3000) { m3000 = true; gotTarget = true; break; }
-      if (points >= 500 && !m500) { m500 = true; for (let i = 0; i < 10; i++) doOneDraw(); }
-      if (points >= 1000 && !m1000) { m1000 = true; for (let i = 0; i < 10; i++) doOneDraw(); }
-      if (points >= 2000 && !m2000) { m2000 = true; for (let i = 0; i < 10; i++) doOneDraw(); }
+  const RUNS = 2000;
+  for (let run = 0; run < RUNS; run += 1) {
+    const sim = createHallRoadSimulator(pool, [targetName], { sacrificeAll: true });
+    while (!sim.hasTarget(targetName) && sim.paidDraws < 200000) {
+      sim.drawPaid();
     }
-    totalDraws += draws;
+    totalDraws += sim.paidDraws;
   }
   return Math.round(totalDraws / RUNS);
 }
 
+function simulateHallRoadFavoredSetMetrics(pool, selectedNames) {
+  const targets = selectedNames.filter((name) => getHallRoadStatNames(pool).includes(name));
+  if (!targets.length) return { anyExpected: 0, allExpected: 0, allProbAtCap: 0 };
+  const RUNS = 2000;
+  let anyTotal = 0;
+  let allTotal = 0;
+  let allAtCap = 0;
+  for (let run = 0; run < RUNS; run += 1) {
+    const sim = createHallRoadSimulator(pool, targets, { sacrificeAll: true });
+    let anyDraws = null;
+    let allDraws = null;
+    while (sim.paidDraws < 200000) {
+      sim.drawPaid();
+      if (anyDraws == null && sim.hasAnyTarget()) anyDraws = sim.paidDraws;
+      if (sim.hasAllTargets()) {
+        allDraws = sim.paidDraws;
+        break;
+      }
+    }
+    anyTotal += anyDraws == null ? sim.paidDraws : anyDraws;
+    allTotal += allDraws == null ? sim.paidDraws : allDraws;
+    if (allDraws != null && allDraws <= 5500) allAtCap += 1;
+  }
+  return {
+    anyExpected: Math.round(anyTotal / RUNS),
+    allExpected: Math.round(allTotal / RUNS),
+    allProbAtCap: allAtCap / RUNS,
+  };
+}
+
 function addHallPointsOnDraw(name, pool = getCurrentPool()) {
   if (!isHallRoadPool(pool)) return;
-  if ((pool.hallRoadLegend || "") === name) return;
   state.hallDrawnPlayers = state.hallDrawnPlayers || {};
   const pts = getHallDrawPointValue(name, pool);
   if (!state.hallDrawnPlayers[name]) state.hallDrawnPlayers[name] = 0;
   state.hallDrawnPlayers[name] += 1;
   state.hallPoints = Math.max(0, (state.hallPoints || 300)) + pts;
   unlockHallRoadMilestonesIfNeeded();
-  renderAll();
 }
 
 function sacrificeHallPlayer(name) {
@@ -10220,6 +10412,10 @@ function sacrificeHallPlayer(name) {
     goldStats.empowered = Math.max(0, (goldStats.empowered || 0) - 1);
     const goldCounts = getGoldEmpoweredCounts();
     if (goldCounts[name] != null && goldCounts[name] > 0) goldCounts[name] -= 1;
+    const goldDetails = getGoldEmpoweredDetails();
+    if (goldDetails[name] && goldDetails[name].length > 0) {
+      goldDetails[name].pop();
+    }
   }
   unlockHallRoadMilestonesIfNeeded();
   renderAll();
@@ -10242,7 +10438,6 @@ function unlockHallRoadMilestonesIfNeeded() {
           label: "殿堂球员 - 小罗",
           sourceLabel: "殿堂值满5500",
         });
-        state.hallPoints += 1000;
       } else if (target === 3000) {
         state.pendingSelectRewardCount = (state.pendingSelectRewardCount || 0) + 1;
         state.pendingSelectMilestones = state.pendingSelectMilestones || [];
