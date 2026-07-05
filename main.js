@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.05.2";
+  "2026.07.05.3";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -206,6 +206,33 @@ const POOLS = {
       "奥斯梅恩",
       "多纳鲁马",
       "埃基蒂克",
+    ],
+    milestones: createMilestones({
+      chance10: "10% 增能卡券",
+      chance30: "30% 增能卡券",
+      empoweredRandom: "随机增能卡必得券",
+      empoweredSelect: "增能卡自选券",
+    }),
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  }),
+  new_king_road_two_gift: createCarnivalPool({
+    name: "新王之路贰狂欢赠礼",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: [
+      "维尼修斯",
+      "阿尔瓦雷斯",
+      "哲凯赖什",
+      "拉亚",
+      "范德文",
+      "恩梅查",
+      "加克波",
+      "巴尔德",
     ],
     milestones: createMilestones({
       chance10: "10% 增能卡券",
@@ -1722,6 +1749,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.new_king_road_two_gift && "new_king_road_two_gift") ||
   (POOLS.pitch_spirit_hall_road && "pitch_spirit_hall_road") ||
   (POOLS.pitch_dragon_exchange && "pitch_dragon_exchange") ||
   (POOLS.knockout_road_discount && "knockout_road_discount") ||
@@ -1776,6 +1804,7 @@ const POOL_TYPE_LABELS = {
 const POOL_CINEMATIC_ASSET_FOLDERS = {
   xinzai_jinxiu: ["assets/新载锦绣"],
   summer_pearls_gift: ["assets/盛夏遗珠"],
+  new_king_road_two_gift: ["assets/新王之路贰"],
   blue_old_friend: ["assets/蓝衣故人"],
   british_rivalry: ["assets/英伦争霸"],
   double_end_reunion: ["assets/双端齐聚"],
@@ -1844,6 +1873,16 @@ const POOL_PLAYER_META = {
     奥斯梅恩: { type: "BT", position: "中锋" },
     多纳鲁马: { type: "ST", position: "门将" },
     埃基蒂克: { type: "ST", position: "中锋" },
+  },
+  new_king_road_two_gift: {
+    维尼修斯: { type: "ST", position: "左边锋" },
+    阿尔瓦雷斯: { type: "ST", position: "中锋" },
+    哲凯赖什: { type: "ST", position: "中锋" },
+    拉亚: { type: "ST", position: "门将" },
+    范德文: { type: "ST", position: "中后卫" },
+    恩梅查: { type: "ST", position: "后腰" },
+    加克波: { type: "ST", position: "左边锋" },
+    巴尔德: { type: "ST", position: "左后卫" },
   },
   blue_old_friend: {
     兰帕德: { type: "史诗", position: "中前卫" },
