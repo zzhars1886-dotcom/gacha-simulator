@@ -2089,13 +2089,13 @@ const POOL_PLAYER_META = {
    斯塔姆: { type: "史诗", position: "中后卫" },
  },
  pitch_spirit_hall_road: {
-   小罗: { type: "史诗", position: "左边锋" },
-   内马尔: { type: "史诗", position: "左边锋" },
+   小罗: { type: "史诗", position: "前腰" },
+   内马尔: { type: "史诗", position: "左前卫" },
    科曼: { type: "史诗", position: "中后卫" },
    德罗西: { type: "史诗", position: "后腰" },
    卡福: { type: "史诗", position: "右后卫" },
-   巴乔: { type: "史诗", position: "前腰" },
-   克鲁伊夫: { type: "史诗", position: "中锋" },
+   巴乔: { type: "史诗", position: "影锋" },
+   克鲁伊夫: { type: "史诗", position: "前腰" },
    欧文: { type: "史诗", position: "中锋" },
    安布罗西尼: { type: "史诗", position: "后腰" },
    埃德米尔森: { type: "史诗", position: "后腰" },
@@ -2103,33 +2103,33 @@ const POOL_PLAYER_META = {
    朴智星: { type: "史诗", position: "左前卫" },
    菲奥雷: { type: "史诗", position: "右前卫" },
    比利亚: { type: "史诗", position: "中锋" },
-   劳尔: { type: "史诗", position: "中锋" },
+   劳尔: { type: "史诗", position: "影锋" },
    范布隆克霍斯特: { type: "史诗", position: "左后卫" },
    佩鲁齐: { type: "史诗", position: "门将" },
    因扎吉: { type: "史诗", position: "中锋" },
    李金羽: { type: "BT", position: "中锋" },
    郜林: { type: "BT", position: "中锋" },
    冯潇霆: { type: "BT", position: "中后卫" },
-   贝克汉姆: { type: "史诗", position: "右前卫" },
+   贝克汉姆: { type: "史诗", position: "中前卫" },
    瓜迪奥拉: { type: "史诗", position: "后腰" },
    罗西基: { type: "史诗", position: "前腰" },
    拜亚: { type: "史诗", position: "门将" },
    阿比亚蒂: { type: "史诗", position: "门将" },
    埃尔文: { type: "史诗", position: "左后卫" },
    加西亚: { type: "史诗", position: "右边锋" },
-   科斯塔: { type: "史诗", position: "中后卫" },
+   科斯塔: { type: "史诗", position: "前腰" },
    塞尔吉奥: { type: "史诗", position: "左前卫" },
-   贝尔: { type: "史诗", position: "右边锋" },
+   贝尔: { type: "史诗", position: "中锋" },
    西尔维斯特: { type: "史诗", position: "左后卫" },
-   阿扎尔: { type: "史诗", position: "前腰" },
+   阿扎尔: { type: "史诗", position: "左边锋" },
    范尼: { type: "史诗", position: "中锋" },
    马克斯: { type: "史诗", position: "中后卫" },
-   索乌: { type: "史诗", position: "中前卫" },
-   邓普西: { type: "史诗", position: "前腰" },
+   索乌: { type: "史诗", position: "中锋" },
+   邓普西: { type: "史诗", position: "中锋" },
    阿布拉杜: { type: "史诗", position: "中锋" },
    科尔: { type: "史诗", position: "中锋" },
    车范根: { type: "史诗", position: "中锋" },
-   萨利: { type: "史诗", position: "右后卫" },
+   萨利: { type: "史诗", position: "中锋" },
  },
  pitch_dragon_exchange: {
    阿扎尔: { type: "BT", position: "前腰" },
@@ -4672,6 +4672,20 @@ function getFavoredSetExpectedMetrics(selectedNames) {
       unit: "抽",
     };
     return favoredSetMetricsCache[key];
+  }
+  if (isHallRoadPool(pool)) {
+    const normalizedNames = uniq.slice().sort();
+    const key = `${activePoolKey}|hall|${normalizedNames.join(",")}`;
+    if (favoredSetMetricsCache[key]) return favoredSetMetricsCache[key];
+    const metrics = { anyExpected: 0, allExpected: 0 };
+    normalizedNames.forEach((name) => {
+      metrics.anyExpected = Math.max(metrics.anyExpected, simulateHallRoadGoal(name));
+    });
+    metrics.allExpected = metrics.anyExpected;
+    metrics.allProbAtCap = 0;
+    const result = { ...metrics, cap: 5500, unit: "抽" };
+    favoredSetMetricsCache[key] = result;
+    return result;
   }
   const hasTargetSpecificMilestones =
     pool.progressionType === "milestone" &&
@@ -8019,6 +8033,25 @@ function openRewardById(id) {
       }
       break;
     }
+    case "hall_legend": {
+      const legendName = getCurrentPool().hallRoadLegend || "小罗";
+      const card = createEmpoweredCard(legendName);
+      recordSingleDraw(card, toRewardSourceText(reward), {
+        countTowardsTotal: false,
+        milestonePulls: reward.pulls,
+      });
+      break;
+    }
+    case "free_ten": {
+      for (let i = 0; i < 10; i += 1) {
+        const card = rollBaseCard();
+        recordSingleDraw(card, toRewardSourceText(reward), {
+          countTowardsTotal: false,
+          milestonePulls: reward.pulls,
+        });
+      }
+      break;
+    }
     default:
       break;
   }
@@ -8512,7 +8545,9 @@ function renderProbabilities() {
   if (favSelect) {
     const currentValues = Array.from(favSelect.selectedOptions || []).map((o) => o.value);
     favSelect.innerHTML = "";
-    empoweredCards.forEach((name) => {
+    const hallFavCandidates = isHallRoadPool() ? ["小罗","克鲁伊夫"] : null;
+    const displayCards = hallFavCandidates || empoweredCards;
+    displayCards.forEach((name) => {
       const opt = document.createElement("option");
       opt.value = name;
       opt.textContent = name;
@@ -10109,17 +10144,58 @@ function getHallDrawPointValue(name, pool = getCurrentPool()) {
   if ((pool.hallRoadLegend || "") === name) return 1000;
   const drawn = state.hallDrawnPlayers || {};
   const alreadyDrawn = Array.from(new Set(Object.keys(drawn).filter(k => drawn[k])));
-  if (alreadyDrawn.includes(name)) return 150;
+  if (alreadyDrawn.includes(name)) return 0;
   return alreadyDrawn.length < 3 ? 300 : 150;
+}
+
+function simulateHallRoadGoal(targetName) {
+  const pool = getCurrentPool();
+  if (!isHallRoadPool(pool)) return 0;
+  const legend = pool.hallRoadLegend || "小罗";
+  const poolCards = (pool.empoweredCards || []).slice();
+  const n = poolCards.length;
+  const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
+  const isLegendGoal = targetName === legend;
+
+  let totalDraws = 0;
+  const RUNS = 500;
+  for (let run = 0; run < RUNS; run++) {
+    let draws = 0;
+    let points = 300;
+    let lit = {};
+    let litCount = 0;
+    let gotTarget = false;
+    let m500 = false, m1000 = false, m2000 = false, m3000 = false;
+
+    const doOneDraw = () => {
+      draws += 1;
+      if (Math.random() < pAny) {
+        const card = poolCards[Math.floor(Math.random() * n)];
+        if (!lit[card]) { lit[card] = true; litCount += 1; points += litCount <= 3 ? 300 : 150; }
+        if (card === targetName) gotTarget = true;
+      }
+    };
+
+    while (!gotTarget && !(isLegendGoal && points >= 5500)) {
+      doOneDraw();
+      if (gotTarget) break;
+      if (points >= 3000 && !isLegendGoal && !m3000) { m3000 = true; gotTarget = true; break; }
+      if (points >= 500 && !m500) { m500 = true; for (let i = 0; i < 10; i++) doOneDraw(); }
+      if (points >= 1000 && !m1000) { m1000 = true; for (let i = 0; i < 10; i++) doOneDraw(); }
+      if (points >= 2000 && !m2000) { m2000 = true; for (let i = 0; i < 10; i++) doOneDraw(); }
+    }
+    totalDraws += draws;
+  }
+  return Math.round(totalDraws / RUNS);
 }
 
 function addHallPointsOnDraw(name, pool = getCurrentPool()) {
   if (!isHallRoadPool(pool)) return;
   if ((pool.hallRoadLegend || "") === name) return;
   state.hallDrawnPlayers = state.hallDrawnPlayers || {};
+  const pts = getHallDrawPointValue(name, pool);
   if (!state.hallDrawnPlayers[name]) state.hallDrawnPlayers[name] = 0;
   state.hallDrawnPlayers[name] += 1;
-  const pts = getHallDrawPointValue(name, pool);
   state.hallPoints = Math.max(0, (state.hallPoints || 300)) + pts;
   unlockHallRoadMilestonesIfNeeded();
   renderAll();
@@ -10159,8 +10235,14 @@ function unlockHallRoadMilestonesIfNeeded() {
     if (pts >= target && !state.hallMilestonesGranted.includes(target)) {
       state.hallMilestonesGranted.push(target);
       if (target === 5500) {
-        const card = createEmpoweredCard(pool.hallRoadLegend || "小罗");
-        recordSingleDraw(card, `殿堂值满${target}`, { countTowardsTotal: false });
+        state.rewards.push({
+          id: `hall-xiaoluo-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          pulls: target,
+          type: "hall_legend",
+          label: "殿堂球员 - 小罗",
+          sourceLabel: "殿堂值满5500",
+        });
+        state.hallPoints += 1000;
       } else if (target === 3000) {
         state.pendingSelectRewardCount = (state.pendingSelectRewardCount || 0) + 1;
         state.pendingSelectMilestones = state.pendingSelectMilestones || [];
@@ -10170,11 +10252,13 @@ function unlockHallRoadMilestonesIfNeeded() {
           candidateNames: (pool.empoweredCards || []).slice(),
         });
       } else {
-        const draws = Math.round(target / 50);
-        for (let i = 0; i < draws; i += 1) {
-          const card = createEmpoweredCard();
-          recordSingleDraw(card, `殿堂值${target}奖励`, { countTowardsTotal: false });
-        }
+        state.rewards.push({
+          id: `hall-free-${target}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          pulls: target,
+          type: "free_ten",
+          label: `殿堂值${target} - 免费十连`,
+          sourceLabel: `殿堂值满${target}免费十连`,
+        });
       }
     }
   });
