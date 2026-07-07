@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.07.1";
+  "2026.07.07.2";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -1770,9 +1770,9 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.peak_choice_discount && "peak_choice_discount") ||
   (POOLS.new_king_road_two_gift && "new_king_road_two_gift") ||
   (POOLS.pitch_spirit_hall_road && "pitch_spirit_hall_road") ||
-  (POOLS.peak_choice_discount && "peak_choice_discount") ||
   (POOLS.pitch_dragon_exchange && "pitch_dragon_exchange") ||
   (POOLS.knockout_road_discount && "knockout_road_discount") ||
   (POOLS.needle_against_wheat_exchange && "needle_against_wheat_exchange") ||
