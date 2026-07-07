@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.05.3";
+  "2026.07.07.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -924,6 +924,27 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  peak_choice_discount: {
+    poolType: "discount_no_guarantee",
+    progressionType: "discount_limited",
+    name: "巅峰之选7折",
+    pricePerPull: 100,
+    discountPricePerPull: 70,
+    discountPullLimit: 30,
+    maxPullsPerReset: 0,
+    allowedDrawBatch: 10,
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: ["阿尔贝蒂尼", "贝尔戈米", "贝肯鲍尔", "弗兰", "哈维", "鲁梅尼格", "普拉蒂尼"],
+    highlightTicketConfig: { probability: 0.1, batchSize: 10 },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   knockout_road_discount: {
     poolType: "discount_no_guarantee",
     progressionType: "discount_limited",
@@ -1751,6 +1772,7 @@ const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
   (POOLS.new_king_road_two_gift && "new_king_road_two_gift") ||
   (POOLS.pitch_spirit_hall_road && "pitch_spirit_hall_road") ||
+  (POOLS.peak_choice_discount && "peak_choice_discount") ||
   (POOLS.pitch_dragon_exchange && "pitch_dragon_exchange") ||
   (POOLS.knockout_road_discount && "knockout_road_discount") ||
   (POOLS.needle_against_wheat_exchange && "needle_against_wheat_exchange") ||
@@ -1849,6 +1871,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   oriental_dragon_fengxiaoting: ["assets/东方巨龙"],
   midfield_master_halfprice: ["assets/中路致胜5折"],
   era_heroes_discount: ["assets/时代英杰"],
+  peak_choice_discount: ["assets/巅峰之选"],
   first_round_focus_discount: ["assets/首轮焦点"],
   defense_spring_shop: ["assets/防守教学春日礼包"],
 };
@@ -2117,6 +2140,15 @@ const POOL_PLAYER_META = {
     费迪南德: { type: "史诗", position: "中后卫" },
     埃尔文: { type: "史诗", position: "左后卫" },
     罗布森: { type: "史诗", position: "中前卫" },
+ },
+ peak_choice_discount: {
+   阿尔贝蒂尼: { type: "史诗", position: "后腰" },
+   贝尔戈米: { type: "史诗", position: "右后卫" },
+   贝肯鲍尔: { type: "史诗", position: "中后卫" },
+   弗兰: { type: "史诗", position: "中锋" },
+   哈维: { type: "史诗", position: "中前卫" },
+   鲁梅尼格: { type: "史诗", position: "中锋" },
+   普拉蒂尼: { type: "史诗", position: "前腰" },
  },
  knockout_road_discount: {
    阿尔巴: { type: "史诗", position: "左后卫" },
