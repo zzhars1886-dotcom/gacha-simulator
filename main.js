@@ -206,7 +206,7 @@ const POOLS = {
       mainPrize: "拉姆",
       highlightTarget: "克洛泽",
       highlightFallback: "巴蒂斯图塔",
-      dreamBoxPlayers: ["盖德穆勒", "格策", "穆夏拉", "施洛特贝克", "托马斯穆勒", "巴蒂斯图塔"],
+      dreamBoxPlayers: ["盖德穆勒", "格策", "穆夏拉", "施洛特贝克", "托马斯穆勒"],
       milestones: GERMAN_GLORY_BOX_MILESTONES,
     },
     milestones: [],
