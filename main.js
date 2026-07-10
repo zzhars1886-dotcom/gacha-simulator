@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.07.2";
+  "2026.07.10.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -91,6 +91,29 @@ const SPRING_SHOP_PLAYERS = [
 
 const SPRING_SHOP_ALL_SELECT_PLAYERS = ["瓦拉内", ...SPRING_SHOP_PLAYERS];
 
+const GERMAN_GLORY_BOX_MILESTONES = [
+  [5, "glory_highlight_box", "荣耀高光礼盒"],
+  [10, "glory_dream_box", "高光梦幻箱式"],
+  [20, "glory_highlight_box", "荣耀高光礼盒"],
+  [25, "glory_highlight_box", "荣耀高光礼盒"],
+  [35, "glory_dream_box", "高光梦幻箱式"],
+  [40, "glory_highlight_box", "荣耀高光礼盒"],
+  [50, "glory_highlight_box", "荣耀高光礼盒"],
+  [55, "glory_dream_box", "高光梦幻箱式"],
+  [65, "glory_highlight_box", "荣耀高光礼盒"],
+  [70, "glory_highlight_box", "荣耀高光礼盒"],
+  [80, "glory_dream_box", "高光梦幻箱式"],
+  [85, "glory_highlight_box", "荣耀高光礼盒"],
+  [95, "glory_highlight_box", "荣耀高光礼盒"],
+  [100, "glory_dream_box", "高光梦幻箱式"],
+  [110, "glory_highlight_box", "荣耀高光礼盒"],
+  [115, "glory_highlight_box", "荣耀高光礼盒"],
+  [125, "glory_dream_box", "高光梦幻箱式"],
+  [130, "glory_highlight_box", "荣耀高光礼盒"],
+  [140, "glory_highlight_box", "荣耀高光礼盒"],
+  [145, "glory_dream_box", "高光梦幻箱式"],
+].map(([pulls, type, label]) => ({ pulls, type, label }));
+
 function createCarnivalPool(config) {
   return {
     poolType: "carnival_gift",
@@ -161,6 +184,35 @@ function checkAppSync() {
 }
 
 const POOLS = {
+  german_chariot_glory_box: {
+    poolType: "glory_box",
+    progressionType: "glory_box",
+    name: "德国战车荣耀礼盒",
+    pricePerPull: 1000,
+    poolConfig: [
+      { type: "glory_value", label: "荣耀值", probability: 0.006 },
+    ],
+    empoweredCards: [
+      "拉姆",
+      "克洛泽",
+      "盖德穆勒",
+      "格策",
+      "穆夏拉",
+      "施洛特贝克",
+      "托马斯穆勒",
+      "巴蒂斯图塔",
+    ],
+    gloryConfig: {
+      mainPrize: "拉姆",
+      highlightTarget: "克洛泽",
+      highlightFallback: "巴蒂斯图塔",
+      dreamBoxPlayers: ["盖德穆勒", "格策", "穆夏拉", "施洛特贝克", "托马斯穆勒", "巴蒂斯图塔"],
+      milestones: GERMAN_GLORY_BOX_MILESTONES,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   xinzai_jinxiu: createCarnivalPool({
     name: "新载锦绣狂欢赠礼",
     poolConfig: [
@@ -1770,6 +1822,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.german_chariot_glory_box && "german_chariot_glory_box") ||
   (POOLS.peak_choice_discount && "peak_choice_discount") ||
   (POOLS.new_king_road_two_gift && "new_king_road_two_gift") ||
   (POOLS.pitch_spirit_hall_road && "pitch_spirit_hall_road") ||
@@ -1821,10 +1874,12 @@ const POOL_TYPE_LABELS = {
   season_carryover: "赛季累抽继承",
   accumulated_guarantee: "累抽必得",
   hall_road: "殿堂之路",
+  glory_box: "荣耀礼盒",
 };
 
 const POOL_CINEMATIC_ASSET_FOLDERS = {
   xinzai_jinxiu: ["assets/新载锦绣"],
+  german_chariot_glory_box: ["assets/德国战车"],
   summer_pearls_gift: ["assets/盛夏遗珠"],
   new_king_road_two_gift: ["assets/新王之路贰"],
   blue_old_friend: ["assets/蓝衣故人"],
@@ -1877,6 +1932,16 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
 };
 
 const POOL_PLAYER_META = {
+  german_chariot_glory_box: {
+    拉姆: { type: "BT", position: "右后卫" },
+    克洛泽: { type: "史诗", position: "中锋" },
+    盖德穆勒: { type: "史诗", position: "中锋" },
+    格策: { type: "史诗", position: "中锋" },
+    穆夏拉: { type: "ST", position: "左前卫" },
+    施洛特贝克: { type: "ST", position: "中后卫" },
+    托马斯穆勒: { type: "ST", position: "前腰" },
+    巴蒂斯图塔: { type: "史诗", position: "中锋" },
+  },
   xinzai_jinxiu: {
     哈兰德: { type: "ST", position: "中锋" },
     姆巴佩: { type: "ST", position: "中锋" },
@@ -2497,6 +2562,10 @@ function createInitialState(empoweredCards) {
     hallDrawnPlayers: {},
     hallSacrificeCounts: {},
     hallMilestonesGranted: [],
+    gloryValue: 0,
+    gloryMilestonesGranted: [],
+    gloryDreamBoxRemaining: [],
+    gloryExchangeCounts: {},
   };
 }
 
@@ -3899,6 +3968,9 @@ function isDiscountLimitedPool(pool = getCurrentPool()) {
 }
 
 function getPoolPricePerPull(pool = getCurrentPool()) {
+  if (isGloryBoxPool(pool)) {
+    return Math.max(1, Number(pool.pricePerPull || 1000));
+  }
   if (isShopPackagePool(pool)) {
     return Math.max(1, Number(pool.packagePriceGold || 688));
   }
@@ -6876,6 +6948,10 @@ function processProgressionRewardsIfNeeded() {
     unlockAccumulatedGuaranteeIfNeeded();
     return;
   }
+  if (pool.progressionType === "glory_box") {
+    unlockGloryMilestonesIfNeeded();
+    return;
+  }
   unlockExchangeBonusGiftsIfNeeded();
   unlockMilestonesIfNeeded();
 }
@@ -7185,6 +7261,231 @@ function unlockExchangeBonusGiftsIfNeeded() {
   maybeAutoOpenRewards();
 }
 
+function getGloryConfig(pool = getCurrentPool()) {
+  return pool?.gloryConfig || null;
+}
+
+function interpolateGloryProbability(completedPulls, fromPulls, fromProb, toPulls, toProb) {
+  const span = Math.max(1, toPulls - fromPulls);
+  return fromProb + (completedPulls - fromPulls) * ((toProb - fromProb) / span);
+}
+
+function getGloryValueProbability(completedPulls) {
+  const n = Math.max(0, Math.floor(Number(completedPulls) || 0));
+  if (n <= 5) return interpolateGloryProbability(n, 0, 0.006, 5, 0.03);
+  if (n <= 10) return interpolateGloryProbability(n, 5, 0.03, 10, 0.0375);
+  if (n <= 15) return interpolateGloryProbability(n, 10, 0.0375, 15, 0.045);
+  if (n <= 20) return interpolateGloryProbability(n, 15, 0.045, 20, 0.0525);
+  if (n <= 25) return interpolateGloryProbability(n, 20, 0.0525, 25, 0.0588);
+  if (n <= 30) return interpolateGloryProbability(n, 25, 0.0588, 30, 0.06);
+  return 0.06;
+}
+
+function formatGloryPercent(p) {
+  return `${(clamp01(Number(p) || 0) * 100).toFixed(2).replace(/\.?0+$/, "")}%`;
+}
+
+function rollGloryValueCount(completedPulls) {
+  const p = getGloryValueProbability(completedPulls);
+  const guaranteed = completedPulls >= 70;
+  const randomRolls = guaranteed ? 9 : 10;
+  let count = guaranteed ? 1 : 0;
+  for (let i = 0; i < randomRolls; i += 1) {
+    if (Math.random() < p) count += 1;
+  }
+  return count;
+}
+
+function calcBinomialExact(n, p, k) {
+  const trials = Math.max(0, Math.floor(Number(n) || 0));
+  const hits = Math.max(0, Math.floor(Number(k) || 0));
+  const prob = clamp01(Number(p) || 0);
+  if (hits > trials) return 0;
+  let comb = 1;
+  for (let i = 1; i <= hits; i += 1) {
+    comb *= (trials - hits + i) / i;
+  }
+  return comb * (prob ** hits) * ((1 - prob) ** (trials - hits));
+}
+
+function calcGloryTargetPullMetrics(targetValue = 36, maxPulls = 400) {
+  const target = Math.max(1, Math.floor(Number(targetValue) || 36));
+  let dist = new Array(target).fill(0);
+  dist[0] = 1;
+  let expected = 0;
+  let lowerPulls = null;
+  let upperPulls = null;
+  let cumulativeHit = 0;
+  for (let completedPulls = 0; completedPulls < maxPulls; completedPulls += 1) {
+    const survival = dist.reduce((sum, p) => sum + p, 0);
+    expected += survival;
+    if (survival < 1e-10) break;
+    const p = getGloryValueProbability(completedPulls);
+    const randomRolls = completedPulls >= 70 ? 9 : 10;
+    const guaranteed = completedPulls >= 70 ? 1 : 0;
+    const gainDist = new Array(randomRolls + guaranteed + 1).fill(0);
+    for (let k = 0; k <= randomRolls; k += 1) {
+      gainDist[k + guaranteed] = calcBinomialExact(randomRolls, p, k);
+    }
+    const next = new Array(target).fill(0);
+    let hitThisPull = 0;
+    for (let current = 0; current < target; current += 1) {
+      const base = dist[current];
+      if (base <= 0) continue;
+      gainDist.forEach((prob, gain) => {
+        if (prob <= 0) return;
+        const to = current + gain;
+        if (to < target) {
+          next[to] += base * prob;
+        } else {
+          hitThisPull += base * prob;
+        }
+      });
+    }
+    cumulativeHit += hitThisPull;
+    const pullNumber = completedPulls + 1;
+    if (lowerPulls == null && cumulativeHit >= 0.025) lowerPulls = pullNumber;
+    if (upperPulls == null && cumulativeHit >= 0.975) upperPulls = pullNumber;
+    dist = next;
+  }
+  return {
+    expected,
+    lowerPulls: lowerPulls ?? 0,
+    upperPulls: upperPulls ?? maxPulls,
+  };
+}
+
+function calcGloryExpectedPullsToTarget(targetValue = 36, maxPulls = 400) {
+  return calcGloryTargetPullMetrics(targetValue, maxPulls).expected;
+}
+
+function addGloryReward(type, pulls, label, extra = {}) {
+  state.rewards.push({
+    id: `glory-${type}-${pulls}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    pulls,
+    type,
+    label,
+    sourceLabel: extra.sourceLabel || label,
+    ...extra,
+  });
+}
+
+function unlockGloryMilestonesIfNeeded() {
+  const cfg = getGloryConfig();
+  if (!cfg) return;
+  state.gloryMilestonesGranted = state.gloryMilestonesGranted || [];
+  const total = Math.max(0, Number(state.totalPulls) || 0);
+  (cfg.milestones || []).forEach((m) => {
+    if (total >= m.pulls && !state.gloryMilestonesGranted.includes(m.pulls)) {
+      state.gloryMilestonesGranted.push(m.pulls);
+      addGloryReward(m.type, m.pulls, m.label);
+    }
+  });
+  maybeAutoOpenRewards();
+}
+
+function rollGloryHighlightBoxCard(reward = {}) {
+  const cfg = getGloryConfig();
+  const chance = reward.chance == null ? 0.15 : Number(reward.chance) || 0;
+  if (Math.random() < chance) {
+    return createEmpoweredCard(cfg?.highlightTarget || "克洛泽");
+  }
+  return createEmpoweredCard(cfg?.highlightFallback || "巴蒂斯图塔");
+}
+
+function openGloryDreamBoxCard() {
+  const cfg = getGloryConfig();
+  const players = (cfg?.dreamBoxPlayers || []).slice();
+  if (!players.length) return createEmpoweredCard(cfg?.highlightFallback || "巴蒂斯图塔");
+  state.gloryDreamBoxRemaining = Array.isArray(state.gloryDreamBoxRemaining)
+    ? state.gloryDreamBoxRemaining.filter((name) => players.includes(name))
+    : [];
+  if (state.gloryDreamBoxRemaining.length === 0) {
+    state.gloryDreamBoxRemaining = players.slice();
+  }
+  const name = randomFromArray(state.gloryDreamBoxRemaining);
+  state.gloryDreamBoxRemaining = state.gloryDreamBoxRemaining.filter((item) => item !== name);
+  return createEmpoweredCard(name);
+}
+
+function rollGloryBoxPull(source = "glory-box") {
+  if (!isGloryBoxPool()) return false;
+  const price = getPoolPricePerPull();
+  if (!spendGoldAmount(price)) {
+    openInsufficientGoldModal();
+    return false;
+  }
+  const completedPulls = Math.max(0, Number(state.totalPulls) || 0);
+  const gained = rollGloryValueCount(completedPulls);
+  state.totalPulls = completedPulls + 1;
+  state.gloryValue = Math.max(0, Number(state.gloryValue) || 0) + gained;
+  recordSingleDraw({ type: "glory_value", name: `荣耀值 +${gained}` }, source, {
+    countTowardsTotal: false,
+    sourcePulls: state.totalPulls,
+  });
+  unlockGloryMilestonesIfNeeded();
+  return true;
+}
+
+function autoToTargetGloryValue(targetValue) {
+  pendingFavoredHitEvent = null;
+  const target = Math.max(0, Math.floor(Number(targetValue) || 0));
+  if (!isGloryBoxPool() || target <= 0) return;
+  let didDraw = false;
+  const MAX_AUTO_DRAWS = 300000;
+  for (let i = 0; i < MAX_AUTO_DRAWS; i += 1) {
+    if ((Number(state.gloryValue) || 0) >= target) break;
+    if (!rollGloryBoxPull("glory-auto-value")) break;
+    didDraw = true;
+    if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
+  }
+  if (didDraw) renderAll();
+  showFavoredHitAnimationIfNeeded();
+}
+
+function consumeGloryValue(cost) {
+  const current = Math.max(0, Number(state.gloryValue) || 0);
+  if (current < cost) {
+    window.alert(`荣耀值不足：需要 ${cost}，当前 ${current}`);
+    return false;
+  }
+  state.gloryValue = current - cost;
+  return true;
+}
+
+function exchangeGloryLahmDirect() {
+  if (!isGloryBoxPool() || !consumeGloryValue(36)) return;
+  const card = createEmpoweredCard(getGloryConfig()?.mainPrize || "拉姆");
+  recordSingleDraw(card, "glory-exchange:36荣耀值兑换拉姆", { countTowardsTotal: false });
+  renderAll();
+  showFavoredHitAnimationIfNeeded();
+}
+
+function exchangeGloryChancePack(kind) {
+  if (!isGloryBoxPool()) return;
+  const cfgMap = {
+    lahm5: { cost: 2, max: 1, type: "glory_lahm_chance", chance: 0.05, label: "5%拉姆卡包" },
+    highlight10: { cost: 3, max: 2, type: "glory_highlight_chance", chance: 0.1, label: "10%高光礼盒" },
+    highlight30: { cost: 6, max: 2, type: "glory_highlight_chance", chance: 0.3, label: "30%高光礼盒" },
+  };
+  const cfg = cfgMap[kind];
+  if (!cfg) return;
+  state.gloryExchangeCounts = state.gloryExchangeCounts || {};
+  const used = Math.max(0, Number(state.gloryExchangeCounts[kind]) || 0);
+  if (used >= cfg.max) {
+    window.alert(`${cfg.label} 已达到兑换上限`);
+    return;
+  }
+  if (!consumeGloryValue(cfg.cost)) return;
+  state.gloryExchangeCounts[kind] = used + 1;
+  addGloryReward(cfg.type, state.totalPulls, cfg.label, {
+    chance: cfg.chance,
+    sourceLabel: `${cfg.cost}荣耀值兑换${cfg.label}`,
+  });
+  renderAll();
+  maybeAutoOpenRewards();
+}
+
 function getRewardOpenMode() {
   return rewardOpenModeSetting === "auto" ? "auto" : "manual";
 }
@@ -7222,6 +7523,13 @@ function maybeAutoOpenRewards() {
 // ================= 抽卡入口 =================
 
 function singlePull() {
+  if (isGloryBoxPool()) {
+    pendingFavoredHitEvent = null;
+    rollGloryBoxPull("glory-single");
+    renderAll();
+    showFavoredHitAnimationIfNeeded();
+    return;
+  }
   if (isShopPackagePool()) {
     pendingFavoredHitEvent = null;
     rollSpringShopPackage();
@@ -7238,6 +7546,18 @@ function singlePull() {
 
 // 十连抽：可选开启“至少 1 张五星及以上”保底（只对本次十连生效）
 function tenPull() {
+  if (isGloryBoxPool()) {
+    pendingFavoredHitEvent = null;
+    let didDraw = false;
+    for (let i = 0; i < 10; i += 1) {
+      if (!rollGloryBoxPull("glory-ten")) break;
+      didDraw = true;
+      if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
+    }
+    if (didDraw) renderAll();
+    showFavoredHitAnimationIfNeeded();
+    return;
+  }
   if (isShopPackagePool()) return;
   if (isDiscountLimitedPool() && getRemainingPullSlots() < 10) return;
   pendingFavoredHitEvent = null;
@@ -7302,6 +7622,19 @@ function autoToTargetTotal(target) {
       if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
     }
     if (didDraw) renderAll();
+    return;
+  }
+
+  if (isGloryBoxPool()) {
+    const cappedTarget = Math.max(0, Math.floor(Number(target) || 0));
+    let didDraw = false;
+    while ((Number(state.totalPulls) || 0) < cappedTarget) {
+      if (!rollGloryBoxPull("glory-auto")) break;
+      didDraw = true;
+      if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
+    }
+    if (didDraw) renderAll();
+    showFavoredHitAnimationIfNeeded();
     return;
   }
 
@@ -7378,6 +7711,17 @@ function autoDrawCount(count) {
     if (didDraw) renderAll();
     return;
   }
+  if (isGloryBoxPool()) {
+    let didDraw = false;
+    for (let i = 0; i < count; i += 1) {
+      if (!rollGloryBoxPull("glory-auto-count")) break;
+      didDraw = true;
+      if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
+    }
+    if (didDraw) renderAll();
+    showFavoredHitAnimationIfNeeded();
+    return;
+  }
   let didDraw = false;
   for (let i = 0; i < count; i += 1) {
     if (!spendGoldForPulls(1)) break;
@@ -7420,6 +7764,7 @@ function canExchangeToFavored(targetName) {
 
 function autoToFavoredEmpowered() {
   pendingFavoredHitEvent = null;
+  if (isGloryBoxPool()) return;
   const targetNames = getCurrentFavoredTargetNames();
   if (!targetNames.length) return;
   const missingTargets = targetNames.filter(
@@ -7536,6 +7881,9 @@ function getEntryWhereText(entry) {
   if (entry.source === "spring-shop" && entry.sourcePulls != null) {
     return `第 ${entry.sourcePulls} 抽春日礼包`;
   }
+  if (typeof entry.source === "string" && entry.source.startsWith("glory-") && entry.sourcePulls != null) {
+    return `第 ${entry.sourcePulls} 抽荣耀礼盒`;
+  }
 
   if (entry.pullIndex != null) {
     return `第 ${entry.pullIndex} 抽`;
@@ -7574,6 +7922,10 @@ function isAccumulatedGuaranteePool() {
 
 function isShopPackagePool(pool = getCurrentPool()) {
   return pool.progressionType === "shop_package";
+}
+
+function isGloryBoxPool(pool = getCurrentPool()) {
+  return (pool || getCurrentPool()).progressionType === "glory_box";
 }
 
 function isHallRoadPool(pool = getCurrentPool()) {
@@ -8133,6 +8485,42 @@ function openRewardById(id) {
       }
       break;
     }
+    case "glory_highlight_box": {
+      const card = rollGloryHighlightBoxCard(reward);
+      recordSingleDraw(card, toRewardSourceText(reward), {
+        countTowardsTotal: false,
+        milestonePulls: reward.pulls,
+      });
+      break;
+    }
+    case "glory_dream_box": {
+      const card = openGloryDreamBoxCard();
+      recordSingleDraw(card, toRewardSourceText(reward), {
+        countTowardsTotal: false,
+        milestonePulls: reward.pulls,
+      });
+      break;
+    }
+    case "glory_lahm_chance": {
+      const card = Math.random() < (reward.chance || 0.05)
+        ? createEmpoweredCard(getGloryConfig()?.mainPrize || "拉姆")
+        : createFiveStarCard();
+      recordSingleDraw(card, toRewardSourceText(reward), {
+        countTowardsTotal: false,
+        milestonePulls: reward.pulls,
+      });
+      break;
+    }
+    case "glory_highlight_chance": {
+      const card = Math.random() < (reward.chance || 0)
+        ? rollGloryHighlightBoxCard({ chance: 0.15 })
+        : createFiveStarCard();
+      recordSingleDraw(card, toRewardSourceText(reward), {
+        countTowardsTotal: false,
+        milestonePulls: reward.pulls,
+      });
+      break;
+    }
     default:
       break;
   }
@@ -8343,6 +8731,42 @@ function openAllRewards() {
         }
         break;
       }
+      case "glory_highlight_box": {
+        const card = rollGloryHighlightBoxCard(reward);
+        recordSingleDraw(card, toRewardSourceText(reward), {
+          countTowardsTotal: false,
+          milestonePulls: reward.pulls,
+        });
+        break;
+      }
+      case "glory_dream_box": {
+        const card = openGloryDreamBoxCard();
+        recordSingleDraw(card, toRewardSourceText(reward), {
+          countTowardsTotal: false,
+          milestonePulls: reward.pulls,
+        });
+        break;
+      }
+      case "glory_lahm_chance": {
+        const card = Math.random() < (reward.chance || 0.05)
+          ? createEmpoweredCard(getGloryConfig()?.mainPrize || "拉姆")
+          : createFiveStarCard();
+        recordSingleDraw(card, toRewardSourceText(reward), {
+          countTowardsTotal: false,
+          milestonePulls: reward.pulls,
+        });
+        break;
+      }
+      case "glory_highlight_chance": {
+        const card = Math.random() < (reward.chance || 0)
+          ? rollGloryHighlightBoxCard({ chance: 0.15 })
+          : createFiveStarCard();
+        recordSingleDraw(card, toRewardSourceText(reward), {
+          countTowardsTotal: false,
+          milestonePulls: reward.pulls,
+        });
+        break;
+      }
       default:
         break;
     }
@@ -8532,6 +8956,34 @@ function renderProbabilities() {
         tbody.appendChild(tr);
       });
       namesSpan.textContent = `主菜：瓦拉内 / 春日礼包10人：${(pool.springPackagePlayers || []).join(" / ")}`;
+    } else if (isGloryBoxPool()) {
+      const pool = getCurrentPool();
+      const cfg = getGloryConfig(pool);
+      const completedPulls = Math.max(0, Number(state.totalPulls) || 0);
+      probabilitySectionTitle.textContent = "荣耀礼盒概率";
+      empoweredNamesTitle.textContent = "荣耀礼盒球员：";
+      colName.textContent = "项目";
+      colValue.textContent = "概率";
+      [
+        { label: "当前荣耀值单次爆率", probability: getGloryValueProbability(completedPulls) },
+        { label: "荣耀高光礼盒：克洛泽", probability: 0.15 },
+        { label: "荣耀高光礼盒：巴蒂斯图塔", probability: 0.85 },
+        { label: "5%拉姆卡包：拉姆", probability: 0.05 },
+        { label: "10%高光礼盒", probability: 0.1 },
+        { label: "30%高光礼盒", probability: 0.3 },
+      ].forEach((item) => {
+        const tr = document.createElement("tr");
+        const tdName = document.createElement("td");
+        const tdProb = document.createElement("td");
+        tdName.textContent = item.label;
+        tdProb.textContent = formatGloryPercent(item.probability);
+        tr.appendChild(tdName);
+        tr.appendChild(tdProb);
+        tbody.appendChild(tr);
+      });
+      namesSpan.textContent =
+        `大奖：${cfg?.mainPrize || "拉姆"} / 高光礼盒：${cfg?.highlightTarget || "克洛泽"}、${cfg?.highlightFallback || "巴蒂斯图塔"} / ` +
+        `箱式：${(cfg?.dreamBoxPlayers || []).join(" / ")}`;
     } else {
       probabilitySectionTitle.textContent = "当前卡池概率";
       empoweredNamesTitle.textContent = "增能卡名单（概率平分）：";
@@ -9160,6 +9612,10 @@ function renderRewards() {
   const btnExchangeAnySelectSkin = document.getElementById(
     "btnExchangeAnySelectSkin"
   );
+  const btnGloryExchangeLahm36 = document.getElementById("btnGloryExchangeLahm36");
+  const btnGloryExchangeLahm5 = document.getElementById("btnGloryExchangeLahm5");
+  const btnGloryExchangeHighlight10 = document.getElementById("btnGloryExchangeHighlight10");
+  const btnGloryExchangeHighlight30 = document.getElementById("btnGloryExchangeHighlight30");
 
   if (
     !ul ||
@@ -9183,6 +9639,8 @@ function renderRewards() {
     ? "待开启兑换奖励/自选包"
     : isShopPackagePool()
     ? "待开启学霸礼包 / 自选包"
+    : isGloryBoxPool()
+    ? "待开启荣耀礼盒奖励"
     : isChainPool()
     ? "待开启礼包奖励 / 自选包"
     : "待开启累抽奖励 / 自选包";
@@ -9293,6 +9751,78 @@ function renderRewards() {
   }
 }
 
+function renderGloryBoxPanel() {
+  const panel = document.getElementById("gloryBoxPanel");
+  if (!panel) return;
+  if (!isGloryBoxPool()) {
+    panel.classList.add("hidden");
+    return;
+  }
+  panel.classList.remove("hidden");
+  const value = Math.max(0, Number(state.gloryValue) || 0);
+  const counts = state.gloryExchangeCounts || {};
+  const valueDisplay = document.getElementById("gloryValueDisplay");
+  const hint = document.getElementById("gloryExchangeHint");
+  const btnLahm36 = document.getElementById("btnGloryExchangeLahm36");
+  const btnLahm5 = document.getElementById("btnGloryExchangeLahm5");
+  const btnHighlight10 = document.getElementById("btnGloryExchangeHighlight10");
+  const btnHighlight30 = document.getElementById("btnGloryExchangeHighlight30");
+  if (valueDisplay) valueDisplay.textContent = String(value);
+  if (btnLahm36) btnLahm36.disabled = value < 36;
+  if (btnLahm5) {
+    const used = Math.max(0, Number(counts.lahm5) || 0);
+    btnLahm5.disabled = value < 2 || used >= 1;
+    btnLahm5.textContent = `2 荣耀值兑换 5%拉姆卡包（${used}/1）`;
+  }
+  if (btnHighlight10) {
+    const used = Math.max(0, Number(counts.highlight10) || 0);
+    btnHighlight10.disabled = value < 3 || used >= 2;
+    btnHighlight10.textContent = `3 荣耀值兑换 10%高光礼盒（${used}/2）`;
+  }
+  if (btnHighlight30) {
+    const used = Math.max(0, Number(counts.highlight30) || 0);
+    btnHighlight30.disabled = value < 6 || used >= 2;
+    btnHighlight30.textContent = `6 荣耀值兑换 30%高光礼盒（${used}/2）`;
+  }
+  if (hint) {
+    const completedPulls = Math.max(0, Number(state.totalPulls) || 0);
+    const p = getGloryValueProbability(completedPulls);
+    hint.textContent = `当前荣耀值单次爆率：${formatGloryPercent(p)}；抽完70抽后每抽额外必得1个荣耀值`;
+  }
+}
+
+function renderGloryDrawSummary() {
+  const summary = document.getElementById("gloryBoxSummary");
+  if (!summary) return;
+  if (!isGloryBoxPool()) {
+    summary.classList.add("hidden");
+    return;
+  }
+
+  const completedPulls = Math.max(0, Number(state.totalPulls) || 0);
+  const gloryValue = Math.max(0, Number(state.gloryValue) || 0);
+  const metrics = calcGloryTargetPullMetrics(36);
+  const pricePerPull = getPoolPricePerPull();
+  const expectedGold = Math.round(metrics.expected * pricePerPull);
+  const lowerGold = metrics.lowerPulls * pricePerPull;
+  const upperGold = metrics.upperPulls * pricePerPull;
+  const setText = (id, text) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = text;
+  };
+
+  setText("glorySummaryValue", String(gloryValue));
+  setText("glorySummaryPulls", String(completedPulls));
+  setText("glorySummaryRate", formatGloryPercent(getGloryValueProbability(completedPulls)));
+  setText("glorySummaryExpectedPulls", `${metrics.expected.toFixed(2)}抽`);
+  setText("glorySummaryExpectedGold", `${expectedGold.toLocaleString()}金币`);
+  setText(
+    "glorySummaryInterval",
+    `${metrics.lowerPulls}-${metrics.upperPulls}抽 / ${lowerGold.toLocaleString()}-${upperGold.toLocaleString()}金币`
+  );
+  summary.classList.remove("hidden");
+}
+
 function renderMilestonesTable() {
   const tbody = document.getElementById("milestoneTableBody");
   if (!tbody) return;
@@ -9357,6 +9887,31 @@ function renderMilestonesTable() {
       { pulls: "140 抽", text: "定向球员概率提升5000%" },
       { pulls: "160 抽", text: `必得${getAccumulatedGuaranteeConfig()?.targetName || "定向球员"}` },
     ];
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      const tdPulls = document.createElement("td");
+      const tdLabel = document.createElement("td");
+      tdPulls.textContent = row.pulls;
+      tdLabel.textContent = row.text;
+      tr.appendChild(tdPulls);
+      tr.appendChild(tdLabel);
+      tbody.appendChild(tr);
+    });
+    return;
+  }
+
+  if (isGloryBoxPool()) {
+    const cfg = getGloryConfig();
+    const rows = [
+      { pulls: "单次抽取", text: "1000金币抽1次，每次进行10次荣耀值判定" },
+      { pulls: "荣耀值概率", text: "第1抽0.6%，第5抽3%，第10抽3.75%，第15抽4.5%，第20抽5.25%，第25抽5.88%，第30抽起6%" },
+      { pulls: "70抽以后", text: "每抽必得1个荣耀值，剩余9次按6%判定" },
+      { pulls: "36 荣耀值", text: `兑换大奖${cfg?.mainPrize || "拉姆"}` },
+      { pulls: "2/3/6 荣耀值", text: "兑换5%拉姆卡包 / 10%高光礼盒 / 30%高光礼盒" },
+    ];
+    (cfg?.milestones || []).forEach((m) => {
+      rows.push({ pulls: `${m.pulls} 抽`, text: m.label });
+    });
     rows.forEach((row) => {
       const tr = document.createElement("tr");
       const tdPulls = document.createElement("td");
@@ -9525,7 +10080,7 @@ function renderQuickButtonsByPool() {
   }
 
   const pool = getCurrentPool();
-  const setBtn = (btn, text, drawCount, targetTotal, targetBadges, hidden = false) => {
+  const setBtn = (btn, text, drawCount, targetTotal, targetBadges, hidden = false, targetGlory = null) => {
     btn.textContent = text;
     if (drawCount == null) {
       btn.removeAttribute("data-draw-count");
@@ -9541,6 +10096,11 @@ function renderQuickButtonsByPool() {
       btn.removeAttribute("data-target-badges");
     } else {
       btn.setAttribute("data-target-badges", String(targetBadges));
+    }
+    if (targetGlory == null) {
+      btn.removeAttribute("data-target-glory");
+    } else {
+      btn.setAttribute("data-target-glory", String(targetGlory));
     }
     if (hidden) {
       btn.classList.add("hidden");
@@ -9630,6 +10190,15 @@ function renderQuickButtonsByPool() {
     setBtn(btnQuick420, "一键买到 80 个", null, 80, null);
     setBtn(btnQuick470, "一键买到 120 个", null, 120, null);
     setBtn(btnQuick520, "一键买到 120 个", null, 120, null, true);
+    return;
+  }
+
+  if (isGloryBoxPool()) {
+    setBtn(btnQuick60, "一键抽到 2 荣耀值", null, null, null, false, 2);
+    setBtn(btnQuick250, "一键抽到 3 荣耀值", null, null, null, false, 3);
+    setBtn(btnQuick420, "一键抽到 6 荣耀值", null, null, null, false, 6);
+    setBtn(btnQuick470, "一键抽到 36 荣耀值", null, null, null, false, 36);
+    setBtn(btnQuick520, "一键抽到 36 荣耀值", null, null, null, true, 36);
     return;
   }
 
@@ -9733,6 +10302,19 @@ function renderDrawPanelByPool() {
           `10%随机学霸礼包：${state.shopRandomScholarRewards || 0} 个；` +
           `10个赠送学霸礼包：${state.shopScholarMilestonesGranted || 0} / 10`;
         seasonRoundInfo.classList.remove("hidden");
+      } else if (isGloryBoxPool()) {
+        const completedPulls = Math.max(0, Number(state.totalPulls) || 0);
+        const gloryMetrics = calcGloryTargetPullMetrics(36);
+        const pricePerPull = getPoolPricePerPull();
+        const expectedGold = Math.round(gloryMetrics.expected * pricePerPull);
+        const lowerGold = gloryMetrics.lowerPulls * pricePerPull;
+        const upperGold = gloryMetrics.upperPulls * pricePerPull;
+        seasonRoundInfo.textContent =
+          `已抽：${state.totalPulls || 0}；荣耀值：${state.gloryValue || 0}；` +
+          `当前爆率：${formatGloryPercent(getGloryValueProbability(completedPulls))}；` +
+          `36荣耀值期望花费：${expectedGold.toLocaleString()}金币；` +
+          `95%区间：${lowerGold.toLocaleString()}-${upperGold.toLocaleString()}金币`;
+        seasonRoundInfo.classList.remove("hidden");
       } else {
         seasonRoundInfo.classList.add("hidden");
       }
@@ -9756,16 +10338,24 @@ function renderAll() {
   renderDrawPanelByPool();
   renderResults();
   renderHallRoadPanel();
+  renderGloryBoxPanel();
+  renderGloryDrawSummary();
   renderMomentPreview();
   const btnSingle = document.getElementById("btnSingle");
   const btnTen = document.getElementById("btnTen");
   const btnFifty = document.getElementById("btnFifty");
   if (btnSingle) btnSingle.classList.toggle("hidden", isDiscountLimitedPool());
-  if (btnFifty) btnFifty.classList.toggle("hidden", isDiscountLimitedPool() || isShopPackagePool());
+  if (btnFifty) btnFifty.classList.toggle("hidden", isDiscountLimitedPool() || isShopPackagePool() || isGloryBoxPool());
   if (btnTen) btnTen.classList.toggle("hidden", isShopPackagePool());
-  if (btnSingle) btnSingle.textContent = isShopPackagePool() ? "购买春日礼包（688金币）" : "单抽";
+  if (btnSingle) btnSingle.textContent = isShopPackagePool()
+    ? "购买春日礼包（688金币）"
+    : isGloryBoxPool()
+    ? "抽1次荣耀礼盒（1000金币）"
+    : "单抽";
   if (btnTen) btnTen.textContent = isDiscountLimitedPool()
     ? `十连抽（${getPullCostForRange(state.totalPulls || 0, 10)}金币）`
+    : isGloryBoxPool()
+    ? "抽10次荣耀礼盒（10000金币）"
     : "十连抽";
 }
 
@@ -9778,7 +10368,7 @@ function bindEvents() {
   const btnReset = document.getElementById("btnReset");
   const btnResetChain = document.getElementById("btnResetChain");
   const quickButtons = document.querySelectorAll(
-    ".quick-buttons button[data-target-total], .quick-buttons button[data-draw-count], .quick-buttons button[data-target-badges]"
+    ".quick-buttons button[data-target-total], .quick-buttons button[data-draw-count], .quick-buttons button[data-target-badges], .quick-buttons button[data-target-glory]"
   );
   const chainTierButtons = document.querySelectorAll(
     ".quick-buttons button[data-chain-target-tier]"
@@ -9889,6 +10479,11 @@ function bindEvents() {
       const targetBadges = btn.getAttribute("data-target-badges");
       if (targetBadges != null) {
         autoToTargetBadges(targetBadges);
+        return;
+      }
+      const targetGlory = btn.getAttribute("data-target-glory");
+      if (targetGlory != null) {
+        autoToTargetGloryValue(targetGlory);
         return;
       }
       const target = btn.getAttribute("data-target-total");
@@ -10213,6 +10808,26 @@ function bindEvents() {
   if (btnExchangeAnySelectSkin) {
     btnExchangeAnySelectSkin.addEventListener("click", () => {
       exchangeAnySelectWithSkinReward();
+    });
+  }
+  if (btnGloryExchangeLahm36) {
+    btnGloryExchangeLahm36.addEventListener("click", () => {
+      exchangeGloryLahmDirect();
+    });
+  }
+  if (btnGloryExchangeLahm5) {
+    btnGloryExchangeLahm5.addEventListener("click", () => {
+      exchangeGloryChancePack("lahm5");
+    });
+  }
+  if (btnGloryExchangeHighlight10) {
+    btnGloryExchangeHighlight10.addEventListener("click", () => {
+      exchangeGloryChancePack("highlight10");
+    });
+  }
+  if (btnGloryExchangeHighlight30) {
+    btnGloryExchangeHighlight30.addEventListener("click", () => {
+      exchangeGloryChancePack("highlight30");
     });
   }
   const btnHallSacrifice = document.getElementById("btnHallSacrifice");

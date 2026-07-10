@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <title>抽卡模拟器</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="app-version" content="2026.07.07.2">
-  <link rel="stylesheet" href="style.css?v=2026.07.07.2">
+  <meta name="app-version" content="2026.07.10.1">
+  <link rel="stylesheet" href="style.css?v=2026.07.10.1">
   <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 </head>
 <body>
@@ -16,7 +16,7 @@
           <div class="title-version-group">
             <h2>国服双端抽卡模拟器</h2>
             <span id="appVersionText" class="app-version-text">
-              版本号：<span id="appVersionValue">2026.07.07.2</span>
+              版本号：<span id="appVersionValue">2026.07.10.1</span>
               <span class="visit-sep"> | 总访问：</span>
               <span id="busuanzi_container_site_pv">
                 <span id="busuanzi_value_site_pv">0</span>
@@ -40,7 +40,7 @@
         </div>
       </div>
       <div class="header-subtitle pool-row">
-        <span class="pool-name-line">当前卡池：<span id="poolNameText">巅峰之选7折</span></span>
+        <span class="pool-name-line">当前卡池：<span id="poolNameText">德国战车荣耀礼盒</span></span>
         <div id="poolSwitchPanel" class="pool-switch-panel">
           <select id="poolTypeChoice">
             <option value="carnival_gift">狂欢赠礼</option>
@@ -48,6 +48,7 @@
             <option value="chain_bundle">连锁礼包</option>
             <option value="shop_package">商城礼包</option>
             <option value="season_carryover">赛季累抽继承</option>
+            <option value="glory_box">荣耀礼盒</option>
           </select>
           <select id="poolSwitchChoice"></select>
         </div>
@@ -218,6 +219,20 @@
             <button id="btnTen">十连抽</button>
             <button id="btnFifty">弄50抽！</button>
           </div>
+          <div id="gloryBoxSummary" class="glory-summary hidden">
+            <div class="glory-summary-main">
+              <span>荣耀值：<strong id="glorySummaryValue">0</strong></span>
+              <span>已抽：<strong id="glorySummaryPulls">0</strong></span>
+              <span>当前爆率：<strong id="glorySummaryRate">0.60%</strong></span>
+            </div>
+            <div class="glory-summary-sub">
+              36 荣耀值期望：
+              <strong id="glorySummaryExpectedPulls">67.33抽</strong>
+              /
+              <strong id="glorySummaryExpectedGold">67,332金币</strong>
+              <span>95%区间：<strong id="glorySummaryInterval">52-77抽 / 52,000-77,000金币</strong></span>
+            </div>
+          </div>
           <div class="draw-buttons quick-buttons">
             <button id="btnQuick60" data-draw-count="60">一键抽 60</button>
             <button id="btnQuick250" data-draw-count="250">一键抽 250</button>
@@ -326,6 +341,18 @@
             <button id="btnExchangeAnySelect">47 徽章兑换任意增能卡自选</button>
             <button id="btnExchangeAnySelectSkin">52 徽章兑换任意自选 + 维埃拉皮肤</button>
           </div>
+        </section>
+
+        <section id="gloryBoxPanel" class="card hidden">
+          <h3>荣耀礼盒兑换</h3>
+          <div class="hint-text small">当前荣耀值：<span id="gloryValueDisplay">0</span></div>
+          <div class="draw-buttons">
+            <button id="btnGloryExchangeLahm36">36 荣耀值兑换拉姆</button>
+            <button id="btnGloryExchangeLahm5">2 荣耀值兑换 5%拉姆卡包</button>
+            <button id="btnGloryExchangeHighlight10">3 荣耀值兑换 10%高光礼盒</button>
+            <button id="btnGloryExchangeHighlight30">6 荣耀值兑换 30%高光礼盒</button>
+          </div>
+          <div id="gloryExchangeHint" class="hint-text small"></div>
         </section>
 
         <section class="rewards-panel card">
@@ -672,6 +699,6 @@
     </div>
   </div>
 
-  <script src="main.js?v=2026.07.07.2"></script>
+  <script src="main.js?v=2026.07.10.1"></script>
 </body>
 </html>
