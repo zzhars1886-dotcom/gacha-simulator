@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.17.7";
+  "2026.07.17.8";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -10730,7 +10730,7 @@ function renderStarPackPanel() {
       status.textContent = "请选择购买数量";
     } else if (batch.status === "tearing") {
       status.textContent =
-        `本批 ${batch.count} 包共享九宫格 · 已翻 ${batch.step}/${batch.route.length} 格` +
+        `本批 ${batch.count} 包共享九宫格 · 已翻 ${batch.step} 格 · 最多 ${STAR_PACK_MAX_TILES} 格` +
         (categoryRevealed ? ` · ${category?.label || "卡包类型已揭晓"}` : "");
     } else if (batch.status === "opening") {
       status.textContent =
