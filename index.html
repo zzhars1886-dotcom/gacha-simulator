@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <title>抽卡模拟器</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="app-version" content="2026.07.10.1">
-  <link rel="stylesheet" href="style.css?v=2026.07.10.1">
+  <meta name="app-version" content="2026.07.17.7">
+  <link rel="stylesheet" href="style.css?v=2026.07.17.7">
   <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 </head>
 <body>
@@ -16,7 +16,7 @@
           <div class="title-version-group">
             <h2>国服双端抽卡模拟器</h2>
             <span id="appVersionText" class="app-version-text">
-              版本号：<span id="appVersionValue">2026.07.10.1</span>
+              版本号：<span id="appVersionValue">2026.07.17.7</span>
               <span class="visit-sep"> | 总访问：</span>
               <span id="busuanzi_container_site_pv">
                 <span id="busuanzi_value_site_pv">0</span>
@@ -40,7 +40,7 @@
         </div>
       </div>
       <div class="header-subtitle pool-row">
-        <span class="pool-name-line">当前卡池：<span id="poolNameText">德国战车荣耀礼盒</span></span>
+        <span class="pool-name-line">当前卡池：<span id="poolNameText">雄鸡与三狮 球星卡包</span></span>
         <div id="poolSwitchPanel" class="pool-switch-panel">
           <select id="poolTypeChoice">
             <option value="carnival_gift">狂欢赠礼</option>
@@ -49,6 +49,7 @@
             <option value="shop_package">商城礼包</option>
             <option value="season_carryover">赛季累抽继承</option>
             <option value="glory_box">荣耀礼盒</option>
+            <option value="star_pack">球星卡包</option>
           </select>
           <select id="poolSwitchChoice"></select>
         </div>
@@ -152,21 +153,21 @@
                 <span class="stat-label">徽章</span>
                 <span class="stat-value" id="statBadges">0</span>
               </div>
-              <div class="stat-item">
-                <span class="stat-label">增能卡</span>
+              <div id="statEmpoweredItem" class="stat-item">
+                <span id="statEmpoweredLabel" class="stat-label">增能卡</span>
                 <span class="stat-value highlight" id="statEmpowered">0</span>
               </div>
-              <div class="stat-item">
-                <span class="stat-label">精选卡</span>
+              <div id="statSelectedItem" class="stat-item">
+                <span id="statSelectedLabel" class="stat-label">精选卡</span>
                 <span class="stat-value" id="statSelected">0</span>
               </div>
-              <div class="stat-item">
-                <span class="stat-label">普卡</span>
+              <div id="statNormalItem" class="stat-item">
+                <span id="statNormalLabel" class="stat-label">普卡</span>
                 <span class="stat-value" id="statNormal">0</span>
               </div>
             </div>
 
-            <h4>增能卡明细</h4>
+            <h4 id="empoweredStatsTitle">增能卡明细</h4>
             <table class="empowered-table">
               <thead>
                 <tr>
@@ -240,7 +241,7 @@
             <button id="btnQuick470" data-draw-count="470">一键抽 470</button>
             <button id="btnQuick520" data-draw-count="520">一键抽 520</button>
           </div>
-          <div class="select-row favored-row">
+          <div id="favoredRow" class="select-row favored-row">
             <div class="favored-head">
               <label for="favEmpoweredChoice">心仪球员：</label>
               <button id="btnFavSelectAll" class="small-button">一键全选</button>
@@ -272,6 +273,76 @@
             <span id="highlightTicketFooter" class="hint-text small hidden">已抽券数：<span id="highlightTicketCount">0</span></span>
           </div>
           <div id="seasonRoundInfo" class="hint-text small hidden">当前轮次进度：0 / 500</div>
+          </div>
+
+          <div id="starPackDrawPanel" class="star-pack-panel hidden">
+            <div class="star-pack-summary">
+              <div>
+                <span>已购买 <strong id="starPackPurchasedCount">0</strong> 包</span>
+                <span>幸运星 <strong id="starPackLuckyStars">0</strong> / 15</span>
+                <span>幸运宝箱 <strong id="starPackLuckyBoxes">0</strong> 次</span>
+              </div>
+              <div class="star-pack-summary-note">
+                单包平均出核心概率 <strong id="starPackExpectedRate">8.85%</strong>
+                <span>保底进度 <strong id="starPackGuaranteeProgress">0/100</strong></span>
+                <span>第 8 个幸运宝箱为自选箱</span>
+              </div>
+            </div>
+
+            <div class="star-pack-purchase-row">
+              <span class="star-pack-section-label">购买卡包</span>
+              <button type="button" data-star-pack-count="1">购买 1 包 · 800</button>
+              <button type="button" data-star-pack-count="3">购买 3 包 · 2400</button>
+              <button type="button" data-star-pack-count="10">购买 10 包 · 8000</button>
+              <button id="btnOpenStarLuckyBox" type="button" class="star-lucky-button">
+                开启幸运宝箱
+              </button>
+              <button id="btnResetStarPack" type="button" class="danger">重置</button>
+            </div>
+
+            <div id="starPackChoicePanel" class="star-pack-choice-panel hidden">
+              <div>
+                <strong>第 8 个幸运宝箱自选箱</strong>
+                <span>选择其中一个卡包领取</span>
+              </div>
+              <div class="star-pack-choice-actions">
+                <button type="button" data-star-lucky-choice="select">自选球星包</button>
+                <button type="button" data-star-lucky-choice="random">随机增能包</button>
+                <button type="button" data-star-lucky-choice="vieira">10%维埃拉包</button>
+                <button type="button" data-star-lucky-choice="item">道具包</button>
+              </div>
+            </div>
+
+            <div id="starPackGuaranteePanel" class="star-pack-choice-panel hidden">
+              <div>
+                <strong>100 个球星包保底</strong>
+                <span>已实际开完 100 个球星包，可领取维埃拉</span>
+              </div>
+              <div class="star-pack-choice-actions">
+                <button id="btnClaimStarPackVieira" type="button">领取维埃拉</button>
+              </div>
+            </div>
+
+            <section class="star-pack-stage">
+              <div class="star-pack-stage-head">
+                <span class="star-pack-section-label">本批卡包</span>
+                <span id="starPackBatchStatus" class="hint-text small">请选择购买数量</span>
+              </div>
+              <div id="starPackBatchLane" class="star-pack-batch-lane"></div>
+            </section>
+
+            <section class="star-pack-stage star-pack-tear-stage">
+              <div class="star-pack-stage-head">
+                <span class="star-pack-section-label">撕卡区</span>
+                <span id="starPackBoostStatus" class="star-pack-boost-status">
+                  潜力 99+ · 核心概率 5%
+                </span>
+              </div>
+              <div id="starPackTearGrid" class="star-pack-tear-grid" aria-label="九宫格撕卡区"></div>
+              <div id="starPackTearHint" class="hint-text small">
+                购买后点击任意卡背开始撕卡，最多翻开 9 格。
+              </div>
+            </section>
           </div>
 
           <div id="chainDrawPanel" class="hidden">
@@ -699,6 +770,6 @@
     </div>
   </div>
 
-  <script src="main.js?v=2026.07.10.1"></script>
+  <script src="main.js?v=2026.07.17.7"></script>
 </body>
 </html>

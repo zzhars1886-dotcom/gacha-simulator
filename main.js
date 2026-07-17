@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.10.1";
+  "2026.07.17.7";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -114,6 +114,88 @@ const GERMAN_GLORY_BOX_MILESTONES = [
   [145, "glory_dream_box", "高光梦幻箱式"],
 ].map(([pulls, type, label]) => ({ pulls, type, label }));
 
+const STAR_PACK_TEAR_PROBABILITIES = {
+  potential: 0.4,
+  signing: 0.25,
+  tear: 0.35,
+};
+const STAR_PACK_SIGNING_RATES = [0.05, 0.1, 0.3, 1];
+const STAR_PACK_MAX_TILES = 9;
+const STAR_PACK_LUCKY_STAR_RATE = 0.33;
+// 与“每包至少1颗”的补发保底合并后，所有九宫格长度加权为综合33%。
+const STAR_PACK_LUCKY_STAR_BASE_RATE = 0.31047719769203075;
+
+function calcStarPackRouteMetrics() {
+  const metrics = {
+    validProbability: 0,
+    signingTierWeights: [0, 0, 0, 0],
+    potentialTierWeights: [0, 0, 0, 0],
+    lengthWeights: new Array(STAR_PACK_MAX_TILES + 1).fill(0),
+  };
+
+  const visit = (length, probability, potential, signing, tear) => {
+    if (tear >= 2 || length >= STAR_PACK_MAX_TILES) {
+      const potentialTier = Math.min(3, Math.floor(potential / 2));
+      const signingTier = Math.min(3, Math.floor(signing / 2));
+      if (tear >= 2 && (potentialTier > 0 || signingTier > 0)) {
+        metrics.validProbability += probability;
+        metrics.signingTierWeights[signingTier] += probability;
+        metrics.potentialTierWeights[potentialTier] += probability;
+        metrics.lengthWeights[length] += probability;
+      }
+      return;
+    }
+
+    visit(
+      length + 1,
+      probability * STAR_PACK_TEAR_PROBABILITIES.potential,
+      potential + 1,
+      signing,
+      tear
+    );
+    visit(
+      length + 1,
+      probability * STAR_PACK_TEAR_PROBABILITIES.signing,
+      potential,
+      signing + 1,
+      tear
+    );
+    visit(
+      length + 1,
+      probability * STAR_PACK_TEAR_PROBABILITIES.tear,
+      potential,
+      signing,
+      tear + 1
+    );
+  };
+
+  visit(0, 1, 0, 0, 0);
+  const normalize = (weights) =>
+    weights.map((weight) => weight / metrics.validProbability);
+  metrics.signingTierWeights = normalize(metrics.signingTierWeights);
+  metrics.potentialTierWeights = normalize(metrics.potentialTierWeights);
+  metrics.lengthWeights = normalize(metrics.lengthWeights);
+  metrics.expectedCoreRate = metrics.signingTierWeights.reduce(
+    (sum, weight, tier) => sum + weight * STAR_PACK_SIGNING_RATES[tier],
+    0
+  );
+  metrics.expectedRouteLength = metrics.lengthWeights.reduce(
+    (sum, weight, length) => sum + weight * length,
+    0
+  );
+  metrics.expectedLuckyStarsPerPack = metrics.lengthWeights.reduce(
+    (sum, weight, length) =>
+      sum +
+      weight *
+        (length * STAR_PACK_LUCKY_STAR_BASE_RATE +
+          (1 - STAR_PACK_LUCKY_STAR_BASE_RATE) ** length),
+    0
+  );
+  return metrics;
+}
+
+const STAR_PACK_ROUTE_METRICS = calcStarPackRouteMetrics();
+
 function createCarnivalPool(config) {
   return {
     poolType: "carnival_gift",
@@ -184,6 +266,95 @@ function checkAppSync() {
 }
 
 const POOLS = {
+  rooster_lions_star_pack: {
+    poolType: "star_pack",
+    progressionType: "star_pack",
+    name: "雄鸡与三狮 球星卡包",
+    pricePerPull: 800,
+    poolConfig: [
+      {
+        type: "empowered",
+        label: "单包平均出核心概率（九宫格路线加权）",
+        probability: STAR_PACK_ROUTE_METRICS.expectedCoreRate,
+      },
+      {
+        type: "star5",
+        label: "单包平均出五星普卡概率（九宫格路线加权）",
+        probability: 1 - STAR_PACK_ROUTE_METRICS.expectedCoreRate,
+      },
+    ],
+    empoweredCards: [
+      "登贝莱",
+      "姆巴佩",
+      "凯恩",
+      "孔德",
+      "格列兹曼",
+      "坎特",
+      "里贝里",
+      "鲁尼",
+      "贝克汉姆",
+      "马克莱莱",
+      "佩蒂特",
+      "欧文",
+      "维埃拉",
+    ],
+    starPackConfig: {
+      luckyStarRate: STAR_PACK_LUCKY_STAR_RATE,
+      luckyBoxCost: 15,
+      vieiraName: "维埃拉",
+      vieiraMilestonePacks: 100,
+      directPlayers: [
+        "登贝莱",
+        "姆巴佩",
+        "凯恩",
+        "孔德",
+        "格列兹曼",
+        "坎特",
+        "里贝里",
+        "鲁尼",
+        "贝克汉姆",
+        "马克莱莱",
+        "佩蒂特",
+        "欧文",
+      ],
+      packCategories: [
+        {
+          id: "epic",
+          label: "史诗高光包",
+          weight: 1 / 3,
+          players: ["里贝里", "鲁尼", "贝克汉姆", "马克莱莱", "佩蒂特", "欧文"],
+        },
+        {
+          id: "st",
+          label: "梦幻精选包",
+          weight: 1 / 3,
+          players: ["登贝莱", "姆巴佩", "凯恩", "孔德", "格列兹曼", "坎特"],
+        },
+        {
+          id: "mixed",
+          label: "史诗+ST混合包",
+          weight: 1 / 3,
+          players: [
+            "里贝里",
+            "鲁尼",
+            "贝克汉姆",
+            "马克莱莱",
+            "佩蒂特",
+            "欧文",
+            "登贝莱",
+            "姆巴佩",
+            "凯恩",
+            "孔德",
+            "格列兹曼",
+            "坎特",
+          ],
+        },
+      ],
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   german_chariot_glory_box: {
     poolType: "glory_box",
     progressionType: "glory_box",
@@ -1822,6 +1993,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.rooster_lions_star_pack && "rooster_lions_star_pack") ||
   (POOLS.german_chariot_glory_box && "german_chariot_glory_box") ||
   (POOLS.peak_choice_discount && "peak_choice_discount") ||
   (POOLS.new_king_road_two_gift && "new_king_road_two_gift") ||
@@ -1875,9 +2047,11 @@ const POOL_TYPE_LABELS = {
   accumulated_guarantee: "累抽必得",
   hall_road: "殿堂之路",
   glory_box: "荣耀礼盒",
+  star_pack: "球星卡包",
 };
 
 const POOL_CINEMATIC_ASSET_FOLDERS = {
+  rooster_lions_star_pack: ["assets/雄鸡与三狮"],
   xinzai_jinxiu: ["assets/新载锦绣"],
   german_chariot_glory_box: ["assets/德国战车"],
   summer_pearls_gift: ["assets/盛夏遗珠"],
@@ -1932,6 +2106,21 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
 };
 
 const POOL_PLAYER_META = {
+  rooster_lions_star_pack: {
+    登贝莱: { type: "ST", position: "右边锋", packCategory: "梦幻精选" },
+    姆巴佩: { type: "ST", position: "中锋", packCategory: "梦幻精选" },
+    凯恩: { type: "ST", position: "中锋", packCategory: "梦幻精选" },
+    孔德: { type: "ST", position: "右后卫", packCategory: "梦幻精选" },
+    格列兹曼: { type: "ST", position: "中锋", packCategory: "梦幻精选" },
+    坎特: { type: "ST", position: "后腰", packCategory: "梦幻精选" },
+    里贝里: { type: "史诗", position: "左边锋", packCategory: "史诗高光" },
+    鲁尼: { type: "史诗", position: "影锋", packCategory: "史诗高光" },
+    贝克汉姆: { type: "史诗", position: "右前卫", packCategory: "史诗高光" },
+    马克莱莱: { type: "史诗", position: "后腰", packCategory: "史诗高光" },
+    佩蒂特: { type: "史诗", position: "中前卫", packCategory: "史诗高光" },
+    欧文: { type: "史诗", position: "中锋", packCategory: "史诗高光" },
+    维埃拉: { type: "史诗", position: "后腰", packCategory: "史诗高光" },
+  },
   german_chariot_glory_box: {
     拉姆: { type: "BT", position: "右后卫" },
     克洛泽: { type: "史诗", position: "中锋" },
@@ -2566,6 +2755,16 @@ function createInitialState(empoweredCards) {
     gloryMilestonesGranted: [],
     gloryDreamBoxRemaining: [],
     gloryExchangeCounts: {},
+    starPackBatch: null,
+    starPackLuckyStars: 0,
+    starPackLuckyBoxesOpened: 0,
+    starPackChoiceBoxPending: false,
+    starPackCoreHits: 0,
+    starPackOtherHits: 0,
+    starPackCompletedPacks: 0,
+    starPackCompletedBatchSizes: [],
+    starPackVieiraGuaranteeClaimable: false,
+    starPackVieiraMilestoneGranted: false,
   };
 }
 
@@ -3970,6 +4169,9 @@ function isDiscountLimitedPool(pool = getCurrentPool()) {
 function getPoolPricePerPull(pool = getCurrentPool()) {
   if (isGloryBoxPool(pool)) {
     return Math.max(1, Number(pool.pricePerPull || 1000));
+  }
+  if (isStarPackPool(pool)) {
+    return Math.max(1, Number(pool.pricePerPull || 800));
   }
   if (isShopPackagePool(pool)) {
     return Math.max(1, Number(pool.packagePriceGold || 688));
@@ -5783,6 +5985,7 @@ function closeFavHitModal() {
   }
   maybeAutoOpenRewards();
   resumeHighlightTicketBatchIfNeeded();
+  resumeStarPackBatchIfNeeded();
 }
 
 function isFavHitModalOpen() {
@@ -6607,6 +6810,7 @@ function closeCinematicDemoModal() {
     maybeAutoOpenRewards();
   }
   resumeHighlightTicketBatchIfNeeded();
+  resumeStarPackBatchIfNeeded();
 }
 
 function openRealModeInitModal() {
@@ -6838,11 +7042,23 @@ function recordSingleDraw(card, source = "normal", options = {}) {
           });
         }
         const animationMode = getCurrentAnimationMode();
-        if (animationMode === ANIMATION_MODES.ALL_EMPOWERED) {
+        const isSequentialStarPackHit =
+          isStarPackPool() && source === "star-pack-core";
+        const animationProgressDraws =
+          isStarPackPool() &&
+          typeof source === "string" &&
+          source.startsWith("star-pack") &&
+          sourcePulls != null
+            ? Math.max(0, Number(sourcePulls) || 0)
+            : getCurrentAnimationProgressDraws();
+        if (
+          animationMode === ANIMATION_MODES.ALL_EMPOWERED ||
+          (isSequentialStarPackHit && animationMode !== ANIMATION_MODES.NONE)
+        ) {
           const isTicket = source === "highlight-ticket";
           const totalDraws = isTicket
             ? Math.max(0, Number(ticketPullIndex) || 0)
-            : getCurrentAnimationProgressDraws();
+            : animationProgressDraws;
           const goldEmpoweredCount = Math.max(0, Number(getGoldStats().empowered) || 0);
           const ticketEmpoweredCount = Math.max(
             0,
@@ -6870,7 +7086,7 @@ function recordSingleDraw(card, source = "normal", options = {}) {
             targetName: card.name,
             totalDraws: isTicket
               ? Math.max(0, Number(ticketPullIndex) || 0)
-              : getCurrentAnimationProgressDraws(),
+              : animationProgressDraws,
             progressUnit: isTicket ? "ticket" : (isChainPool() ? "tier" : "draw"),
             exceedPercent: isTicket
               ? getExceedPercentForHighlightTicketEmpoweredCount(
@@ -7408,6 +7624,441 @@ function openGloryDreamBoxCard() {
   return createEmpoweredCard(name);
 }
 
+function getStarPackConfig(pool = getCurrentPool()) {
+  return isStarPackPool(pool) ? pool.starPackConfig || null : null;
+}
+
+function getStarPackCategoryById(categoryId, pool = getCurrentPool()) {
+  return (getStarPackConfig(pool)?.packCategories || []).find(
+    (category) => category.id === categoryId
+  ) || null;
+}
+
+function rollStarPackCategory(pool = getCurrentPool()) {
+  const categories = getStarPackConfig(pool)?.packCategories || [];
+  const totalWeight = categories.reduce(
+    (sum, category) => sum + Math.max(0, Number(category.weight) || 0),
+    0
+  );
+  if (!categories.length) return null;
+  if (totalWeight <= 0) return categories[0];
+  let roll = Math.random() * totalWeight;
+  for (const category of categories) {
+    roll -= Math.max(0, Number(category.weight) || 0);
+    if (roll < 0) return category;
+  }
+  return categories[categories.length - 1];
+}
+
+function createStarPackTearRoute() {
+  const kinds = Object.keys(STAR_PACK_TEAR_PROBABILITIES);
+  for (let attempt = 0; attempt < 10000; attempt += 1) {
+    const route = [];
+    const counts = { potential: 0, signing: 0, tear: 0 };
+    while (route.length < STAR_PACK_MAX_TILES && counts.tear < 2) {
+      const roll = Math.random();
+      let cumulative = 0;
+      let kind = "tear";
+      for (const candidate of kinds) {
+        cumulative += STAR_PACK_TEAR_PROBABILITIES[candidate];
+        if (roll < cumulative) {
+          kind = candidate;
+          break;
+        }
+      }
+      route.push(kind);
+      counts[kind] += 1;
+    }
+    const hasUpgrade =
+      Math.floor(counts.potential / 2) > 0 || Math.floor(counts.signing / 2) > 0;
+    if (counts.tear >= 2 && hasUpgrade) return route;
+  }
+  return ["potential", "potential", "tear", "signing", "tear"];
+}
+
+function createStarPackLuckyMatrix(packCount, routeLength) {
+  const count = Math.max(1, Math.floor(Number(packCount) || 1));
+  const length = Math.max(1, Math.floor(Number(routeLength) || 1));
+  return Array.from({ length: count }, () => {
+    const row = Array.from(
+      { length },
+      () => Math.random() < STAR_PACK_LUCKY_STAR_BASE_RATE
+    );
+    if (!row.some(Boolean)) {
+      row[Math.floor(Math.random() * length)] = true;
+    }
+    return row;
+  });
+}
+
+function getStarPackBatchProgress(batch = state.starPackBatch) {
+  const revealedKinds = batch?.revealedKinds || [];
+  const potentialCount = revealedKinds.filter((kind) => kind === "potential").length;
+  const signingCount = revealedKinds.filter((kind) => kind === "signing").length;
+  const tearCount = revealedKinds.filter((kind) => kind === "tear").length;
+  const potentialTier = Math.min(3, Math.floor(potentialCount / 2));
+  const signingTier = Math.min(3, Math.floor(signingCount / 2));
+  return {
+    potentialCount,
+    signingCount,
+    tearCount,
+    potentialTier,
+    signingTier,
+    rating: 99 + potentialTier,
+    coreRate: STAR_PACK_SIGNING_RATES[signingTier],
+  };
+}
+
+function unlockStarPackVieiraMilestoneIfNeeded() {
+  const cfg = getStarPackConfig();
+  const target = Math.max(1, Number(cfg?.vieiraMilestonePacks) || 100);
+  if (
+    !cfg ||
+    state.starPackVieiraMilestoneGranted ||
+    state.starPackVieiraGuaranteeClaimable ||
+    Math.max(0, Number(state.starPackCompletedPacks) || 0) < target
+  ) {
+    return;
+  }
+  state.starPackVieiraGuaranteeClaimable = true;
+}
+
+function claimStarPackVieiraGuarantee() {
+  if (
+    !isStarPackPool() ||
+    !state.starPackVieiraGuaranteeClaimable ||
+    state.starPackVieiraMilestoneGranted
+  ) {
+    return;
+  }
+  const cfg = getStarPackConfig();
+  const target = Math.max(1, Number(cfg?.vieiraMilestonePacks) || 100);
+  state.starPackVieiraGuaranteeClaimable = false;
+  state.starPackVieiraMilestoneGranted = true;
+  recordSingleDraw(createEmpoweredCard(cfg?.vieiraName || "维埃拉"), "star-pack-guarantee-100", {
+    countTowardsTotal: false,
+    milestonePulls: target,
+    sourcePulls: target,
+    excludeFromGoldStats: true,
+  });
+  renderAll();
+  showFavoredHitAnimationIfNeeded();
+}
+
+function purchaseStarPackBatch(packCount) {
+  if (!isStarPackPool()) return false;
+  const currentBatch = state.starPackBatch;
+  if (currentBatch && currentBatch.status !== "opened") return false;
+  const count = [1, 3, 10].includes(Number(packCount)) ? Number(packCount) : 1;
+  const price = count * getPoolPricePerPull();
+  if (!spendGoldAmount(price)) {
+    openInsufficientGoldModal();
+    return false;
+  }
+
+  const route = createStarPackTearRoute();
+  const category = rollStarPackCategory();
+  const startPackIndex = Math.max(0, Number(state.totalPulls) || 0) + 1;
+  state.totalPulls = startPackIndex + count - 1;
+  state.starPackBatch = {
+    count,
+    startPackIndex,
+    categoryId: category?.id || "",
+    route,
+    luckyMatrix: createStarPackLuckyMatrix(count, route.length),
+    step: 0,
+    revealedKinds: [],
+    revealedTiles: {},
+    starsGained: 0,
+    status: "tearing",
+    results: [],
+    openedCount: 0,
+    directCoreHits: 0,
+    statsBatchIndex: null,
+  };
+  renderAll();
+  return true;
+}
+
+function finishStarPackBatch() {
+  const batch = state.starPackBatch;
+  if (!batch || batch.status !== "tearing") return;
+  batch.status = "opening";
+  batch.openedCount = 0;
+  batch.directCoreHits = 0;
+  state.starPackCompletedBatchSizes = Array.isArray(state.starPackCompletedBatchSizes)
+    ? state.starPackCompletedBatchSizes
+    : [];
+  batch.statsBatchIndex = state.starPackCompletedBatchSizes.length;
+  state.starPackCompletedBatchSizes.push(0);
+  openNextStarPackResult();
+}
+
+function openNextStarPackResult() {
+  const batch = state.starPackBatch;
+  if (
+    !isStarPackPool() ||
+    !batch ||
+    batch.status !== "opening" ||
+    isAnyHitModalOpen()
+  ) {
+    return;
+  }
+
+  const category = getStarPackCategoryById(batch.categoryId);
+  const progress = getStarPackBatchProgress(batch);
+
+  while (batch.openedCount < batch.count) {
+    const index = batch.openedCount;
+    const sourcePackIndex =
+      Math.max(1, Number(batch.startPackIndex) || 1) + index;
+    let card;
+    if (Math.random() < progress.coreRate) {
+      card = createEmpoweredCard(randomFromArray(category?.players || []));
+      batch.directCoreHits += 1;
+      state.starPackCoreHits =
+        Math.max(0, Number(state.starPackCoreHits) || 0) + 1;
+      recordSingleDraw(card, "star-pack-core", {
+        countTowardsTotal: false,
+        sourcePulls: sourcePackIndex,
+      });
+    } else {
+      card = {
+        type: "star5",
+        name: "五星普卡",
+      };
+      state.starPackOtherHits = Math.max(0, Number(state.starPackOtherHits) || 0) + 1;
+      recordSingleDraw(card, "star-pack-five-star", {
+        countTowardsTotal: false,
+        sourcePulls: sourcePackIndex,
+      });
+    }
+    batch.results.push(card);
+    batch.openedCount += 1;
+    state.starPackCompletedPacks =
+      Math.max(0, Number(state.starPackCompletedPacks) || 0) + 1;
+    unlockStarPackVieiraMilestoneIfNeeded();
+    if (batch.statsBatchIndex != null) {
+      state.starPackCompletedBatchSizes[batch.statsBatchIndex] = batch.openedCount;
+    }
+
+    renderAll();
+    showFavoredHitAnimationIfNeeded();
+    if (isAnyHitModalOpen()) return;
+  }
+
+  batch.status = "opened";
+  renderAll();
+}
+
+function resumeStarPackBatchIfNeeded() {
+  if (!isStarPackPool()) return;
+  const batch = state.starPackBatch;
+  if (!batch || batch.status !== "opening" || isAnyHitModalOpen()) return;
+  openNextStarPackResult();
+}
+
+function revealStarPackTile(tileIndex) {
+  if (!isStarPackPool()) return;
+  const batch = state.starPackBatch;
+  const index = Math.max(0, Math.min(STAR_PACK_MAX_TILES - 1, Number(tileIndex) || 0));
+  if (
+    !batch ||
+    batch.status !== "tearing" ||
+    batch.revealedTiles[index] ||
+    batch.step >= batch.route.length
+  ) {
+    return;
+  }
+
+  const kind = batch.route[batch.step];
+  const stars = (batch.luckyMatrix || []).reduce(
+    (sum, row) => sum + (row?.[batch.step] ? 1 : 0),
+    0
+  );
+  batch.revealedTiles[index] = { kind, stars, order: batch.step + 1 };
+  batch.revealedKinds.push(kind);
+  batch.step += 1;
+  batch.starsGained += stars;
+  state.starPackLuckyStars =
+    Math.max(0, Number(state.starPackLuckyStars) || 0) + stars;
+
+  if (getStarPackBatchProgress(batch).tearCount >= 2) {
+    finishStarPackBatch();
+    return;
+  }
+  renderAll();
+  showFavoredHitAnimationIfNeeded();
+}
+
+function addStarPackHistoryCard(card, source) {
+  recordSingleDraw(card, source, {
+    countTowardsTotal: false,
+    sourcePulls: state.totalPulls,
+    excludeFromGoldStats: true,
+  });
+}
+
+function grantStarPackSelectReward(sourceLabel, historyName, historySource) {
+  const cfg = getStarPackConfig();
+  state.pendingSelectRewardCount += 1;
+  state.pendingSelectMilestones.push({
+    pulls: state.totalPulls,
+    sourceLabel,
+    candidateNames: (cfg?.directPlayers || []).slice(),
+  });
+  addStarPackHistoryCard(
+    { type: "star_pack_select", name: historyName },
+    historySource
+  );
+}
+
+function openStarPackVieiraChance(hitSource, missSource) {
+  const cfg = getStarPackConfig();
+  if (Math.random() < 0.1) {
+    addStarPackHistoryCard(
+      createEmpoweredCard(cfg?.vieiraName || "维埃拉"),
+      hitSource
+    );
+  } else {
+    state.starPackOtherHits =
+      Math.max(0, Number(state.starPackOtherHits) || 0) + 1;
+    addStarPackHistoryCard(
+      { type: "star5", name: "五星普卡" },
+      missSource
+    );
+  }
+}
+
+function openStarLuckyBox() {
+  if (!isStarPackPool()) return;
+  if (state.starPackChoiceBoxPending) return;
+  const cfg = getStarPackConfig();
+  const cost = Math.max(1, Number(cfg?.luckyBoxCost) || 15);
+  const currentStars = Math.max(0, Number(state.starPackLuckyStars) || 0);
+  if (currentStars < cost) return;
+
+  state.starPackLuckyStars = currentStars - cost;
+  const boxNumber = Math.max(0, Number(state.starPackLuckyBoxesOpened) || 0) + 1;
+  state.starPackLuckyBoxesOpened = boxNumber;
+  if (boxNumber === 8) {
+    state.starPackChoiceBoxPending = true;
+    renderAll();
+    return;
+  }
+
+  const roll = Math.random();
+  if (roll < 0.01) {
+    grantStarPackSelectReward(
+      "幸运宝箱 · 1%自选球星包",
+      "1%自选球星包",
+      "star-pack-lucky-select"
+    );
+  } else if (roll < 0.04) {
+    addStarPackHistoryCard(
+      createEmpoweredCard(randomFromArray(cfg?.directPlayers || [])),
+      "star-pack-lucky-random"
+    );
+  } else if (roll < 0.1) {
+    openStarPackVieiraChance(
+      "star-pack-lucky-vieira",
+      "star-pack-lucky-vieira-miss"
+    );
+  } else {
+    addStarPackHistoryCard(
+      { type: "star_pack_item", name: "幸运宝箱道具" },
+      "star-pack-lucky-item"
+    );
+  }
+
+  renderAll();
+  showFavoredHitAnimationIfNeeded();
+}
+
+function claimStarPackChoiceBox(choice) {
+  if (!isStarPackPool() || !state.starPackChoiceBoxPending) return;
+  const cfg = getStarPackConfig();
+  state.starPackChoiceBoxPending = false;
+
+  if (choice === "select") {
+    grantStarPackSelectReward(
+      "第8个幸运宝箱自选箱 · 自选球星包",
+      "第8箱自选：自选球星包",
+      "star-pack-choice-select"
+    );
+  } else if (choice === "random") {
+    addStarPackHistoryCard(
+      createEmpoweredCard(randomFromArray(cfg?.directPlayers || [])),
+      "star-pack-choice-random"
+    );
+  } else if (choice === "vieira") {
+    openStarPackVieiraChance(
+      "star-pack-choice-vieira",
+      "star-pack-choice-vieira-miss"
+    );
+  } else if (choice === "item") {
+    addStarPackHistoryCard(
+      { type: "star_pack_item", name: "自选箱道具" },
+      "star-pack-choice-item"
+    );
+  } else {
+    state.starPackChoiceBoxPending = true;
+    return;
+  }
+
+  renderAll();
+  showFavoredHitAnimationIfNeeded();
+}
+
+function getBinomialProbability(n, k, probability) {
+  if (k < 0 || k > n) return 0;
+  let coefficient = 1;
+  for (let index = 1; index <= k; index += 1) {
+    coefficient = (coefficient * (n - index + 1)) / index;
+  }
+  return (
+    coefficient *
+    probability ** k *
+    (1 - probability) ** (n - k)
+  );
+}
+
+function getStarPackBatchHitDistribution(batchSize) {
+  const size = Math.max(1, Math.floor(Number(batchSize) || 1));
+  const distribution = new Array(size + 1).fill(0);
+  STAR_PACK_ROUTE_METRICS.signingTierWeights.forEach((weight, tier) => {
+    const rate = STAR_PACK_SIGNING_RATES[tier];
+    for (let hits = 0; hits <= size; hits += 1) {
+      distribution[hits] += weight * getBinomialProbability(size, hits, rate);
+    }
+  });
+  return distribution;
+}
+
+function getStarPackCoreHitPercentile() {
+  const batches = Array.isArray(state.starPackCompletedBatchSizes)
+    ? state.starPackCompletedBatchSizes
+    : [];
+  if (!batches.length) return 0;
+  let distribution = [1];
+  batches.forEach((batchSize) => {
+    const batchDistribution = getStarPackBatchHitDistribution(batchSize);
+    const next = new Array(distribution.length + batchDistribution.length - 1).fill(0);
+    distribution.forEach((leftProbability, leftHits) => {
+      batchDistribution.forEach((rightProbability, rightHits) => {
+        next[leftHits + rightHits] += leftProbability * rightProbability;
+      });
+    });
+    distribution = next;
+  });
+  const observed = Math.max(0, Math.floor(Number(state.starPackCoreHits) || 0));
+  return (
+    distribution
+      .slice(0, Math.min(distribution.length, observed))
+      .reduce((sum, probability) => sum + probability, 0) * 100
+  );
+}
+
 function rollGloryBoxPull(source = "glory-box") {
   if (!isGloryBoxPool()) return false;
   const price = getPoolPricePerPull();
@@ -7875,6 +8526,22 @@ function getEntrySourceText(entry) {
 }
 
 function getEntryWhereText(entry) {
+  const starPackLuckySourceLabels = {
+    "star-pack-lucky-select": "幸运宝箱 · 1%自选球星包",
+    "star-pack-lucky-random": "幸运宝箱 · 3%随机增能包",
+    "star-pack-lucky-vieira": "幸运宝箱 · 6%含10%维埃拉包",
+    "star-pack-lucky-vieira-miss": "幸运宝箱 · 6%含10%维埃拉包",
+    "star-pack-lucky-item": "幸运宝箱 · 90%道具包",
+    "star-pack-choice-select": "第8个幸运宝箱自选箱 · 自选球星包",
+    "star-pack-choice-random": "第8个幸运宝箱自选箱 · 随机增能包",
+    "star-pack-choice-vieira": "第8个幸运宝箱自选箱 · 10%维埃拉包",
+    "star-pack-choice-vieira-miss": "第8个幸运宝箱自选箱 · 10%维埃拉包",
+    "star-pack-choice-item": "第8个幸运宝箱自选箱 · 道具包",
+    "star-pack-guarantee-100": "保底100个球星包",
+  };
+  if (starPackLuckySourceLabels[entry.source]) {
+    return starPackLuckySourceLabels[entry.source];
+  }
   if (entry.source === "highlight-ticket" && entry.ticketPullIndex != null) {
     return `第 ${entry.ticketPullIndex} 张高光券`;
   }
@@ -7883,6 +8550,9 @@ function getEntryWhereText(entry) {
   }
   if (typeof entry.source === "string" && entry.source.startsWith("glory-") && entry.sourcePulls != null) {
     return `第 ${entry.sourcePulls} 抽荣耀礼盒`;
+  }
+  if (typeof entry.source === "string" && entry.source.startsWith("star-pack") && entry.sourcePulls != null) {
+    return `累计第 ${entry.sourcePulls} 个球星卡包`;
   }
 
   if (entry.pullIndex != null) {
@@ -7926,6 +8596,10 @@ function isShopPackagePool(pool = getCurrentPool()) {
 
 function isGloryBoxPool(pool = getCurrentPool()) {
   return (pool || getCurrentPool()).progressionType === "glory_box";
+}
+
+function isStarPackPool(pool = getCurrentPool()) {
+  return (pool || getCurrentPool()).progressionType === "star_pack";
 }
 
 function isHallRoadPool(pool = getCurrentPool()) {
@@ -8811,6 +9485,9 @@ function confirmSelectReward() {
   recordSingleDraw(card, source, {
     countTowardsTotal: false,
     milestonePulls,
+    excludeFromGoldStats: Boolean(
+      sourceLabel && sourceLabel.includes("幸运宝箱")
+    ),
   });
 
   state.pendingSelectRewardCount -= 1;
@@ -8842,7 +9519,67 @@ function renderProbabilities() {
 
   if (hasProbabilityDom) {
     tbody.innerHTML = "";
-    if (isChainPool()) {
+    if (isStarPackPool()) {
+      const pool = getCurrentPool();
+      const cfg = getStarPackConfig(pool);
+      probabilitySectionTitle.textContent = "球星卡包概率";
+      empoweredNamesTitle.textContent = "球员类别与卡包：";
+      colName.textContent = "项目";
+      colValue.textContent = "概率";
+      [
+        { label: "单格：球员潜力提升", probability: STAR_PACK_TEAR_PROBABILITIES.potential },
+        { label: "单格：签约概率提升", probability: STAR_PACK_TEAR_PROBABILITIES.signing },
+        { label: "单格：撕开卡包", probability: STAR_PACK_TEAR_PROBABILITIES.tear },
+        ...STAR_PACK_SIGNING_RATES.map((rate, tier) => ({
+          label: `最终签约爆率为${formatPercent(rate)}的路线占比`,
+          probability: STAR_PACK_ROUTE_METRICS.signingTierWeights[tier],
+          displayProbability: `${(
+            STAR_PACK_ROUTE_METRICS.signingTierWeights[tier] * 100
+          ).toFixed(2)}%`,
+        })),
+        {
+          label: "单个卡包平均出核心概率（路线加权）",
+          probability: STAR_PACK_ROUTE_METRICS.expectedCoreRate,
+          displayProbability: `${(
+            STAR_PACK_ROUTE_METRICS.expectedCoreRate * 100
+          ).toFixed(2)}%`,
+        },
+        {
+          label: "单个卡包平均出五星普卡概率",
+          probability: 1 - STAR_PACK_ROUTE_METRICS.expectedCoreRate,
+          displayProbability: `${(
+            (1 - STAR_PACK_ROUTE_METRICS.expectedCoreRate) * 100
+          ).toFixed(2)}%`,
+        },
+        {
+          label: "翻格获得幸运星综合概率（含保底）",
+          probability: STAR_PACK_LUCKY_STAR_RATE,
+        },
+        { label: "史诗高光包", probability: 1 / 3, displayProbability: "33.33%" },
+        { label: "梦幻精选包", probability: 1 / 3, displayProbability: "33.33%" },
+        { label: "史诗+ST混合包", probability: 1 / 3, displayProbability: "33.33%" },
+        { label: "普通幸运宝箱：自选球星", probability: 0.01 },
+        { label: "普通幸运宝箱：随机增能", probability: 0.03 },
+        { label: "普通幸运宝箱：10%维埃拉卡包", probability: 0.06 },
+        { label: "普通幸运宝箱：实际获得维埃拉", probability: 0.006 },
+        { label: "普通幸运宝箱：其他道具", probability: 0.9 },
+      ].forEach((item) => {
+        const tr = document.createElement("tr");
+        const tdName = document.createElement("td");
+        const tdProb = document.createElement("td");
+        tdName.textContent = item.label;
+        tdProb.textContent =
+          item.displayProbability || formatPercent(item.probability);
+        tr.appendChild(tdName);
+        tr.appendChild(tdProb);
+        tbody.appendChild(tr);
+      });
+      namesSpan.textContent =
+        "史诗高光（7人）：里贝里 / 鲁尼 / 贝克汉姆 / 马克莱莱 / 佩蒂特 / 欧文 / 维埃拉" +
+        "（维埃拉仅来自幸运宝箱10%维埃拉包或100包保底领取）；" +
+        "梦幻精选（6人）：登贝莱 / 姆巴佩 / 凯恩 / 孔德 / 格列兹曼 / 坎特；" +
+        "史诗高光包、梦幻精选包、史诗+ST混合包各占33.33%。";
+    } else if (isChainPool()) {
       const pool = getCurrentPool();
       probabilitySectionTitle.textContent = "卡池球员名单";
       empoweredNamesTitle.textContent = "各子池球员 概率平分";
@@ -9194,6 +9931,10 @@ function renderStats() {
   const goldCost = getGoldCostForCurrentState();
   const diamondCost = Math.floor(goldCost * 0.9);
   const statBadgeItem = document.getElementById("statBadgeItem");
+  const statEmpoweredLabel = document.getElementById("statEmpoweredLabel");
+  const statSelectedItem = document.getElementById("statSelectedItem");
+  const statNormalLabel = document.getElementById("statNormalLabel");
+  const empoweredStatsTitle = document.getElementById("empoweredStatsTitle");
   const statEmpoweredEl = document.getElementById("statEmpowered");
   const returnedGoldCostItem = document.getElementById("returnedGoldCostItem");
   const returnedGoldValue = document.getElementById("returnedGoldValue");
@@ -9202,7 +9943,9 @@ function renderStats() {
     statTotalPulls: totalPulls,
     statBadges: state.badges,
     statSelected: state.stats.selected,
-    statNormal: (state.stats.star5 || 0) + (state.stats.star4 || 0) + (state.stats.star3 || 0),
+    statNormal: isStarPackPool()
+      ? Math.max(0, Number(state.starPackOtherHits) || 0)
+      : (state.stats.star5 || 0) + (state.stats.star4 || 0) + (state.stats.star3 || 0),
     costGold: goldCost,
     costDiamond: diamondCost,
   };
@@ -9211,8 +9954,36 @@ function renderStats() {
     if (el) el.textContent = String(value);
   });
 
+  if (statEmpoweredLabel) {
+    statEmpoweredLabel.textContent = isStarPackPool() ? "球星卡" : "增能卡";
+  }
+  if (statSelectedItem) {
+    statSelectedItem.classList.toggle("hidden", isStarPackPool());
+  }
+  if (statNormalLabel) {
+    statNormalLabel.textContent = isStarPackPool() ? "五星普卡" : "普卡";
+  }
+  if (empoweredStatsTitle) {
+    empoweredStatsTitle.textContent = isStarPackPool() ? "球星卡明细" : "增能卡明细";
+  }
+
   if (statEmpoweredEl) {
     const empoweredCount = Math.max(0, Math.floor(Number(state.stats.empowered) || 0));
+    if (isStarPackPool()) {
+      const directCoreHits = Math.max(
+        0,
+        Math.floor(Number(state.starPackCoreHits) || 0)
+      );
+      const percentile = getStarPackCoreHitPercentile();
+      const extraHits = Math.max(0, empoweredCount - directCoreHits);
+      const avgGoldPerCore =
+        directCoreHits > 0 ? Math.floor(goldCost / directCoreHits) : "-";
+      statEmpoweredEl.innerHTML =
+        `<span class="stat-main">${empoweredCount}</span>` +
+        `<span class="stat-exceed-note">卡包核心 ${directCoreHits} 张，宝箱/赠礼 ${extraHits} 张；` +
+        `平均 <span class="expected-value">${avgGoldPerCore}</span> 金币/卡包核心，` +
+        `超过 <span class="expected-value">${percentile.toFixed(2)}%</span> 的同批次玩家</span>`;
+    } else {
     const goldEmpoweredCount = Math.max(0, Math.floor(Number(getGoldStats().empowered) || 0));
     const progressCount = isChainPool()
       ? Math.max(0, Math.floor(Number(state.chainTierProgress) || 0))
@@ -9227,6 +9998,7 @@ function renderStats() {
       `<span class="stat-main">${empoweredCount}</span>` +
       `<span class="stat-exceed-note">平均 <span class="expected-value">${avgGoldPerEmpowered}</span> 金币/增能卡，` +
       `超过 <span class="expected-value">${exceedPercent.toFixed(2)}%</span> 的玩家（仅金币抽）</span>`;
+    }
   }
 
   if (statBadgeItem) {
@@ -9324,6 +10096,21 @@ function renderLuckScore() {
     el.textContent = "等待抽卡";
     return;
   }
+  if (isStarPackPool()) {
+    const completed = Math.max(0, Number(state.starPackCompletedPacks) || 0);
+    if (completed <= 0) {
+      el.textContent = "当前批次尚未撕开";
+      return;
+    }
+    const coreHits = Math.max(0, Number(state.starPackCoreHits) || 0);
+    const exceedPercent = getStarPackCoreHitPercentile();
+    const grade = getLuckGradeByExceedPercent(exceedPercent);
+    const expected = completed * STAR_PACK_ROUTE_METRICS.expectedCoreRate;
+    el.textContent =
+      `${grade}｜${completed} 包开出 ${coreHits} 名核心球员，` +
+      `期望 ${expected.toFixed(2)} 名，超过 ${exceedPercent.toFixed(2)}% 的同批次玩家`;
+    return;
+  }
   const uniqueEmpoweredCount = getCurrentUniqueEmpoweredCount();
   const exceedPercent = getExceedPercentForUniqueEmpoweredCountByProgress(
     progressCount,
@@ -9356,6 +10143,30 @@ function renderPityTracker() {
     panel.classList.remove("hidden");
   }
   if (!textEl || !fillEl) return;
+
+  if (isStarPackPool()) {
+    const completed = Math.max(0, Number(state.starPackCompletedPacks) || 0);
+    const target = Math.max(
+      1,
+      Number(getStarPackConfig()?.vieiraMilestonePacks) || 100
+    );
+    if (state.starPackVieiraMilestoneGranted) {
+      textEl.textContent = "100 包保底维埃拉已领取。";
+      fillEl.style.width = "100%";
+    } else if (state.starPackVieiraGuaranteeClaimable || completed >= target) {
+      textEl.textContent = "已开完100个球星包，请在抽卡区领取保底维埃拉。";
+      fillEl.style.width = "100%";
+    } else {
+      textEl.textContent =
+        `距离保底维埃拉还差 ${target - completed} 个已开卡包；` +
+        `当前幸运星 ${state.starPackLuckyStars || 0} / 15`;
+      fillEl.style.width = `${Math.max(
+        0,
+        Math.min(100, (completed / target) * 100)
+      )}%`;
+    }
+    return;
+  }
 
   if (isChainPool()) {
     const tiers = getCurrentPool().chainTiers || [];
@@ -9569,6 +10380,15 @@ function renderResults() {
       case "star3":
         tag.textContent = "三星";
         break;
+      case "star_pack_other":
+        tag.textContent = "其他";
+        break;
+      case "star_pack_select":
+        tag.textContent = "自选";
+        break;
+      case "star_pack_item":
+        tag.textContent = "道具";
+        break;
       default:
         tag.textContent = entry.card.type || "";
     }
@@ -9641,6 +10461,8 @@ function renderRewards() {
     ? "待开启学霸礼包 / 自选包"
     : isGloryBoxPool()
     ? "待开启荣耀礼盒奖励"
+    : isStarPackPool()
+    ? "幸运宝箱自选奖励"
     : isChainPool()
     ? "待开启礼包奖励 / 自选包"
     : "待开启累抽奖励 / 自选包";
@@ -9823,10 +10645,255 @@ function renderGloryDrawSummary() {
   summary.classList.remove("hidden");
 }
 
+function renderStarPackPanel() {
+  const panel = document.getElementById("starPackDrawPanel");
+  if (!panel) return;
+  if (!isStarPackPool()) {
+    panel.classList.add("hidden");
+    return;
+  }
+
+  const batch = state.starPackBatch;
+  const progress = getStarPackBatchProgress(batch);
+  const category = getStarPackCategoryById(batch?.categoryId);
+  const categoryRevealed = progress.tearCount >= 1;
+  const purchased = Math.max(0, Number(state.totalPulls) || 0);
+  const luckyStars = Math.max(0, Number(state.starPackLuckyStars) || 0);
+  const luckyBoxes = Math.max(0, Number(state.starPackLuckyBoxesOpened) || 0);
+  const choiceBoxPending = Boolean(state.starPackChoiceBoxPending);
+  const completedPacks = Math.max(0, Number(state.starPackCompletedPacks) || 0);
+  const guaranteeTarget = Math.max(
+    1,
+    Number(getStarPackConfig()?.vieiraMilestonePacks) || 100
+  );
+  const guaranteeClaimable = Boolean(
+    state.starPackVieiraGuaranteeClaimable &&
+      !state.starPackVieiraMilestoneGranted
+  );
+  const setText = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = String(value);
+  };
+
+  setText("starPackPurchasedCount", purchased);
+  setText("starPackLuckyStars", luckyStars);
+  setText("starPackLuckyBoxes", luckyBoxes);
+  setText(
+    "starPackGuaranteeProgress",
+    `${Math.min(completedPacks, guaranteeTarget)}/${guaranteeTarget}`
+  );
+  setText(
+    "starPackExpectedRate",
+    `${(STAR_PACK_ROUTE_METRICS.expectedCoreRate * 100).toFixed(2)}%`
+  );
+
+  const purchaseButtons = panel.querySelectorAll("button[data-star-pack-count]");
+  purchaseButtons.forEach((button) => {
+    button.disabled = Boolean(batch && batch.status !== "opened");
+  });
+  const luckyButton = document.getElementById("btnOpenStarLuckyBox");
+  if (luckyButton) {
+    const available = Math.floor(
+      luckyStars / Math.max(1, Number(getStarPackConfig()?.luckyBoxCost) || 15)
+    );
+    const batchOpening = Boolean(batch && batch.status !== "opened");
+    luckyButton.disabled = available <= 0 || choiceBoxPending || batchOpening;
+    luckyButton.textContent = choiceBoxPending
+      ? "请先领取第8箱自选"
+      : batchOpening
+      ? "请先开完本批卡包"
+      : available > 0
+      ? `开启幸运宝箱（可开 ${available}）`
+      : "开启幸运宝箱（需15星）";
+  }
+
+  const choicePanel = document.getElementById("starPackChoicePanel");
+  if (choicePanel) {
+    choicePanel.classList.toggle("hidden", !choiceBoxPending);
+  }
+  panel.querySelectorAll("button[data-star-lucky-choice]").forEach((button) => {
+    button.disabled = !choiceBoxPending;
+  });
+
+  const guaranteePanel = document.getElementById("starPackGuaranteePanel");
+  if (guaranteePanel) {
+    guaranteePanel.classList.toggle("hidden", !guaranteeClaimable);
+  }
+  const claimGuaranteeButton = document.getElementById("btnClaimStarPackVieira");
+  if (claimGuaranteeButton) {
+    claimGuaranteeButton.disabled = !guaranteeClaimable;
+  }
+
+  const status = document.getElementById("starPackBatchStatus");
+  if (status) {
+    if (!batch) {
+      status.textContent = "请选择购买数量";
+    } else if (batch.status === "tearing") {
+      status.textContent =
+        `本批 ${batch.count} 包共享九宫格 · 已翻 ${batch.step}/${batch.route.length} 格` +
+        (categoryRevealed ? ` · ${category?.label || "卡包类型已揭晓"}` : "");
+    } else if (batch.status === "opening") {
+      status.textContent =
+        `正在逐包开启 ${batch.openedCount || 0}/${batch.count} · ` +
+        `${category?.label || "球星卡包"} · ${progress.rating}+ / ${formatPercent(
+          progress.coreRate
+        )}`;
+    } else {
+      status.textContent =
+        `本批 ${batch.count} 包已开启 · ${category?.label || "球星卡包"} · ` +
+        `${progress.rating}+ / ${formatPercent(progress.coreRate)}`;
+    }
+  }
+
+  const boostStatus = document.getElementById("starPackBoostStatus");
+  if (boostStatus) {
+    boostStatus.textContent =
+      `潜力 ${progress.rating}+ · 核心概率 ${formatPercent(progress.coreRate)}` +
+      (categoryRevealed ? ` · ${category?.label || ""}` : " · 类型未揭晓");
+  }
+
+  const lane = document.getElementById("starPackBatchLane");
+  if (lane) {
+    lane.innerHTML = "";
+    if (!batch) {
+      const empty = document.createElement("div");
+      empty.className = "star-pack-empty";
+      empty.textContent = "购买后，这里会显示本批共享九宫格、逐个开奖的卡包。";
+      lane.appendChild(empty);
+    } else {
+      const card = document.createElement("div");
+      card.className = `star-pack-envelope ${categoryRevealed ? batch.categoryId : "sealed"}`;
+      if (batch.status === "opened") {
+        card.classList.add("opened");
+      }
+      const packMark = document.createElement("span");
+      packMark.className = "star-pack-envelope-mark";
+      packMark.textContent = categoryRevealed
+        ? category?.label || "球星卡包"
+        : "球星卡包";
+      const packCount = document.createElement("span");
+      packCount.className = "star-pack-envelope-index";
+      packCount.textContent =
+        batch.status === "opening"
+          ? `×${batch.count} · ${batch.openedCount || 0}/${batch.count}`
+          : `×${batch.count}`;
+      card.appendChild(packMark);
+      card.appendChild(packCount);
+      lane.appendChild(card);
+    }
+  }
+
+  const grid = document.getElementById("starPackTearGrid");
+  if (grid) {
+    grid.innerHTML = "";
+    const kindLabels = {
+      potential: "潜力提升",
+      signing: "签约提升",
+      tear: "撕开卡包",
+    };
+    for (let index = 0; index < STAR_PACK_MAX_TILES; index += 1) {
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "star-pack-tile";
+      const revealed = batch?.revealedTiles?.[index] || null;
+      if (revealed) {
+        tile.classList.add("revealed", revealed.kind);
+        const tearOrder = batch.revealedKinds
+          .slice(0, revealed.order)
+          .filter((kind) => kind === "tear").length;
+        const title = document.createElement("span");
+        title.className = "star-pack-tile-title";
+        title.textContent =
+          revealed.kind === "tear"
+            ? `${kindLabels[revealed.kind]} ${tearOrder}/2`
+            : kindLabels[revealed.kind];
+        tile.appendChild(title);
+        if (revealed.stars > 0) {
+          const star = document.createElement("span");
+          star.className = "star-pack-tile-stars";
+          star.textContent = `幸运星 +${revealed.stars}`;
+          tile.appendChild(star);
+        }
+      } else {
+        tile.classList.add("covered");
+        tile.textContent = "点击翻开";
+        tile.disabled = !batch || batch.status !== "tearing";
+        tile.addEventListener("click", () => revealStarPackTile(index));
+      }
+      grid.appendChild(tile);
+    }
+  }
+
+  const hint = document.getElementById("starPackTearHint");
+  if (hint) {
+    if (!batch) {
+      hint.textContent = "购买后点击任意卡背开始撕卡，最多翻开 9 格。";
+    } else if (batch.status === "tearing") {
+      hint.textContent =
+        "同一格提升会作用于本批全部卡包；第二个“撕开卡包”出现后按包序逐个开奖。";
+    } else if (batch.status === "opening") {
+      hint.textContent =
+        `正在开启累计第 ${Math.min(
+          Math.max(1, Number(batch.startPackIndex) || 1) +
+            Math.max(0, Number(batch.openedCount) || 0),
+          state.totalPulls
+        )} 个球星卡包；出核心时会暂停播放动画。`;
+    } else {
+      hint.textContent =
+        `本批获得幸运星 ${batch.starsGained || 0} 颗。可继续购买下一批卡包。`;
+    }
+  }
+
+  panel.classList.remove("hidden");
+}
+
 function renderMilestonesTable() {
   const tbody = document.getElementById("milestoneTableBody");
   if (!tbody) return;
   tbody.innerHTML = "";
+
+  if (isStarPackPool()) {
+    const rows = [
+      { pulls: "每包 800 金币", text: "可同时购买1包、3包或10包；同批共享九宫格提升，随后按包序逐个开奖" },
+      { pulls: "九宫格", text: "潜力40% / 签约25% / 撕开35%；最多9格，且至少获得一次潜力或签约提升" },
+      { pulls: "潜力提升", text: "每2个提升一档：99+ / 100+ / 101+ / 102+" },
+      { pulls: "签约提升", text: "每2个提升一档：5% / 10% / 30% / 100%" },
+      {
+        pulls: "单包核心概率",
+        text: `按全部合法九宫格路线加权为${(
+          STAR_PACK_ROUTE_METRICS.expectedCoreRate * 100
+        ).toFixed(2)}%；表示每个包平均开出核心球员的概率`,
+      },
+      { pulls: "卡包类型", text: "史诗高光包 / 梦幻精选包 / 史诗+ST混合包各占1/3" },
+      { pulls: "开启结果", text: "翻到第二个撕开卡包后逐包开奖；每包来源序号独立记录，出核心先播放动画再继续，未出则为五星普卡" },
+      {
+        pulls: "幸运星",
+        text: `翻格综合概率33%（含每包至少1颗保底）；平均每包${STAR_PACK_ROUTE_METRICS.expectedLuckyStarsPerPack.toFixed(
+          2
+        )}颗；15颗开启幸运宝箱`,
+      },
+      {
+        pulls: "普通幸运宝箱",
+        text: "1%自选球星包 / 3%随机增能包 / 6%含10%维埃拉包 / 90%道具包；维埃拉实际概率0.6%，概率包未中均为五星普卡",
+      },
+      {
+        pulls: "第8个幸运宝箱",
+        text: "固定变为自选箱，可在自选球星包、随机增能包、10%维埃拉包、道具包中自选一个",
+      },
+      { pulls: "开完100包", text: "出现保底领取窗口；手动领取维埃拉，来源记录为“保底100个球星包”" },
+    ];
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      const tdPulls = document.createElement("td");
+      const tdLabel = document.createElement("td");
+      tdPulls.textContent = row.pulls;
+      tdLabel.textContent = row.text;
+      tr.appendChild(tdPulls);
+      tr.appendChild(tdLabel);
+      tbody.appendChild(tr);
+    });
+    return;
+  }
 
   if (isChainPool()) {
     const tiers = getCurrentPool().chainTiers || [];
@@ -10220,6 +11287,7 @@ function renderQuickButtonsByPool() {
 function renderDrawPanelByPool() {
   const normal = document.getElementById("normalDrawPanel");
   const chain = document.getElementById("chainDrawPanel");
+  const starPack = document.getElementById("starPackDrawPanel");
   const chainTierStatus = document.getElementById("chainTierStatus");
   const chainTierProgressBar = document.getElementById("chainTierProgressBar");
   const chainTierProgressFill = document.getElementById("chainTierProgressFill");
@@ -10228,7 +11296,27 @@ function renderDrawPanelByPool() {
   const highlightTicketHint = document.getElementById("highlightTicketHint");
   const highlightTicketFooter = document.getElementById("highlightTicketFooter");
   const highlightTicketCount = document.getElementById("highlightTicketCount");
-  if (!normal || !chain || !chainTierStatus || !chainTierProgressBar || !chainTierProgressFill) return;
+  if (
+    !normal ||
+    !chain ||
+    !starPack ||
+    !chainTierStatus ||
+    !chainTierProgressBar ||
+    !chainTierProgressFill
+  ) {
+    return;
+  }
+
+  if (isStarPackPool()) {
+    normal.classList.add("hidden");
+    chain.classList.add("hidden");
+    starPack.classList.remove("hidden");
+    chainTierProgressBar.innerHTML = "";
+    chainTierProgressFill.style.width = "0%";
+    if (seasonRoundInfo) seasonRoundInfo.classList.add("hidden");
+    return;
+  }
+  starPack.classList.add("hidden");
 
   if (isChainPool()) {
     normal.classList.add("hidden");
@@ -10340,6 +11428,7 @@ function renderAll() {
   renderHallRoadPanel();
   renderGloryBoxPanel();
   renderGloryDrawSummary();
+  renderStarPackPanel();
   renderMomentPreview();
   const btnSingle = document.getElementById("btnSingle");
   const btnTen = document.getElementById("btnTen");
@@ -10365,6 +11454,17 @@ function bindEvents() {
   const btnSingle = document.getElementById("btnSingle");
   const btnTen = document.getElementById("btnTen");
   const btnFifty = document.getElementById("btnFifty");
+  const starPackPurchaseButtons = document.querySelectorAll(
+    "button[data-star-pack-count]"
+  );
+  const starPackChoiceButtons = document.querySelectorAll(
+    "button[data-star-lucky-choice]"
+  );
+  const btnOpenStarLuckyBox = document.getElementById("btnOpenStarLuckyBox");
+  const btnClaimStarPackVieira = document.getElementById(
+    "btnClaimStarPackVieira"
+  );
+  const btnResetStarPack = document.getElementById("btnResetStarPack");
   const btnReset = document.getElementById("btnReset");
   const btnResetChain = document.getElementById("btnResetChain");
   const quickButtons = document.querySelectorAll(
@@ -10457,6 +11557,31 @@ function bindEvents() {
   if (btnFifty) {
     btnFifty.addEventListener("click", () => {
       autoDrawCount(50);
+    });
+  }
+  starPackPurchaseButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      purchaseStarPackBatch(button.getAttribute("data-star-pack-count"));
+    });
+  });
+  if (btnOpenStarLuckyBox) {
+    btnOpenStarLuckyBox.addEventListener("click", () => {
+      openStarLuckyBox();
+    });
+  }
+  starPackChoiceButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      claimStarPackChoiceBox(button.getAttribute("data-star-lucky-choice"));
+    });
+  });
+  if (btnClaimStarPackVieira) {
+    btnClaimStarPackVieira.addEventListener("click", () => {
+      claimStarPackVieiraGuarantee();
+    });
+  }
+  if (btnResetStarPack) {
+    btnResetStarPack.addEventListener("click", () => {
+      resetAll();
     });
   }
   if (btnReset) {
