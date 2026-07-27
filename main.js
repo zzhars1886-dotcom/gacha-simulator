@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.17.8";
+  "2026.07.27.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -1321,6 +1321,37 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  number_eight_shirt_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "8号球衣 兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (8 / 48) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (40 / 48) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: [
+      "B.费尔南德斯",
+      "德塞利",
+      "里杰卡尔德",
+      "加图索",
+      "兰帕德",
+      "索博斯洛伊",
+      "巴尔韦德",
+      "埃利奥特安德森",
+    ],
+    exchangeConfig: {
+      specificPlayers: ["B.费尔南德斯", "德塞利", "里杰卡尔德"],
+      fixedSelect42: null,
+      select47Players: ["B.费尔南德斯", "德塞利", "里杰卡尔德"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["B.费尔南德斯", "德塞利", "里杰卡尔德"],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   new_king_road_one_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -1993,6 +2024,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.number_eight_shirt_exchange && "number_eight_shirt_exchange") ||
   (POOLS.rooster_lions_star_pack && "rooster_lions_star_pack") ||
   (POOLS.german_chariot_glory_box && "german_chariot_glory_box") ||
   (POOLS.peak_choice_discount && "peak_choice_discount") ||
@@ -2087,6 +2119,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   missing_shield_exchange: ["assets/缺失的坚盾"],
   five_star_samba_exchange: ["assets/五星桑巴"],
   lonely_hero_exchange: ["assets/孤胆英雄"],
+  number_eight_shirt_exchange: ["assets/8号球衣"],
   new_king_road_one_exchange: ["assets/新王之路壹"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   world_stage_chain_bundle: ["assets/世界舞台第一弹", "assets/世界舞台第二弹", "assets/世界舞台第三弹"],
@@ -2636,6 +2669,16 @@ const POOL_PLAYER_META = {
     西多夫: { type: "史诗", position: "中前卫" },
     萨拉赫: { type: "ST", position: "右边锋" },
     莫德里奇: { type: "ST", position: "中前卫" },
+    埃利奥特安德森: { type: "ST", position: "后腰" },
+  },
+  number_eight_shirt_exchange: {
+    "B.费尔南德斯": { type: "BT", position: "前腰" },
+    德塞利: { type: "BT", position: "中后卫" },
+    里杰卡尔德: { type: "史诗", position: "后腰" },
+    加图索: { type: "史诗", position: "后腰" },
+    兰帕德: { type: "史诗", position: "中前卫" },
+    索博斯洛伊: { type: "ST", position: "前腰" },
+    巴尔韦德: { type: "ST", position: "中前卫" },
     埃利奥特安德森: { type: "ST", position: "后腰" },
   },
   defense_spring_shop: {
