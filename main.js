@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.29.2";
+  "2026.07.29.3";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -2014,6 +2014,48 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  infinite_passion_nonrepeat: {
+    poolType: "accumulated_nonrepeat_gift",
+    progressionType: "accumulated_nonrepeat",
+    name: "无限热烈",
+    pricePerPull: 100,
+    targetPlayers: ["伊涅斯塔", "阿圭罗", "罗梅罗", "内马尔"],
+    completionReward: "梅西",
+    fallbackPlayer: "巴蒂斯图塔",
+    poolConfig: [
+      { type: "empowered", label: "指定目标球员", probability: 0.001 },
+      { type: "star5", label: "五星普卡", probability: 0.024 },
+      { type: "star4", label: "四星普卡", probability: 0.375 },
+      { type: "star3", label: "三星普卡", probability: 0.6 },
+    ],
+    risingProbabilityConfig: {
+      guaranteePulls: 200,
+      boosts: [
+        { pulls: 0, multiplier: 1 },
+        { pulls: 30, multiplier: 2 },
+        { pulls: 60, multiplier: 3 },
+        { pulls: 90, multiplier: 5 },
+        { pulls: 120, multiplier: 8 },
+        { pulls: 150, multiplier: 20 },
+        { pulls: 180, multiplier: 50 },
+      ],
+    },
+    specialOfferConfig: {
+      discountedPulls: [
+        { start: 1, end: 100, pricePerPull: 80 },
+        { start: 101, end: 500, pricePerPull: 90 },
+      ],
+      rewards: [
+        { pulls: 100, type: "infinite_messi_chance", chance: 0.05, label: "5%梅西经纪人包" },
+        { pulls: 300, type: "infinite_guaranteed_pack", chance: 0.05, label: "96+高光经纪人包" },
+        { pulls: 500, type: "infinite_guaranteed_pack", chance: 0.05, label: "96+高光经纪人包" },
+      ],
+    },
+    empoweredCards: ["梅西", "伊涅斯塔", "阿圭罗", "罗梅罗", "内马尔", "巴蒂斯图塔"],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   defense_spring_shop: {
     poolType: "shop_package",
     progressionType: "shop_package",
@@ -2051,6 +2093,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.infinite_passion_nonrepeat && "infinite_passion_nonrepeat") ||
   (POOLS.dream_milan_carnival && "dream_milan_carnival") ||
   (POOLS.number_eight_shirt_exchange && "number_eight_shirt_exchange") ||
   (POOLS.rooster_lions_star_pack && "rooster_lions_star_pack") ||
@@ -2105,12 +2148,14 @@ const POOL_TYPE_LABELS = {
   chain_bundle: "连锁礼包",
   season_carryover: "赛季累抽继承",
   accumulated_guarantee: "累抽必得",
+  accumulated_nonrepeat_gift: "累抽不重复赠礼",
   hall_road: "殿堂之路",
   glory_box: "荣耀礼盒",
   star_pack: "球星卡包",
 };
 
 const POOL_CINEMATIC_ASSET_FOLDERS = {
+  infinite_passion_nonrepeat: ["assets/无限热烈"],
   rooster_lions_star_pack: ["assets/雄鸡与三狮"],
   xinzai_jinxiu: ["assets/新载锦绣"],
   german_chariot_glory_box: ["assets/德国战车"],
@@ -2710,6 +2755,14 @@ const POOL_PLAYER_META = {
     莫德里奇: { type: "ST", position: "中前卫" },
     埃利奥特安德森: { type: "ST", position: "后腰" },
   },
+  infinite_passion_nonrepeat: {
+    梅西: { type: "BT", position: "影锋" },
+    伊涅斯塔: { type: "BT", position: "左前卫" },
+    阿圭罗: { type: "史诗", position: "中锋" },
+    罗梅罗: { type: "ST", position: "中后卫" },
+    内马尔: { type: "ST", position: "左边锋" },
+    巴蒂斯图塔: { type: "史诗", position: "中锋" },
+  },
   number_eight_shirt_exchange: {
     "B.费尔南德斯": { type: "BT", position: "前腰" },
     德塞利: { type: "BT", position: "中后卫" },
@@ -2847,6 +2900,12 @@ function createInitialState(empoweredCards) {
     starPackCompletedBatchSizes: [],
     starPackVieiraGuaranteeClaimable: false,
     starPackVieiraMilestoneGranted: false,
+    risingPityProgress: 0,
+    risingOwnedTargets: {},
+    risingCompletionRewardGranted: false,
+    risingOfferRewardFlags: {},
+    risingBatchRemaining: 0,
+    risingHitInCurrentTen: false,
   };
 }
 
@@ -2932,6 +2991,289 @@ function getSeasonEmpoweredProbAtProgress(progressAfterDraw) {
 
 function getAccumulatedGuaranteeConfig(pool = getCurrentPool()) {
   return pool.accumulatedGuaranteeConfig || null;
+}
+
+function isAccumulatedNonRepeatPool(pool = getCurrentPool()) {
+  return (pool || getCurrentPool()).progressionType === "accumulated_nonrepeat";
+}
+
+function getRisingProbabilityConfig(pool = getCurrentPool()) {
+  return isAccumulatedNonRepeatPool(pool) ? pool.risingProbabilityConfig || null : null;
+}
+
+function getRisingTargetPlayers(pool = getCurrentPool()) {
+  return isAccumulatedNonRepeatPool(pool) ? (pool.targetPlayers || []).slice() : [];
+}
+
+function getRisingProbabilityAtProgress(progress, pool = getCurrentPool()) {
+  const cfg = getRisingProbabilityConfig(pool);
+  const base = getBaseEmpoweredProbability(pool.poolConfig || []);
+  if (!cfg) return base;
+  let multiplier = 1;
+  (cfg.boosts || []).forEach((boost) => {
+    if (Math.max(0, Number(progress) || 0) >= Number(boost.pulls || 0)) {
+      multiplier = Math.max(1, Number(boost.multiplier) || 1);
+    }
+  });
+  return clamp01(base * multiplier);
+}
+
+function getRisingOwnedTargetNames(stateObj = state, pool = getCurrentPool()) {
+  const owned = stateObj?.risingOwnedTargets || {};
+  return getRisingTargetPlayers(pool).filter((name) => Boolean(owned[name]));
+}
+
+function getCurrentRisingProbability(pool = getCurrentPool(), stateObj = state) {
+  const targets = getRisingTargetPlayers(pool);
+  if (!targets.length || getRisingOwnedTargetNames(stateObj, pool).length >= targets.length) return 0;
+  const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 200);
+  const progress = Math.max(0, Number(stateObj?.risingPityProgress) || 0);
+  if (progress >= cap - 1 && !stateObj?.risingHitInCurrentTen) return 1;
+  return getRisingProbabilityAtProgress(progress, pool);
+}
+
+const risingStateDistributionCache = {};
+
+function getRisingModelInfo(pool = getCurrentPool()) {
+  const targets = getRisingTargetPlayers(pool);
+  const allNames = pool.empoweredCards || [];
+  const nameBits = {};
+  allNames.forEach((name, index) => {
+    nameBits[name] = 1 << index;
+  });
+  const targetMask = targets.reduce((mask, name) => mask | (nameBits[name] || 0), 0);
+  return { targets, allNames, nameBits, targetMask };
+}
+
+function advanceRisingDistribution(states, draw, pool = getCurrentPool()) {
+  const cfg = getRisingProbabilityConfig(pool);
+  const cap = Math.max(1, Number(cfg?.guaranteePulls) || 200);
+  const info = getRisingModelInfo(pool);
+  const isTenBoundary = draw % 10 === 0;
+  let next = new Map();
+  const add = (mask, progress, hitInCurrentTen, probability, terminalMode = 0) => {
+    if (probability <= 0) return;
+    const stopped = terminalMode >= 2;
+    const nextProgress = stopped ? 0 : (isTenBoundary && hitInCurrentTen ? 0 : progress);
+    const nextHitFlag = stopped ? 0 : (isTenBoundary ? 0 : Number(Boolean(hitInCurrentTen)));
+    const key = `${mask}|${nextProgress}|${nextHitFlag}|${terminalMode}`;
+    next.set(key, (next.get(key) || 0) + probability);
+  };
+
+  states.forEach((probability, key) => {
+    const [maskRaw, progressRaw, hitRaw, terminalRaw] = key.split("|");
+    const mask = Number(maskRaw) || 0;
+    const progress = Number(progressRaw) || 0;
+    const hitInCurrentTen = Boolean(Number(hitRaw) || 0);
+    const terminalMode = Number(terminalRaw) || 0;
+    if (terminalMode > 0) {
+      add(mask, 0, false, probability, 2);
+      return;
+    }
+    const missing = info.targets.filter((name) => !(mask & info.nameBits[name]));
+    if (!missing.length) {
+      add(mask, 0, false, probability, 2);
+      return;
+    }
+    const hitProbability = progress >= cap - 1 && !hitInCurrentTen
+      ? 1
+      : getRisingProbabilityAtProgress(progress, pool);
+    const nextProgress = Math.min(cap - 1, progress + 1);
+    add(mask, nextProgress, hitInCurrentTen, probability * (1 - hitProbability));
+    const each = probability * hitProbability / missing.length;
+    missing.forEach((name) => {
+      let nextMask = mask | info.nameBits[name];
+      if ((nextMask & info.targetMask) === info.targetMask) {
+        nextMask |= info.nameBits[pool.completionReward];
+      }
+      const completed = (nextMask & info.targetMask) === info.targetMask;
+      add(nextMask, nextProgress, true, each, completed ? 1 : 0);
+    });
+  });
+
+  const offer = (pool.specialOfferConfig?.rewards || []).find(
+    (reward) => Number(reward.pulls) === draw
+  );
+  if (!offer) return next;
+
+  const afterOffer = new Map();
+  const addOffer = (mask, progress, hitInCurrentTen, probability, terminalMode = 0) => {
+    if (probability <= 0) return;
+    const key = `${mask}|${progress}|${Number(Boolean(hitInCurrentTen))}|${terminalMode}`;
+    afterOffer.set(key, (afterOffer.get(key) || 0) + probability);
+  };
+  next.forEach((probability, key) => {
+    const [maskRaw, progressRaw, hitRaw, terminalRaw] = key.split("|");
+    const mask = Number(maskRaw) || 0;
+    const progress = Number(progressRaw) || 0;
+    const hitInCurrentTen = Boolean(Number(hitRaw) || 0);
+    const terminalMode = Number(terminalRaw) || 0;
+    if (terminalMode >= 2) {
+      addOffer(mask, progress, hitInCurrentTen, probability, terminalMode);
+      return;
+    }
+    const hitChance = clamp01(Number(offer.chance) || 0);
+    if (offer.type === "infinite_messi_chance") {
+      addOffer(mask | info.nameBits[pool.completionReward], progress, hitInCurrentTen, probability * hitChance, terminalMode);
+      addOffer(mask, progress, hitInCurrentTen, probability * (1 - hitChance), terminalMode);
+    } else if (offer.type === "infinite_guaranteed_pack") {
+      addOffer(mask | info.nameBits[pool.completionReward], progress, hitInCurrentTen, probability * hitChance, terminalMode);
+      addOffer(mask | info.nameBits[pool.fallbackPlayer], progress, hitInCurrentTen, probability * (1 - hitChance), terminalMode);
+    } else {
+      addOffer(mask, progress, hitInCurrentTen, probability, terminalMode);
+    }
+  });
+  return afterOffer;
+}
+
+function getRisingStateDistribution(pool, drawCount) {
+  const count = Math.max(0, Math.floor(Number(drawCount) || 0));
+  const key = `${pool.name}|${count}`;
+  if (risingStateDistributionCache[key]) return risingStateDistributionCache[key];
+  let states = new Map([["0|0|0|0", 1]]);
+  for (let draw = 1; draw <= count; draw += 1) {
+    states = advanceRisingDistribution(states, draw, pool);
+  }
+  risingStateDistributionCache[key] = states;
+  return states;
+}
+
+function calcRisingMaskProbability(pool, drawCount, predicate) {
+  let result = 0;
+  getRisingStateDistribution(pool, drawCount).forEach((probability, key) => {
+    const mask = Number(key.split("|")[0]) || 0;
+    if (predicate(mask, getRisingModelInfo(pool))) result += probability;
+  });
+  return clamp01(result);
+}
+
+function calcRisingSpecificHitCDF(pool, drawCount, targetName) {
+  const info = getRisingModelInfo(pool);
+  const bit = info.nameBits[targetName] || 0;
+  if (!bit) return 0;
+  return calcRisingMaskProbability(pool, drawCount, (mask) => Boolean(mask & bit));
+}
+
+function calcRisingUniqueAtLeastCDF(pool, drawCount, targetCount) {
+  return calcRisingMaskProbability(
+    pool,
+    drawCount,
+    (mask) => bitCount(mask) >= Math.max(0, Number(targetCount) || 0)
+  );
+}
+
+function calcRisingDirectTargetAtLeastCDF(pool, drawCount, targetCount) {
+  const info = getRisingModelInfo(pool);
+  return calcRisingMaskProbability(
+    pool,
+    drawCount,
+    (mask) => bitCount(mask & info.targetMask) >= Math.max(0, Number(targetCount) || 0)
+  );
+}
+
+function calcRisingFavoredSetMetrics(pool, selectedNames) {
+  const info = getRisingModelInfo(pool);
+  const selectedMask = Array.from(new Set(selectedNames || [])).reduce(
+    (mask, name) => mask | (info.nameBits[name] || 0),
+    0
+  );
+  if (!selectedMask) return { anyExpected: 0, allExpected: 0, allProbAtCap: 0 };
+  const cap = 800;
+  let states = new Map([["0|0|0|0", 1]]);
+  let previousAny = 0;
+  let previousAll = 0;
+  let anyExpected = 0;
+  let allExpected = 0;
+  let anyExpectedGold = 0;
+  let allExpectedGold = 0;
+  let anyLowerPulls = null;
+  let anyUpperPulls = null;
+  let allLowerPulls = null;
+  let allUpperPulls = null;
+  for (let draw = 1; draw <= cap; draw += 1) {
+    states = advanceRisingDistribution(states, draw, pool);
+    let any = 0;
+    let all = 0;
+    states.forEach((probability, key) => {
+      const mask = Number(key.split("|")[0]) || 0;
+      if (mask & selectedMask) any += probability;
+      if ((mask & selectedMask) === selectedMask) all += probability;
+    });
+    const anyHitAtDraw = Math.max(0, any - previousAny);
+    const allHitAtDraw = Math.max(0, all - previousAll);
+    const goldAtDraw = getPullCostForRange(0, draw, pool);
+    anyExpected += draw * anyHitAtDraw;
+    allExpected += draw * allHitAtDraw;
+    anyExpectedGold += goldAtDraw * anyHitAtDraw;
+    allExpectedGold += goldAtDraw * allHitAtDraw;
+    if (anyLowerPulls == null && any >= 0.025) anyLowerPulls = draw;
+    if (anyUpperPulls == null && any >= 0.975) anyUpperPulls = draw;
+    if (allLowerPulls == null && all >= 0.025) allLowerPulls = draw;
+    if (allUpperPulls == null && all >= 0.975) allUpperPulls = draw;
+    previousAny = any;
+    previousAll = all;
+  }
+  anyExpected += (cap + 1) * Math.max(0, 1 - previousAny);
+  allExpected += (cap + 1) * Math.max(0, 1 - previousAll);
+  if (previousAny < 1 - 1e-9) {
+    anyExpected = Infinity;
+    anyExpectedGold = Infinity;
+  }
+  if (previousAll < 1 - 1e-9) {
+    allExpected = Infinity;
+    allExpectedGold = Infinity;
+  }
+  return {
+    anyExpected,
+    allExpected,
+    anyExpectedGold,
+    allExpectedGold,
+    anyLowerPulls,
+    anyUpperPulls,
+    allLowerPulls,
+    allUpperPulls,
+    allLowerGold: allLowerPulls == null ? null : getPullCostForRange(0, allLowerPulls, pool),
+    allUpperGold: allUpperPulls == null ? null : getPullCostForRange(0, allUpperPulls, pool),
+    allProbAtCap: clamp01(previousAll),
+  };
+}
+
+function calcRisingFirstTargetOperationMetrics(pool = getCurrentPool()) {
+  const cfg = getRisingProbabilityConfig(pool);
+  const cap = Math.max(1, Number(cfg?.guaranteePulls) || 200);
+  let survival = 1;
+  let expectedHitPulls = 0;
+  let expectedConsumedPulls = 0;
+  let expectedGold = 0;
+  let lowerHitPulls = null;
+  let upperHitPulls = null;
+
+  for (let draw = 1; draw <= cap; draw += 1) {
+    const hitProbability = draw >= cap
+      ? 1
+      : getRisingProbabilityAtProgress(draw - 1, pool);
+    const hitAtDraw = survival * hitProbability;
+    const consumedPulls = Math.min(cap, Math.ceil(draw / 10) * 10);
+    expectedHitPulls += draw * hitAtDraw;
+    expectedConsumedPulls += consumedPulls * hitAtDraw;
+    expectedGold += getPullCostForRange(0, consumedPulls, pool) * hitAtDraw;
+    survival *= 1 - hitProbability;
+    const cdf = clamp01(1 - survival);
+    if (lowerHitPulls == null && cdf >= 0.025) lowerHitPulls = draw;
+    if (upperHitPulls == null && cdf >= 0.975) upperHitPulls = draw;
+  }
+
+  const lowerConsumedPulls = Math.min(cap, Math.ceil((lowerHitPulls || cap) / 10) * 10);
+  const upperConsumedPulls = Math.min(cap, Math.ceil((upperHitPulls || cap) / 10) * 10);
+  return {
+    expectedHitPulls,
+    expectedConsumedPulls,
+    expectedGold,
+    lowerConsumedPulls,
+    upperConsumedPulls,
+    lowerGold: getPullCostForRange(0, lowerConsumedPulls, pool),
+    upperGold: getPullCostForRange(0, upperConsumedPulls, pool),
+  };
 }
 
 function getAccumulatedSwitchPools(pool = getCurrentPool()) {
@@ -4261,6 +4603,9 @@ function getPoolPricePerPull(pool = getCurrentPool()) {
   if (isDiscountLimitedPool(pool)) {
     return Math.max(1, Number(pool.pricePerPull || 50));
   }
+  if (isAccumulatedNonRepeatPool(pool)) {
+    return Math.max(1, Number(pool.pricePerPull || 100));
+  }
   return GOLD_PER_PULL;
 }
 
@@ -4269,6 +4614,18 @@ function getPullCostForRange(startPulls, count, pool = getCurrentPool()) {
   const total = Math.max(0, Math.floor(Number(count) || 0));
   if (total <= 0) return 0;
   const basePrice = getPoolPricePerPull(pool);
+  if (isAccumulatedNonRepeatPool(pool)) {
+    const ranges = pool.specialOfferConfig?.discountedPulls || [];
+    let cost = 0;
+    for (let offset = 0; offset < total; offset += 1) {
+      const pullNumber = start + offset + 1;
+      const range = ranges.find(
+        (item) => pullNumber >= Number(item.start) && pullNumber <= Number(item.end)
+      );
+      cost += range ? Math.max(1, Number(range.pricePerPull) || basePrice) : basePrice;
+    }
+    return cost;
+  }
   const freeCfg = pool.bonusFreePullConfig || null;
   if (freeCfg) {
     const paidPulls = Math.max(0, Math.floor(Number(freeCfg.paidPulls) || 0));
@@ -4296,6 +4653,7 @@ function getPullCostForRange(startPulls, count, pool = getCurrentPool()) {
 function getGoldCostForCurrentState(pool = getCurrentPool()) {
   const totalPulls = Math.max(0, Number(state.totalPulls) || 0);
   if (isChainPool()) return getChainTierSpentGold();
+  if (isAccumulatedNonRepeatPool(pool)) return getPullCostForRange(0, totalPulls, pool);
   if (isDiscountLimitedPool(pool)) return getPullCostForRange(0, totalPulls, pool);
   return totalPulls * getPoolPricePerPull(pool);
 }
@@ -4327,7 +4685,9 @@ function getFavoredHitProbabilityByDrawCount(drawCount) {
   }
 
   let cdf = 0;
-  if (isNonRepeatEmpoweredPool(pool)) {
+  if (isAccumulatedNonRepeatPool(pool)) {
+    cdf = calcRisingSpecificHitCDF(pool, drawCount, normalizedTarget);
+  } else if (isNonRepeatEmpoweredPool(pool)) {
     cdf = calcNonRepeatEmpoweredSpecificHitCDF(pool, drawCount, normalizedTarget);
   } else if (isChainPool()) {
     cdf = calcChainSpecificCDF(drawCount, normalizedTarget);
@@ -4365,7 +4725,9 @@ function getSpecificHitProbabilityByDrawCount(drawCount, targetName) {
   }
 
   let cdf = 0;
-  if (isNonRepeatEmpoweredPool(pool)) {
+  if (isAccumulatedNonRepeatPool(pool)) {
+    cdf = calcRisingSpecificHitCDF(pool, drawCount, targetName);
+  } else if (isNonRepeatEmpoweredPool(pool)) {
     cdf = calcNonRepeatEmpoweredSpecificHitCDF(pool, drawCount, targetName);
   } else if (isChainPool()) {
     cdf = calcChainSpecificCDF(drawCount, targetName);
@@ -4399,6 +4761,7 @@ function getFavoredProgressCap(pool = getCurrentPool(), selectedNames = []) {
   if (isShopPackagePool(pool)) return Number(pool.allSelectPacks || 120);
   if (isSeasonPool()) return 500;
   if (isAccumulatedGuaranteePool()) return getAccumulatedGuaranteeProgressCap(pool);
+  if (isAccumulatedNonRepeatPool(pool)) return 800;
   if (pool.progressionType === "milestone") {
     if (Number(pool.progressCap) > 0) return Number(pool.progressCap);
     const firstSelect = (pool.milestones || []).find((m) => m.type === "empowered_select");
@@ -5062,6 +5425,18 @@ function getFavoredSetExpectedMetrics(selectedNames) {
   const pool = getCurrentPool();
   const uniq = Array.from(new Set((selectedNames || []).filter(Boolean)));
   if (!uniq.length) return null;
+  if (isAccumulatedNonRepeatPool(pool)) {
+    const normalizedNames = uniq.slice().sort();
+    const key = `${activePoolKey}|rising|${normalizedNames.join(",")}`;
+    if (favoredSetMetricsCache[key]) return favoredSetMetricsCache[key];
+    const exact = calcRisingFavoredSetMetrics(pool, normalizedNames);
+    favoredSetMetricsCache[key] = {
+      ...exact,
+      cap: 800,
+      unit: "抽",
+    };
+    return favoredSetMetricsCache[key];
+  }
   if (isShopPackagePool(pool)) {
     const normalizedNames = uniq.slice().sort();
     const key = `${activePoolKey}|shop|${normalizedNames.join(",")}`;
@@ -5371,7 +5746,9 @@ function getEmpoweredAtLeastProbabilityByDrawCount(drawCount, targetCount) {
 
   const pool = getCurrentPool();
   let cdf = 0;
-  if (isSeasonPool()) {
+  if (isAccumulatedNonRepeatPool(pool)) {
+    cdf = calcRisingDirectTargetAtLeastCDF(pool, drawCount, targetCount);
+  } else if (isSeasonPool()) {
     cdf = simulateSeasonEmpoweredAtLeastCDF(drawCount, targetCount);
   } else if (isChainPool()) {
     cdf = calcChainEmpoweredAtLeastCDF(drawCount, targetCount);
@@ -5412,7 +5789,9 @@ function getSpecificCountAtLeastProbabilityByDrawCount(drawCount, targetName, ta
   }
 
   let cdf = 0;
-  if (isNonRepeatEmpoweredPool(pool)) {
+  if (isAccumulatedNonRepeatPool(pool)) {
+    cdf = targetCount <= 1 ? calcRisingSpecificHitCDF(pool, drawCount, targetName) : 0;
+  } else if (isNonRepeatEmpoweredPool(pool)) {
     cdf = calcNonRepeatEmpoweredSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
   } else if (pool.progressionType === "accumulated_target") {
     cdf = calcAccumulatedGuaranteeSpecificCountAtLeastCDF(pool, drawCount, targetCount);
@@ -5481,6 +5860,10 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
   if (targetUniqueCount <= 0) return 1;
   if (progressCount <= 0 || allNames.length <= 0) return 0;
   if (targetUniqueCount > allNames.length) return 0;
+
+  if (isAccumulatedNonRepeatPool(pool)) {
+    return calcRisingDirectTargetAtLeastCDF(pool, progressCount, targetUniqueCount);
+  }
 
   if (pool.progressionType === "accumulated_target") {
     if (targetUniqueCount > 1) return 0;
@@ -5811,6 +6194,19 @@ function getExpectedDrawMetrics() {
     };
   }
 
+  if (isAccumulatedNonRepeatPool(pool)) {
+    const targets = getRisingTargetPlayers(pool);
+    const directMetrics = getFavoredSetExpectedMetrics(targets);
+    const refTarget = getCurrentFavoredTargetName() || targets[0] || pool.completionReward;
+    const favoredMetrics = getFavoredSetExpectedMetrics([refTarget]);
+    return {
+      baseAny: 1 / Math.max(0.000001, getBaseEmpoweredProbability(pool.poolConfig || [])),
+      baseSpecific: targets.includes(refTarget) ? 4000 : 0,
+      giftAny: directMetrics.anyExpected,
+      giftSpecific: favoredMetrics.allExpected,
+    };
+  }
+
   if (isSeasonPool()) {
     const base = calcSeasonBaseExpected(0, empoweredCount);
     const withGift = calcSeasonWithGiftExpected(0, empoweredCount, {
@@ -5918,6 +6314,7 @@ function getFavoredExpectedSpecific() {
   if (
     isSeasonPool() ||
     isAccumulatedGuaranteePool() ||
+    isAccumulatedNonRepeatPool() ||
     isNonRepeatEmpoweredPool() ||
     isHallRoadPool() ||
     getCurrentPool().progressionType === "milestone" ||
@@ -5940,7 +6337,7 @@ function renderFavExpectedInfo() {
   if (!setMetrics) return;
   const toDisplayValue = (expectedValue) => {
     if (
-      isChainPool() &&
+      (isChainPool() || isAccumulatedNonRepeatPool()) &&
       (Number(expectedValue) || 0) > (Number(setMetrics.cap) || 0)
     ) {
       return `超${setMetrics.cap}${setMetrics.unit}`;
@@ -5952,9 +6349,15 @@ function renderFavExpectedInfo() {
   const extra = `（${setMetrics.cap}${setMetrics.unit}内集齐概率 <span class="expected-value">${(
     (setMetrics.allProbAtCap || 0) * 100
   ).toFixed(2)}%</span>）`;
-  const html =
+  let html =
     `期望${isChainPool() ? "档位" : "抽数"}：任意心仪 <span class="expected-value">${anyText}</span>；` +
     `集齐心仪 <span class="expected-value">${allText}</span>${extra}`;
+  if (isAccumulatedNonRepeatPool()) {
+    const goldText = Number.isFinite(setMetrics.allExpectedGold)
+      ? `${Math.round(setMetrics.allExpectedGold).toLocaleString("zh-CN")}金币`
+      : "无有限期望";
+    html += `；按特惠礼包折扣，集齐心仪期望花费 <span class="expected-value">${goldText}</span>`;
+  }
 
   if (isChainPool()) {
     if (!chainInfo) return;
@@ -6068,6 +6471,7 @@ function closeFavHitModal() {
   maybeAutoOpenRewards();
   resumeHighlightTicketBatchIfNeeded();
   resumeStarPackBatchIfNeeded();
+  resumeRisingBatchIfNeeded();
 }
 
 function isFavHitModalOpen() {
@@ -6893,6 +7297,7 @@ function closeCinematicDemoModal() {
   }
   resumeHighlightTicketBatchIfNeeded();
   resumeStarPackBatchIfNeeded();
+  resumeRisingBatchIfNeeded();
 }
 
 function openRealModeInitModal() {
@@ -6962,7 +7367,7 @@ function getSeasonBoostMultiplier(progressPulls) {
 
 function getCurrentRollPoolConfig() {
   const pool = getCurrentPool();
-  if (!isSeasonPool() && !isAccumulatedGuaranteePool()) {
+  if (!isSeasonPool() && !isAccumulatedGuaranteePool() && !isAccumulatedNonRepeatPool(pool)) {
     return pool.poolConfig;
   }
 
@@ -6976,6 +7381,8 @@ function getCurrentRollPoolConfig() {
   const baseEmpoweredProb = empowered.probability;
   const boostedEmpoweredProb = isSeasonPool()
     ? baseEmpoweredProb * (1 + getSeasonBoostMultiplier(state.seasonProgressPulls || 0))
+    : isAccumulatedNonRepeatPool(pool)
+    ? getCurrentRisingProbability(pool, state)
     : getAccumulatedGuaranteeProbByCurrentProgress(state.totalPulls || 0, pool);
   const diff = boostedEmpoweredProb - baseEmpoweredProb;
   empowered.probability = boostedEmpoweredProb;
@@ -7225,6 +7632,10 @@ function recordSingleDraw(card, source = "normal", options = {}) {
 
 function processProgressionRewardsIfNeeded() {
   const pool = getCurrentPool();
+  if (pool.progressionType === "accumulated_nonrepeat") {
+    unlockRisingRewardsIfNeeded();
+    return;
+  }
   if (pool.progressionType === "hall_road") {
     unlockHallRoadMilestonesIfNeeded();
     return;
@@ -7252,6 +7663,49 @@ function processProgressionRewardsIfNeeded() {
   }
   unlockExchangeBonusGiftsIfNeeded();
   unlockMilestonesIfNeeded();
+}
+
+function unlockRisingRewardsIfNeeded() {
+  const pool = getCurrentPool();
+  if (!isAccumulatedNonRepeatPool(pool)) return;
+  state.risingOfferRewardFlags = state.risingOfferRewardFlags || {};
+  let added = false;
+  (pool.specialOfferConfig?.rewards || []).forEach((reward) => {
+    const threshold = Math.max(0, Number(reward.pulls) || 0);
+    if (state.totalPulls < threshold || state.risingOfferRewardFlags[threshold]) return;
+    state.risingOfferRewardFlags[threshold] = true;
+    state.rewards.push({
+      id: `infinite-offer-${threshold}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      ...reward,
+      sourceLabel:
+        reward.type === "infinite_messi_chance"
+          ? "8000金币特惠礼包1"
+          : threshold === 300
+          ? "18000金币特惠礼包2（第1次）"
+          : "18000金币特惠礼包2（第2次）",
+    });
+    added = true;
+  });
+
+  const targets = getRisingTargetPlayers(pool);
+  const allCollected = targets.length > 0 && targets.every(
+    (name) => Boolean(state.risingOwnedTargets?.[name])
+  );
+  if (allCollected && !state.risingCompletionRewardGranted) {
+    state.risingCompletionRewardGranted = true;
+    state.rewards.push({
+      id: `infinite-complete-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      pulls: state.totalPulls,
+      type: "infinite_completion_messi",
+      fixedName: pool.completionReward || "梅西",
+      label: "双增能决胜高光梅西",
+      sourceLabel: "集齐4名指定目标球员赠送",
+    });
+    added = true;
+  }
+  if (added && !pendingFavoredHitEvent && !isAnyHitModalOpen()) {
+    maybeAutoOpenRewards();
+  }
 }
 
 function addShopScholarReward(sourceLabel, options = {}) {
@@ -8255,7 +8709,123 @@ function maybeAutoOpenRewards() {
 
 // ================= 抽卡入口 =================
 
+function isRisingPoolComplete(pool = getCurrentPool(), stateObj = state) {
+  const targets = getRisingTargetPlayers(pool);
+  return targets.length > 0 && targets.every(
+    (name) => Boolean(stateObj?.risingOwnedTargets?.[name])
+  );
+}
+
+function rollRisingPull(source = "infinite-passion") {
+  const pool = getCurrentPool();
+  if (!isAccumulatedNonRepeatPool(pool)) return null;
+  const targets = getRisingTargetPlayers(pool);
+  const owned = state.risingOwnedTargets || (state.risingOwnedTargets = {});
+  const remaining = targets.filter((name) => !owned[name]);
+  if (!remaining.length) return null;
+  const hitProbability = getCurrentRisingProbability(pool, state);
+  const rollConfig = getCurrentRollPoolConfig();
+  const hit = remaining.length > 0 && Math.random() < hitProbability;
+  let card;
+
+  if (hit) {
+    const name = randomFromArray(remaining);
+    owned[name] = true;
+    state.risingHitInCurrentTen = true;
+    card = createEmpoweredCard(name);
+  } else {
+    const config = rollConfig.filter((item) => item.type !== "empowered");
+    const r = Math.random();
+    let cumulative = hitProbability;
+    card = null;
+    for (const item of config) {
+      cumulative += item.probability;
+      if (r < cumulative) {
+        card = { type: item.type, name: item.label };
+        break;
+      }
+    }
+    if (!card) card = { type: "star3", name: "三星普卡" };
+  }
+
+  const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 200);
+  state.risingPityProgress = Math.min(
+    cap - 1,
+    Math.max(0, Number(state.risingPityProgress) || 0) + 1
+  );
+  recordSingleDraw(card, source);
+  if (state.totalPulls % 10 === 0) {
+    if (state.risingHitInCurrentTen) {
+      state.risingPityProgress = 0;
+      // 命中后仅补齐当前十连；到概率重置点便结束本次批量操作。
+      state.risingBatchRemaining = 0;
+    }
+    state.risingHitInCurrentTen = false;
+  }
+  if (isRisingPoolComplete(pool, state)) {
+    state.risingBatchRemaining = 0;
+    state.risingPityProgress = 0;
+    state.risingHitInCurrentTen = false;
+  }
+  return card;
+}
+
+function continueRisingBatch() {
+  if (!isAccumulatedNonRepeatPool()) return;
+  let changed = false;
+  while ((Number(state.risingBatchRemaining) || 0) > 0) {
+    if (isRisingPoolComplete()) {
+      state.risingBatchRemaining = 0;
+      break;
+    }
+    if (!spendGoldForPulls(1)) {
+      state.risingBatchRemaining = 0;
+      break;
+    }
+    state.risingBatchRemaining -= 1;
+    const card = rollRisingPull("无限热烈指定抽取");
+    if (!card) {
+      state.risingBatchRemaining = 0;
+      break;
+    }
+    changed = true;
+    if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
+  }
+  if (changed) renderAll();
+  showFavoredHitAnimationIfNeeded();
+  if ((Number(state.risingBatchRemaining) || 0) > 0 && !isAnyHitModalOpen()) {
+    window.setTimeout(resumeRisingBatchIfNeeded, 0);
+  }
+  if ((Number(state.risingBatchRemaining) || 0) <= 0 && !isAnyHitModalOpen()) {
+    maybeAutoOpenRewards();
+  }
+}
+
+function startRisingBatch(count) {
+  if (!isAccumulatedNonRepeatPool()) return;
+  if (isRisingPoolComplete()) return;
+  const total = Math.max(1, Math.floor(Number(count) || 0));
+  if ((Number(state.risingBatchRemaining) || 0) > 0) return;
+  if (!canAffordPulls(total)) {
+    openInsufficientGoldModal();
+    return;
+  }
+  state.risingBatchRemaining = total;
+  pendingFavoredHitEvent = null;
+  continueRisingBatch();
+}
+
+function resumeRisingBatchIfNeeded() {
+  if (!isAccumulatedNonRepeatPool()) return;
+  if ((Number(state.risingBatchRemaining) || 0) <= 0 || isAnyHitModalOpen()) return;
+  continueRisingBatch();
+}
+
 function singlePull() {
+  if (isAccumulatedNonRepeatPool()) {
+    startRisingBatch(1);
+    return;
+  }
   if (isGloryBoxPool()) {
     pendingFavoredHitEvent = null;
     rollGloryBoxPull("glory-single");
@@ -8279,6 +8849,10 @@ function singlePull() {
 
 // 十连抽：可选开启“至少 1 张五星及以上”保底（只对本次十连生效）
 function tenPull() {
+  if (isAccumulatedNonRepeatPool()) {
+    startRisingBatch(10);
+    return;
+  }
   if (isGloryBoxPool()) {
     pendingFavoredHitEvent = null;
     let didDraw = false;
@@ -8358,6 +8932,33 @@ function autoToTargetTotal(target) {
     return;
   }
 
+  if (isAccumulatedNonRepeatPool()) {
+    const pool = getCurrentPool();
+    const rows = [
+      { pulls: "基础机制", text: "初始0.1%获得指定目标球员；未获得时按路线提升" },
+      { pulls: "十连内命中", text: "命中后按当前概率补齐至下一个10抽边界，补抽期间不再触发200抽保底，随后重置并停止本次批量抽取" },
+      { pulls: "不重复", text: `伊涅斯塔 / 阿圭罗 / 罗梅罗 / 内马尔之间不重复，当前剩余球员平分增能概率` },
+      { pulls: "概率路线", text: "0/30/60/90/120/150/180抽后依次为100%/200%/300%/500%/800%/2000%/5000%档" },
+      { pulls: "200抽", text: "单轮保底获得1名尚未拥有的指定目标球员，随后进度重置" },
+      { pulls: "集齐4人", text: `额外获得${pool.completionReward}，只发放一次` },
+      { pulls: "集齐后", text: "立即结束本池抽取，所有抽卡按钮停用" },
+      { pulls: "前100抽", text: "8000金币购买100抽，并获得5%梅西经纪人包；未中为五星普卡" },
+      { pulls: "101-500抽", text: `每18000金币购买200抽，并获得1个96+高光经纪人包；5%${pool.completionReward}，否则${pool.fallbackPlayer}，共购买两次` },
+      { pulls: "500抽以后", text: "恢复100金币/抽" },
+    ];
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      const tdPulls = document.createElement("td");
+      const tdLabel = document.createElement("td");
+      tdPulls.textContent = row.pulls;
+      tdLabel.textContent = row.text;
+      tr.appendChild(tdPulls);
+      tr.appendChild(tdLabel);
+      tbody.appendChild(tr);
+    });
+    return;
+  }
+
   if (isGloryBoxPool()) {
     const cappedTarget = Math.max(0, Math.floor(Number(target) || 0));
     let didDraw = false;
@@ -8425,6 +9026,10 @@ function autoDrawCount(count) {
   pendingFavoredHitEvent = null;
   count = Number(count);
   if (!Number.isFinite(count) || count <= 0) return;
+  if (isAccumulatedNonRepeatPool()) {
+    startRisingBatch(count);
+    return;
+  }
   if (isDiscountLimitedPool()) {
     const allowed = Math.min(count, getRemainingPullSlots());
     const batches = Math.floor(allowed / 10);
@@ -8515,6 +9120,29 @@ function autoToFavoredEmpowered() {
     hasSelectRewardAvailable() ||
     missingTargets.some((name) => canExchangeToFavored(name))
   ) {
+    return;
+  }
+
+  if (isAccumulatedNonRepeatPool()) {
+    const beforeCounts = {};
+    missingTargets.forEach((name) => {
+      beforeCounts[name] = Number(state.empoweredCounts[name]) || 0;
+    });
+    let didDraw = false;
+    for (let i = 0; i < 800; i += 1) {
+      if (!spendGoldForPulls(1)) break;
+      rollRisingPull("无限热烈一键心仪");
+      didDraw = true;
+      if (missingTargets.some(
+        (name) => (Number(state.empoweredCounts[name]) || 0) > beforeCounts[name]
+      )) break;
+      if (pendingFavoredHitEvent || isAnyHitModalOpen()) break;
+      if (state.rewards.some((reward) =>
+        ["infinite_messi_chance", "infinite_guaranteed_pack", "infinite_completion_messi"].includes(reward.type)
+      )) break;
+    }
+    if (didDraw) renderAll();
+    showFavoredHitAnimationIfNeeded();
     return;
   }
 
@@ -9277,6 +9905,37 @@ function openRewardById(id) {
       });
       break;
     }
+    case "infinite_messi_chance": {
+      const card = Math.random() < (reward.chance || 0.05)
+        ? createEmpoweredCard(getCurrentPool().completionReward || "梅西")
+        : createFiveStarCard();
+      recordSingleDraw(card, toRewardSourceText(reward), {
+        countTowardsTotal: false,
+        milestonePulls: reward.pulls,
+        excludeFromGoldStats: true,
+      });
+      break;
+    }
+    case "infinite_guaranteed_pack": {
+      const card = Math.random() < (reward.chance || 0.05)
+        ? createEmpoweredCard(getCurrentPool().completionReward || "梅西")
+        : createEmpoweredCard(getCurrentPool().fallbackPlayer || "巴蒂斯图塔");
+      recordSingleDraw(card, toRewardSourceText(reward), {
+        countTowardsTotal: false,
+        milestonePulls: reward.pulls,
+        excludeFromGoldStats: true,
+      });
+      break;
+    }
+    case "infinite_completion_messi": {
+      const card = createEmpoweredCard(reward.fixedName || getCurrentPool().completionReward || "梅西");
+      recordSingleDraw(card, toRewardSourceText(reward), {
+        countTowardsTotal: false,
+        milestonePulls: reward.pulls,
+        excludeFromGoldStats: true,
+      });
+      break;
+    }
     default:
       break;
   }
@@ -9523,6 +10182,39 @@ function openAllRewards() {
         });
         break;
       }
+      case "infinite_messi_chance": {
+        const card = Math.random() < (reward.chance || 0.05)
+          ? createEmpoweredCard(getCurrentPool().completionReward || "梅西")
+          : createFiveStarCard();
+        recordSingleDraw(card, toRewardSourceText(reward), {
+          countTowardsTotal: false,
+          milestonePulls: reward.pulls,
+          excludeFromGoldStats: true,
+        });
+        break;
+      }
+      case "infinite_guaranteed_pack": {
+        const card = Math.random() < (reward.chance || 0.05)
+          ? createEmpoweredCard(getCurrentPool().completionReward || "梅西")
+          : createEmpoweredCard(getCurrentPool().fallbackPlayer || "巴蒂斯图塔");
+        recordSingleDraw(card, toRewardSourceText(reward), {
+          countTowardsTotal: false,
+          milestonePulls: reward.pulls,
+          excludeFromGoldStats: true,
+        });
+        break;
+      }
+      case "infinite_completion_messi": {
+        const card = createEmpoweredCard(
+          reward.fixedName || getCurrentPool().completionReward || "梅西"
+        );
+        recordSingleDraw(card, toRewardSourceText(reward), {
+          countTowardsTotal: false,
+          milestonePulls: reward.pulls,
+          excludeFromGoldStats: true,
+        });
+        break;
+      }
       default:
         break;
     }
@@ -9661,6 +10353,42 @@ function renderProbabilities() {
         "（维埃拉仅来自幸运宝箱10%维埃拉包或100包保底领取）；" +
         "梦幻精选（6人）：登贝莱 / 姆巴佩 / 凯恩 / 孔德 / 格列兹曼 / 坎特；" +
         "史诗高光包、梦幻精选包、史诗+ST混合包各占33.33%。";
+    } else if (isAccumulatedNonRepeatPool()) {
+      const pool = getCurrentPool();
+      const currentConfig = getCurrentRollPoolConfig();
+      const owned = new Set(getRisingOwnedTargetNames());
+      const currentRate = getCurrentRisingProbability(pool, state);
+      probabilitySectionTitle.textContent = "当前递增不重复概率";
+      empoweredNamesTitle.textContent = "指定目标球员（剩余球员概率平分）：";
+      colName.textContent = "项目";
+      colValue.textContent = "概率";
+      currentConfig.forEach((item) => {
+        const tr = document.createElement("tr");
+        const tdName = document.createElement("td");
+        const tdProb = document.createElement("td");
+        tdName.textContent = item.type === "empowered" ? "当前指定目标球员" : item.label;
+        tdProb.textContent = item.type === "empowered" && currentRate >= 1
+          ? "100%（本抽保底）"
+          : formatPercent(item.probability);
+        tr.appendChild(tdName);
+        tr.appendChild(tdProb);
+        tbody.appendChild(tr);
+      });
+      (getRisingProbabilityConfig(pool)?.boosts || []).forEach((boost) => {
+        const tr = document.createElement("tr");
+        const tdName = document.createElement("td");
+        const tdProb = document.createElement("td");
+        tdName.textContent = boost.pulls === 0 ? "初始爆率" : `连续${boost.pulls}抽未中后`;
+        tdProb.textContent = `${formatPercent(0.001 * boost.multiplier)}（${boost.multiplier * 100}%档）`;
+        tr.appendChild(tdName);
+        tr.appendChild(tdProb);
+        tbody.appendChild(tr);
+      });
+      namesSpan.textContent =
+        getRisingTargetPlayers(pool)
+          .map((name) => owned.has(name) ? `${name}（已获得）` : name)
+          .join(" / ") +
+        `；集齐赠送${pool.completionReward}；礼包配菜${pool.fallbackPlayer}`;
     } else if (isChainPool()) {
       const pool = getCurrentPool();
       probabilitySectionTitle.textContent = "卡池球员名单";
@@ -10146,7 +10874,9 @@ function renderStats() {
           2
         )}%</span> 的玩家（仅金币抽）</span>`;
       } else if (count > 0) {
-        tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">高光券获得</span>`;
+        tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">${
+          isAccumulatedNonRepeatPool() ? "赠礼获得" : "高光券获得"
+        }</span>`;
       } else if (presetOwnedNames.has(name)) {
         tdCount.innerHTML = `${count} <span class="stat-exceed-note-inline">已拥有</span>`;
       } else {
@@ -10246,6 +10976,30 @@ function renderPityTracker() {
         0,
         Math.min(100, (completed / target) * 100)
       )}%`;
+    }
+    return;
+  }
+
+  if (isAccumulatedNonRepeatPool()) {
+    const pool = getCurrentPool();
+    const targets = getRisingTargetPlayers(pool);
+    const ownedCount = getRisingOwnedTargetNames().length;
+    const progress = Math.max(0, Number(state.risingPityProgress) || 0);
+    const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 200);
+    if (ownedCount >= targets.length) {
+      textEl.textContent = `4名指定目标已集齐，${pool.completionReward}赠礼已解锁。`;
+      fillEl.style.width = "100%";
+    } else if (state.risingHitInCurrentTen) {
+      const pullsToBoundary = Math.max(0, 10 - (Math.max(0, Number(state.totalPulls) || 0) % 10));
+      textEl.textContent =
+        `本十连已经命中；再补 ${pullsToBoundary} 抽后重置并停止，补抽不再触发200抽保底。`;
+      fillEl.style.width = `${Math.min(100, progress / cap * 100)}%`;
+    } else {
+      const remain = Math.max(1, cap - progress);
+      textEl.textContent =
+        `已获得 ${ownedCount}/4；当前爆率 ${formatPercent(getCurrentRisingProbability(pool, state))}；` +
+        `最迟再抽 ${remain} 次获得下一名不重复目标球员。`;
+      fillEl.style.width = `${Math.min(100, progress / cap * 100)}%`;
     }
     return;
   }
@@ -10725,6 +11479,57 @@ function renderGloryDrawSummary() {
     `${metrics.lowerPulls}-${metrics.upperPulls}抽 / ${lowerGold.toLocaleString()}-${upperGold.toLocaleString()}金币`
   );
   summary.classList.remove("hidden");
+}
+
+function renderRisingPoolSummary() {
+  const panel = document.getElementById("risingPoolSummary");
+  if (!panel) return;
+  if (!isAccumulatedNonRepeatPool()) {
+    panel.classList.add("hidden");
+    return;
+  }
+
+  const pool = getCurrentPool();
+  const firstMetrics = calcRisingFirstTargetOperationMetrics(pool);
+  const metrics = getFavoredSetExpectedMetrics(getRisingTargetPlayers(pool));
+  if (!metrics) {
+    panel.classList.add("hidden");
+    return;
+  }
+
+  panel.classList.remove("hidden");
+  const expectedPulls = Math.round(metrics.allExpected);
+  const expectedGold = Math.round(metrics.allExpectedGold);
+  const lowerPulls = Math.max(0, Number(metrics.allLowerPulls) || 0);
+  const upperPulls = Math.max(0, Number(metrics.allUpperPulls) || 0);
+  const lowerGold = Math.max(0, Number(metrics.allLowerGold) || 0);
+  const upperGold = Math.max(0, Number(metrics.allUpperGold) || 0);
+  const setSummaryText = (id, text) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = text;
+  };
+
+  setSummaryText("risingSummaryFirstHit", `${firstMetrics.expectedHitPulls.toFixed(2)}抽`);
+  setSummaryText("risingSummaryFirstConsumed", `${firstMetrics.expectedConsumedPulls.toFixed(2)}抽`);
+  setSummaryText(
+    "risingSummaryFirstGold",
+    `${Math.round(firstMetrics.expectedGold).toLocaleString("zh-CN")}金币`
+  );
+  setSummaryText(
+    "risingSummaryFirstPullInterval",
+    `${firstMetrics.lowerConsumedPulls}-${firstMetrics.upperConsumedPulls}抽`
+  );
+  setSummaryText(
+    "risingSummaryFirstGoldInterval",
+    `${firstMetrics.lowerGold.toLocaleString("zh-CN")}-${firstMetrics.upperGold.toLocaleString("zh-CN")}金币`
+  );
+  setSummaryText("risingSummaryExpectedPulls", `${expectedPulls}抽`);
+  setSummaryText("risingSummaryExpectedGold", `${expectedGold.toLocaleString("zh-CN")}金币`);
+  setSummaryText("risingSummaryPullInterval", `${lowerPulls}-${upperPulls}抽`);
+  setSummaryText(
+    "risingSummaryGoldInterval",
+    `${lowerGold.toLocaleString("zh-CN")}-${upperGold.toLocaleString("zh-CN")}金币`
+  );
 }
 
 function renderStarPackPanel() {
@@ -11258,6 +12063,15 @@ function renderQuickButtonsByPool() {
     }
   };
 
+  if (isAccumulatedNonRepeatPool(pool)) {
+    setBtn(btnQuick60, "抽10次", 10, null, null);
+    setBtn(btnQuick250, "抽50次", 50, null, null);
+    setBtn(btnQuick420, "抽100次", 100, null, null);
+    setBtn(btnQuick470, "抽150次", 150, null, null);
+    setBtn(btnQuick520, "抽200次", 200, null, null);
+    return;
+  }
+
   if (pool.progressionType === "milestone") {
     if (pool.poolType === "accumulated_gift") {
       setBtn(btnQuick60, "一键到 60 抽", null, 60, null);
@@ -11466,6 +12280,23 @@ function renderDrawPanelByPool() {
       } else if (isAccumulatedGuaranteePool()) {
         seasonRoundInfo.textContent = `当前定向进度：${state.totalPulls || 0} / ${getAccumulatedGuaranteeProgressCap()}`;
         seasonRoundInfo.classList.remove("hidden");
+      } else if (isAccumulatedNonRepeatPool()) {
+        const pool = getCurrentPool();
+        const ownedCount = getRisingOwnedTargetNames().length;
+        if (isRisingPoolComplete(pool, state)) {
+          seasonRoundInfo.textContent =
+            `已抽：${state.totalPulls || 0}；已获得目标：4/4；本池已完成，不能继续抽取`;
+        } else {
+          const progress = Math.max(0, Number(state.risingPityProgress) || 0);
+          const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 200);
+          const rate = getCurrentRisingProbability(pool, state);
+          const nextCost = getPullCostForRange(state.totalPulls || 0, 10, pool);
+          seasonRoundInfo.textContent =
+            `已抽：${state.totalPulls || 0}；已获得目标：${ownedCount}/4；` +
+            `当前十连递增进度：${progress}/${cap}；当前爆率：${rate >= 1 ? "100%保底" : formatPercent(rate)}；` +
+            `下一次10抽：${nextCost}金币`;
+        }
+        seasonRoundInfo.classList.remove("hidden");
       } else if (isShopPackagePool()) {
         seasonRoundInfo.textContent =
           `已获得春日礼包：${state.totalPulls || 0} 个；` +
@@ -11510,14 +12341,15 @@ function renderAll() {
   renderHallRoadPanel();
   renderGloryBoxPanel();
   renderGloryDrawSummary();
+  renderRisingPoolSummary();
   renderStarPackPanel();
   renderMomentPreview();
   const btnSingle = document.getElementById("btnSingle");
   const btnTen = document.getElementById("btnTen");
   const btnFifty = document.getElementById("btnFifty");
-  if (btnSingle) btnSingle.classList.toggle("hidden", isDiscountLimitedPool());
-  if (btnFifty) btnFifty.classList.toggle("hidden", isDiscountLimitedPool() || isShopPackagePool() || isGloryBoxPool());
-  if (btnTen) btnTen.classList.toggle("hidden", isShopPackagePool());
+  if (btnSingle) btnSingle.classList.toggle("hidden", isDiscountLimitedPool() || isAccumulatedNonRepeatPool());
+  if (btnFifty) btnFifty.classList.toggle("hidden", isDiscountLimitedPool() || isShopPackagePool() || isGloryBoxPool() || isAccumulatedNonRepeatPool());
+  if (btnTen) btnTen.classList.toggle("hidden", isShopPackagePool() || isAccumulatedNonRepeatPool());
   if (btnSingle) btnSingle.textContent = isShopPackagePool()
     ? "购买春日礼包（688金币）"
     : isGloryBoxPool()
@@ -11528,6 +12360,15 @@ function renderAll() {
     : isGloryBoxPool()
     ? "抽10次荣耀礼盒（10000金币）"
     : "十连抽";
+  const risingCompleted = isAccumulatedNonRepeatPool() && isRisingPoolComplete();
+  ["btnQuick60", "btnQuick250", "btnQuick420", "btnQuick470", "btnQuick520"]
+    .map((id) => document.getElementById(id))
+    .filter(Boolean)
+    .forEach((button) => {
+      button.disabled = risingCompleted;
+    });
+  const btnAutoToFav = document.getElementById("btnAutoToFav");
+  if (btnAutoToFav) btnAutoToFav.disabled = risingCompleted;
 }
 
 // ================= 事件绑定 =================

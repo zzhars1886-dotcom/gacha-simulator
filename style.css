@@ -446,6 +446,21 @@ body::after {
   color: #fde68a;
 }
 
+.rising-summary {
+  border-color: rgba(251, 146, 60, 0.68);
+  background: linear-gradient(
+    135deg,
+    rgba(124, 45, 18, 0.68),
+    rgba(22, 101, 52, 0.52)
+  );
+}
+
+.rising-summary-section + .rising-summary-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
 .star-pack-panel {
   display: grid;
   gap: 12px;
