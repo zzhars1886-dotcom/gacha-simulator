@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.27.1";
+  "2026.07.29.2";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -456,6 +456,33 @@ const POOLS = {
       "恩梅查",
       "加克波",
       "巴尔德",
+    ],
+    milestones: createMilestones({
+      chance10: "10% 增能卡券",
+      chance30: "30% 增能卡券",
+      empoweredRandom: "随机增能卡必得券",
+      empoweredSelect: "增能卡自选券",
+    }),
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  }),
+  dream_milan_carnival: createCarnivalPool({
+    name: "梦入米兰城 狂欢赠礼",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: [
+      "莫德里奇",
+      "费里",
+      "埃托奥",
+      "因扎吉",
+      "西多夫",
+      "范巴斯滕",
+      "巴雷西",
+      "伊布拉希莫维奇",
     ],
     milestones: createMilestones({
       chance10: "10% 增能卡券",
@@ -2024,6 +2051,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.dream_milan_carnival && "dream_milan_carnival") ||
   (POOLS.number_eight_shirt_exchange && "number_eight_shirt_exchange") ||
   (POOLS.rooster_lions_star_pack && "rooster_lions_star_pack") ||
   (POOLS.german_chariot_glory_box && "german_chariot_glory_box") ||
@@ -2088,6 +2116,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   german_chariot_glory_box: ["assets/德国战车"],
   summer_pearls_gift: ["assets/盛夏遗珠"],
   new_king_road_two_gift: ["assets/新王之路贰"],
+  dream_milan_carnival: ["assets/梦入米兰城"],
   blue_old_friend: ["assets/蓝衣故人"],
   british_rivalry: ["assets/英伦争霸"],
   double_end_reunion: ["assets/双端齐聚"],
@@ -2193,6 +2222,16 @@ const POOL_PLAYER_META = {
     恩梅查: { type: "ST", position: "后腰" },
     加克波: { type: "ST", position: "左边锋" },
     巴尔德: { type: "ST", position: "左后卫" },
+  },
+  dream_milan_carnival: {
+    莫德里奇: { type: "ST", position: "中前卫" },
+    费里: { type: "史诗", position: "中后卫" },
+    埃托奥: { type: "史诗", position: "右前卫" },
+    因扎吉: { type: "史诗", position: "中锋" },
+    西多夫: { type: "史诗", position: "后腰" },
+    范巴斯滕: { type: "史诗", position: "中锋" },
+    巴雷西: { type: "史诗", position: "中后卫" },
+    伊布拉希莫维奇: { type: "BT", position: "中锋" },
   },
   blue_old_friend: {
     兰帕德: { type: "史诗", position: "中前卫" },
