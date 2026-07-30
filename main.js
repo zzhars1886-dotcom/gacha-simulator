@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.29.3";
+  "2026.07.30.2";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -2018,25 +2018,27 @@ const POOLS = {
     poolType: "accumulated_nonrepeat_gift",
     progressionType: "accumulated_nonrepeat",
     name: "无限热烈",
-    pricePerPull: 100,
+    pricePerPull: 80,
     targetPlayers: ["伊涅斯塔", "阿圭罗", "罗梅罗", "内马尔"],
     completionReward: "梅西",
     fallbackPlayer: "巴蒂斯图塔",
     poolConfig: [
-      { type: "empowered", label: "指定目标球员", probability: 0.001 },
-      { type: "star5", label: "五星普卡", probability: 0.024 },
-      { type: "star4", label: "四星普卡", probability: 0.375 },
-      { type: "star3", label: "三星普卡", probability: 0.6 },
+      { type: "empowered", label: "指定目标球员", probability: 0.05 * 4 / 154 },
+      { type: "star5", label: "五星普卡", probability: 0.05 * 150 / 154 },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
     ],
     risingProbabilityConfig: {
-      guaranteePulls: 200,
+      guaranteePulls: 191,
       boosts: [
         { pulls: 0, multiplier: 1 },
         { pulls: 30, multiplier: 2 },
         { pulls: 60, multiplier: 3 },
         { pulls: 90, multiplier: 5 },
         { pulls: 120, multiplier: 8 },
-        { pulls: 150, multiplier: 20 },
+        { pulls: 150, multiplier: 10 },
+        { pulls: 160, multiplier: 12 },
+        { pulls: 170, multiplier: 15 },
         { pulls: 180, multiplier: 50 },
       ],
     },
@@ -2968,6 +2970,12 @@ function formatPercent(p) {
   return (p * 100).toFixed(1).replace(/\.0$/, "") + "%";
 }
 
+function formatRisingPercent(p) {
+  const percent = clamp01(Number(p) || 0) * 100;
+  const decimals = percent < 0.1 ? 4 : percent < 1 ? 3 : 2;
+  return percent.toFixed(decimals).replace(/\.?0+$/, "") + "%";
+}
+
 function formatExpectedDrawValue(value) {
   if (!Number.isFinite(value) || value <= 0) return "-";
   return Math.round(value).toString();
@@ -3026,7 +3034,7 @@ function getRisingOwnedTargetNames(stateObj = state, pool = getCurrentPool()) {
 function getCurrentRisingProbability(pool = getCurrentPool(), stateObj = state) {
   const targets = getRisingTargetPlayers(pool);
   if (!targets.length || getRisingOwnedTargetNames(stateObj, pool).length >= targets.length) return 0;
-  const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 200);
+  const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 191);
   const progress = Math.max(0, Number(stateObj?.risingPityProgress) || 0);
   if (progress >= cap - 1 && !stateObj?.risingHitInCurrentTen) return 1;
   return getRisingProbabilityAtProgress(progress, pool);
@@ -3047,7 +3055,7 @@ function getRisingModelInfo(pool = getCurrentPool()) {
 
 function advanceRisingDistribution(states, draw, pool = getCurrentPool()) {
   const cfg = getRisingProbabilityConfig(pool);
-  const cap = Math.max(1, Number(cfg?.guaranteePulls) || 200);
+  const cap = Math.max(1, Number(cfg?.guaranteePulls) || 191);
   const info = getRisingModelInfo(pool);
   const isTenBoundary = draw % 10 === 0;
   let next = new Map();
@@ -3240,7 +3248,7 @@ function calcRisingFavoredSetMetrics(pool, selectedNames) {
 
 function calcRisingFirstTargetOperationMetrics(pool = getCurrentPool()) {
   const cfg = getRisingProbabilityConfig(pool);
-  const cap = Math.max(1, Number(cfg?.guaranteePulls) || 200);
+  const cap = Math.max(1, Number(cfg?.guaranteePulls) || 191);
   let survival = 1;
   let expectedHitPulls = 0;
   let expectedConsumedPulls = 0;
@@ -3253,7 +3261,7 @@ function calcRisingFirstTargetOperationMetrics(pool = getCurrentPool()) {
       ? 1
       : getRisingProbabilityAtProgress(draw - 1, pool);
     const hitAtDraw = survival * hitProbability;
-    const consumedPulls = Math.min(cap, Math.ceil(draw / 10) * 10);
+    const consumedPulls = Math.ceil(draw / 10) * 10;
     expectedHitPulls += draw * hitAtDraw;
     expectedConsumedPulls += consumedPulls * hitAtDraw;
     expectedGold += getPullCostForRange(0, consumedPulls, pool) * hitAtDraw;
@@ -3263,8 +3271,8 @@ function calcRisingFirstTargetOperationMetrics(pool = getCurrentPool()) {
     if (upperHitPulls == null && cdf >= 0.975) upperHitPulls = draw;
   }
 
-  const lowerConsumedPulls = Math.min(cap, Math.ceil((lowerHitPulls || cap) / 10) * 10);
-  const upperConsumedPulls = Math.min(cap, Math.ceil((upperHitPulls || cap) / 10) * 10);
+  const lowerConsumedPulls = Math.ceil((lowerHitPulls || cap) / 10) * 10;
+  const upperConsumedPulls = Math.ceil((upperHitPulls || cap) / 10) * 10;
   return {
     expectedHitPulls,
     expectedConsumedPulls,
@@ -5842,7 +5850,10 @@ function getExceedPercentForEmpoweredCountByProgress(progress, targetCount) {
 }
 
 function getCurrentUniqueEmpoweredCount() {
-  const names = getEmpoweredStatNames();
+  const pool = getCurrentPool();
+  const names = isAccumulatedNonRepeatPool(pool)
+    ? getRisingTargetPlayers(pool)
+    : getEmpoweredStatNames();
   let count = 0;
   const presetOwned = isNonRepeatExchangePool() ? new Set(getPresetOwnedNames()) : null;
   const goldCounts = getGoldEmpoweredCounts();
@@ -6199,9 +6210,13 @@ function getExpectedDrawMetrics() {
     const directMetrics = getFavoredSetExpectedMetrics(targets);
     const refTarget = getCurrentFavoredTargetName() || targets[0] || pool.completionReward;
     const favoredMetrics = getFavoredSetExpectedMetrics([refTarget]);
+    const baseAnyProbability = getBaseEmpoweredProbability(pool.poolConfig || []);
     return {
-      baseAny: 1 / Math.max(0.000001, getBaseEmpoweredProbability(pool.poolConfig || [])),
-      baseSpecific: targets.includes(refTarget) ? 4000 : 0,
+      baseAny: 1 / Math.max(0.000001, baseAnyProbability),
+      baseSpecific:
+        targets.includes(refTarget) && targets.length > 0
+          ? 1 / Math.max(0.000001, baseAnyProbability / targets.length)
+          : 0,
       giftAny: directMetrics.anyExpected,
       giftSpecific: favoredMetrics.allExpected,
     };
@@ -8748,7 +8763,7 @@ function rollRisingPull(source = "infinite-passion") {
     if (!card) card = { type: "star3", name: "三星普卡" };
   }
 
-  const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 200);
+  const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 191);
   state.risingPityProgress = Math.min(
     cap - 1,
     Math.max(0, Number(state.risingPityProgress) || 0) + 1
@@ -8935,16 +8950,16 @@ function autoToTargetTotal(target) {
   if (isAccumulatedNonRepeatPool()) {
     const pool = getCurrentPool();
     const rows = [
-      { pulls: "基础机制", text: "初始0.1%获得指定目标球员；未获得时按路线提升" },
-      { pulls: "十连内命中", text: "命中后按当前概率补齐至下一个10抽边界，补抽期间不再触发200抽保底，随后重置并停止本次批量抽取" },
+      { pulls: "基础机制", text: "4名目标球员与150名五星球员合计5%；目标球员总基础概率为5% × 4 ÷ 154，约0.12987%，初始单人约0.03247%" },
+      { pulls: "十连内命中", text: "命中后按当前概率补齐至下一个10抽边界，补抽期间不再触发191抽保底，随后重置并停止本次批量抽取" },
       { pulls: "不重复", text: `伊涅斯塔 / 阿圭罗 / 罗梅罗 / 内马尔之间不重复，当前剩余球员平分增能概率` },
-      { pulls: "概率路线", text: "0/30/60/90/120/150/180抽后依次为100%/200%/300%/500%/800%/2000%/5000%档" },
-      { pulls: "200抽", text: "单轮保底获得1名尚未拥有的指定目标球员，随后进度重置" },
+      { pulls: "概率路线", text: "0/30/60/90/120/150/160/170/180抽后依次为1/2/3/5/8/10/12/15/50倍" },
+      { pulls: "第191抽", text: "单轮保底获得1名尚未拥有的指定目标球员；补齐当前十连后重置" },
       { pulls: "集齐4人", text: `额外获得${pool.completionReward}，只发放一次` },
       { pulls: "集齐后", text: "立即结束本池抽取，所有抽卡按钮停用" },
       { pulls: "前100抽", text: "8000金币购买100抽，并获得5%梅西经纪人包；未中为五星普卡" },
       { pulls: "101-500抽", text: `每18000金币购买200抽，并获得1个96+高光经纪人包；5%${pool.completionReward}，否则${pool.fallbackPlayer}，共购买两次` },
-      { pulls: "500抽以后", text: "恢复100金币/抽" },
+      { pulls: "500抽以后", text: "固定800金币/十连（80金币/抽）" },
     ];
     rows.forEach((row) => {
       const tr = document.createElement("tr");
@@ -10357,6 +10372,7 @@ function renderProbabilities() {
       const pool = getCurrentPool();
       const currentConfig = getCurrentRollPoolConfig();
       const owned = new Set(getRisingOwnedTargetNames());
+      const remainingTargetCount = Math.max(0, getRisingTargetPlayers(pool).length - owned.size);
       const currentRate = getCurrentRisingProbability(pool, state);
       probabilitySectionTitle.textContent = "当前递增不重复概率";
       empoweredNamesTitle.textContent = "指定目标球员（剩余球员概率平分）：";
@@ -10366,9 +10382,15 @@ function renderProbabilities() {
         const tr = document.createElement("tr");
         const tdName = document.createElement("td");
         const tdProb = document.createElement("td");
-        tdName.textContent = item.type === "empowered" ? "当前指定目标球员" : item.label;
+        tdName.textContent = item.type === "empowered"
+          ? `当前目标球员合计（剩余${remainingTargetCount}名）`
+          : item.label;
         tdProb.textContent = item.type === "empowered" && currentRate >= 1
           ? "100%（本抽保底）"
+          : item.type === "empowered"
+          ? formatRisingPercent(item.probability)
+          : item.type === "star5"
+          ? `${(item.probability * 100).toFixed(4).replace(/\.?0+$/, "")}%`
           : formatPercent(item.probability);
         tr.appendChild(tdName);
         tr.appendChild(tdProb);
@@ -10378,8 +10400,9 @@ function renderProbabilities() {
         const tr = document.createElement("tr");
         const tdName = document.createElement("td");
         const tdProb = document.createElement("td");
-        tdName.textContent = boost.pulls === 0 ? "初始爆率" : `连续${boost.pulls}抽未中后`;
-        tdProb.textContent = `${formatPercent(0.001 * boost.multiplier)}（${boost.multiplier * 100}%档）`;
+        tdName.textContent = boost.pulls === 0 ? "初始总爆率" : `连续${boost.pulls}抽未中后总爆率`;
+        const baseRate = getBaseEmpoweredProbability(pool.poolConfig || []);
+        tdProb.textContent = `${formatRisingPercent(baseRate * boost.multiplier)}（${boost.multiplier}倍）`;
         tr.appendChild(tdName);
         tr.appendChild(tdProb);
         tbody.appendChild(tr);
@@ -10985,19 +11008,19 @@ function renderPityTracker() {
     const targets = getRisingTargetPlayers(pool);
     const ownedCount = getRisingOwnedTargetNames().length;
     const progress = Math.max(0, Number(state.risingPityProgress) || 0);
-    const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 200);
+    const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 191);
     if (ownedCount >= targets.length) {
       textEl.textContent = `4名指定目标已集齐，${pool.completionReward}赠礼已解锁。`;
       fillEl.style.width = "100%";
     } else if (state.risingHitInCurrentTen) {
       const pullsToBoundary = Math.max(0, 10 - (Math.max(0, Number(state.totalPulls) || 0) % 10));
       textEl.textContent =
-        `本十连已经命中；再补 ${pullsToBoundary} 抽后重置并停止，补抽不再触发200抽保底。`;
+        `本十连已经命中；再补 ${pullsToBoundary} 抽后重置并停止，补抽不再触发191抽保底。`;
       fillEl.style.width = `${Math.min(100, progress / cap * 100)}%`;
     } else {
       const remain = Math.max(1, cap - progress);
       textEl.textContent =
-        `已获得 ${ownedCount}/4；当前爆率 ${formatPercent(getCurrentRisingProbability(pool, state))}；` +
+        `已获得 ${ownedCount}/4；当前爆率 ${formatRisingPercent(getCurrentRisingProbability(pool, state))}；` +
         `最迟再抽 ${remain} 次获得下一名不重复目标球员。`;
       fillEl.style.width = `${Math.min(100, progress / cap * 100)}%`;
     }
@@ -12288,12 +12311,12 @@ function renderDrawPanelByPool() {
             `已抽：${state.totalPulls || 0}；已获得目标：4/4；本池已完成，不能继续抽取`;
         } else {
           const progress = Math.max(0, Number(state.risingPityProgress) || 0);
-          const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 200);
+          const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 191);
           const rate = getCurrentRisingProbability(pool, state);
           const nextCost = getPullCostForRange(state.totalPulls || 0, 10, pool);
           seasonRoundInfo.textContent =
             `已抽：${state.totalPulls || 0}；已获得目标：${ownedCount}/4；` +
-            `当前十连递增进度：${progress}/${cap}；当前爆率：${rate >= 1 ? "100%保底" : formatPercent(rate)}；` +
+            `当前十连递增进度：${progress}/${cap}；当前爆率：${rate >= 1 ? "100%保底" : formatRisingPercent(rate)}；` +
             `下一次10抽：${nextCost}金币`;
         }
         seasonRoundInfo.classList.remove("hidden");
