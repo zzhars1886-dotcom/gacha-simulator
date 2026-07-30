@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.30.2";
+  "2026.07.30.3";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -2023,8 +2023,8 @@ const POOLS = {
     completionReward: "梅西",
     fallbackPlayer: "巴蒂斯图塔",
     poolConfig: [
-      { type: "empowered", label: "指定目标球员", probability: 0.05 * 4 / 154 },
-      { type: "star5", label: "五星普卡", probability: 0.05 * 150 / 154 },
+      { type: "empowered", label: "指定目标球员", probability: 0.05 / 151 },
+      { type: "star5", label: "五星普卡", probability: 0.05 * 150 / 151 },
       { type: "star4", label: "四星普卡", probability: 0.3 },
       { type: "star3", label: "三星普卡", probability: 0.65 },
     ],
@@ -8950,7 +8950,7 @@ function autoToTargetTotal(target) {
   if (isAccumulatedNonRepeatPool()) {
     const pool = getCurrentPool();
     const rows = [
-      { pulls: "基础机制", text: "4名目标球员与150名五星球员合计5%；目标球员总基础概率为5% × 4 ÷ 154，约0.12987%，初始单人约0.03247%" },
+      { pulls: "基础机制", text: "目标球员与150名五星球员合计5%；4名目标球员平分5% ÷ 151，合计约0.03311%，初始单人约0.008278%" },
       { pulls: "十连内命中", text: "命中后按当前概率补齐至下一个10抽边界，补抽期间不再触发191抽保底，随后重置并停止本次批量抽取" },
       { pulls: "不重复", text: `伊涅斯塔 / 阿圭罗 / 罗梅罗 / 内马尔之间不重复，当前剩余球员平分增能概率` },
       { pulls: "概率路线", text: "0/30/60/90/120/150/160/170/180抽后依次为1/2/3/5/8/10/12/15/50倍" },
