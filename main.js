@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.07.30.3";
+  "2026.08.02.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -1414,6 +1414,40 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  young_demon_exchange: {
+    poolType: "exchange_guarantee",
+    progressionType: "exchange_badge",
+    name: "小将魔人 兑换保底",
+    poolConfig: [
+      { type: "empowered", label: "BT/史诗球员", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: [
+      "哈兰德",
+      "布冯",
+      "托蒂",
+      "萨内蒂",
+      "安布罗西尼",
+      "维埃里",
+      "巴蒂斯图塔",
+    ],
+    exchangeConfig: {
+      specificPlayers: ["哈兰德", "布冯", "托蒂"],
+      fixedSelect42: null,
+      select47Players: ["哈兰德", "布冯", "托蒂"],
+      hasSkin52: false,
+    },
+    exchangeSpecificPlayers: ["哈兰德", "布冯", "托蒂"],
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   genius_chain_bundle: {
     poolType: "chain_bundle",
     progressionType: "chain_tier",
@@ -2095,6 +2129,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.young_demon_exchange && "young_demon_exchange") ||
   (POOLS.infinite_passion_nonrepeat && "infinite_passion_nonrepeat") ||
   (POOLS.dream_milan_carnival && "dream_milan_carnival") ||
   (POOLS.number_eight_shirt_exchange && "number_eight_shirt_exchange") ||
@@ -2197,6 +2232,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   lonely_hero_exchange: ["assets/孤胆英雄"],
   number_eight_shirt_exchange: ["assets/8号球衣"],
   new_king_road_one_exchange: ["assets/新王之路壹"],
+  young_demon_exchange: ["assets/小将魔人"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
   world_stage_chain_bundle: ["assets/世界舞台第一弹", "assets/世界舞台第二弹", "assets/世界舞台第三弹"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
@@ -2638,6 +2674,15 @@ const POOL_PLAYER_META = {
     伊尔迪兹: { type: "ST", position: "左前卫" },
     内托: { type: "ST", position: "左前卫" },
     阿利松: { type: "ST", position: "门将" },
+  },
+  young_demon_exchange: {
+    哈兰德: { type: "BT", position: "中锋" },
+    布冯: { type: "BT", position: "门将" },
+    托蒂: { type: "史诗", position: "前腰" },
+    萨内蒂: { type: "史诗", position: "左后卫" },
+    安布罗西尼: { type: "史诗", position: "后腰" },
+    维埃里: { type: "史诗", position: "中锋" },
+    巴蒂斯图塔: { type: "史诗", position: "中锋" },
   },
   genius_chain_bundle: {
     贝斯特: { type: "BT", position: "右边锋" },
