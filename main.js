@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.08.02.1";
+  "2026.08.06.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -1487,6 +1487,70 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  edge_lock_chain_bundle: {
+    poolType: "chain_bundle",
+    progressionType: "chain_tier",
+    name: "边路封锁 连锁礼包",
+    mainPoolName: "边路封锁第一弹",
+    sidePoolName: "边路封锁第二弹",
+    poolConfig: [
+      { type: "empowered", label: "史诗球员", probability: 0.005 },
+      { type: "selected", label: "精选卡", probability: 0.008 },
+      { type: "star5", label: "五星普卡", probability: 0.024 },
+      { type: "star4", label: "四星普卡", probability: 0.363 },
+      { type: "star3", label: "三星普卡", probability: 0.6 },
+    ],
+    empoweredCards: [
+      "图拉姆",
+      "菲戈",
+      "德尔皮耶罗",
+      "戴维斯",
+      "马塞洛",
+      "奥多",
+      "埃尔文",
+      "麦克马纳曼",
+      "费雷尔",
+      "朴智星",
+    ],
+    chainSubPools: {
+      first: {
+        name: "边路封锁第一弹",
+        cards: [
+          "图拉姆",
+          "菲戈",
+          "德尔皮耶罗",
+          "戴维斯",
+          "马塞洛",
+          "奥多",
+          "埃尔文",
+          "麦克马纳曼",
+          "费雷尔",
+          "朴智星",
+        ],
+      },
+      second: {
+        name: "边路封锁第二弹",
+        cards: ["图拉姆", "菲戈", "戴维斯", "马塞洛", "奥多", "麦克马纳曼", "朴智星"],
+      },
+      third: {
+        name: "边路封锁第三弹",
+        cards: ["图拉姆", "菲戈", "德尔皮耶罗", "戴维斯", "马塞洛", "埃尔文", "费雷尔"],
+      },
+    },
+    sidePoolCards: [],
+    chainTiers: [
+      { tier: 1, costGold: 1680, rewards: ["first_10", "first_10"] },
+      { tier: 2, costGold: 4400, rewards: ["first_30", "first_30"] },
+      { tier: 3, costGold: 6800, rewards: ["first_random"] },
+      { tier: 4, costGold: 6800, rewards: ["second_random"] },
+      { tier: 5, costGold: 11800, rewards: ["first_random", "second_random"] },
+      { tier: 6, costGold: 9800, rewards: ["first_random", "third_random"] },
+      { tier: 7, costGold: 8800, rewards: ["third_random", "first_select"] },
+    ],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   world_stage_chain_bundle: {
     poolType: "chain_bundle",
     progressionType: "chain_tier",
@@ -2234,6 +2298,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   new_king_road_one_exchange: ["assets/新王之路壹"],
   young_demon_exchange: ["assets/小将魔人"],
   genius_chain_bundle: ["assets/天纵奇才", "assets/天纵奇才-无畏斗士"],
+  edge_lock_chain_bundle: ["assets/边路封锁"],
   world_stage_chain_bundle: ["assets/世界舞台第一弹", "assets/世界舞台第二弹", "assets/世界舞台第三弹"],
   spring_reunion_chain_bundle: ["assets/新春团圆"],
   immortal_legends_chain_bundle: ["assets/不朽传奇"],
@@ -2699,6 +2764,18 @@ const POOL_PLAYER_META = {
     拉菲尼亚: { type: "ST", position: "左前卫" },
     罗杰斯: { type: "ST", position: "前腰" },
     内托: { type: "ST", position: "左前卫" },
+  },
+  edge_lock_chain_bundle: {
+    图拉姆: { type: "史诗", position: "右后卫" },
+    菲戈: { type: "史诗", position: "右前卫" },
+    德尔皮耶罗: { type: "史诗", position: "中锋" },
+    戴维斯: { type: "史诗", position: "后腰" },
+    马塞洛: { type: "史诗", position: "左后卫" },
+    奥多: { type: "史诗", position: "右后卫" },
+    埃尔文: { type: "史诗", position: "左后卫" },
+    麦克马纳曼: { type: "史诗", position: "右前卫" },
+    费雷尔: { type: "史诗", position: "右后卫" },
+    朴智星: { type: "史诗", position: "左前卫" },
   },
   world_stage_chain_bundle: {
     梅西: { type: "BT", position: "右边锋" },
@@ -10460,7 +10537,6 @@ function renderProbabilities() {
     } else if (isChainPool()) {
       const pool = getCurrentPool();
       probabilitySectionTitle.textContent = "卡池球员名单";
-      empoweredNamesTitle.textContent = "各子池球员 概率平分";
       colName.textContent = "卡池";
       colValue.textContent = "球员名单";
 
@@ -10480,7 +10556,11 @@ function renderProbabilities() {
             },
           ];
 
-      rows.forEach((row) => {
+      const visibleRows = rows.filter((row) => row.names.length > 0);
+      empoweredNamesTitle.textContent = visibleRows.length === 1
+        ? "池内球员 概率平分"
+        : "各子池球员 概率平分";
+      visibleRows.forEach((row) => {
         const tr = document.createElement("tr");
         const tdName = document.createElement("td");
         const tdValue = document.createElement("td");
