@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.08.06.2";
+  "2026.08.09.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -1270,6 +1270,39 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  rugged_years_gift: {
+    poolType: "accumulated_gift",
+    progressionType: "milestone",
+    name: "峥嵘岁月 累抽赠礼",
+    poolConfig: [
+      { type: "empowered", label: "增能卡", probability: 0.05 * (7 / 42) },
+      { type: "star5", label: "五星普卡", probability: 0.05 * (35 / 42) },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    empoweredCards: [
+      "舍甫琴科",
+      "马尔蒂尼",
+      "鲁伊科斯塔",
+      "斯内德",
+      "科斯塔库塔",
+      "科尔多巴",
+      "阿德里亚诺",
+    ],
+    exchangeBonusGiftConfig: {
+      everyPulls: 30,
+      chance: 0.1,
+      label: "10%随机增能卡包",
+      sourceLabel: "每30抽10%随机增能卡包",
+    },
+    highlightTicketConfig: {
+      probability: 0.1,
+      batchSize: 10,
+    },
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   missing_shield_exchange: {
     poolType: "exchange_guarantee",
     progressionType: "exchange_badge",
@@ -2193,6 +2226,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.rugged_years_gift && "rugged_years_gift") ||
   (POOLS.edge_lock_chain_bundle && "edge_lock_chain_bundle") ||
   (POOLS.young_demon_exchange && "young_demon_exchange") ||
   (POOLS.infinite_passion_nonrepeat && "infinite_passion_nonrepeat") ||
@@ -2292,6 +2326,7 @@ const POOL_CINEMATIC_ASSET_FOLDERS = {
   knockout_road_discount: ["assets/淘汰赛之路"],
   needle_against_wheat_exchange: ["assets/针尖对麦芒"],
   final_round_breakout_gift: ["assets/末轮突围"],
+  rugged_years_gift: ["assets/峥嵘岁月"],
   missing_shield_exchange: ["assets/缺失的坚盾"],
   five_star_samba_exchange: ["assets/五星桑巴"],
   lonely_hero_exchange: ["assets/孤胆英雄"],
@@ -2703,6 +2738,15 @@ const POOL_PLAYER_META = {
    里贝里: { type: "史诗", position: "左前卫" },
    马凯: { type: "史诗", position: "中锋" },
    马克思: { type: "史诗", position: "中后卫" },
+ },
+ rugged_years_gift: {
+   舍甫琴科: { type: "史诗", position: "中锋" },
+   马尔蒂尼: { type: "史诗", position: "左后卫" },
+   鲁伊科斯塔: { type: "史诗", position: "前腰" },
+   斯内德: { type: "史诗", position: "前腰" },
+   科斯塔库塔: { type: "史诗", position: "右后卫" },
+   科尔多巴: { type: "史诗", position: "中后卫" },
+   阿德里亚诺: { type: "史诗", position: "中锋" },
  },
  missing_shield_exchange: {
    布冯: { type: "BT", position: "门将" },
@@ -4165,6 +4209,22 @@ function calcMilestoneWithGiftExpected(pool, empoweredCount) {
   const bonusCfg = getExchangeBonusGiftConfig(pool);
   const bonusAny = bonusCfg ? bonusCfg.chance : 0;
   const bonusSpecific = bonusCfg && empoweredCount > 0 ? bonusCfg.chance / empoweredCount : 0;
+  if ((pool.milestones || []).length === 0) {
+    const cycleLength = bonusCfg ? bonusCfg.everyPulls : 1;
+    const cycleAny = [];
+    const cycleSpecific = [];
+    for (let pulls = 1; pulls <= cycleLength; pulls += 1) {
+      const hasBonus = bonusCfg && pulls % bonusCfg.everyPulls === 0;
+      cycleAny.push(1 - (1 - drawAny) * (1 - (hasBonus ? bonusAny : 0)));
+      cycleSpecific.push(
+        1 - (1 - drawSpecific) * (1 - (hasBonus ? bonusSpecific : 0))
+      );
+    }
+    return {
+      any: expectedFromSeasonCycle(0, cycleAny),
+      specific: expectedFromSeasonCycle(0, cycleSpecific),
+    };
+  }
   for (let pulls = 1; pulls <= 500; pulls += 1) {
     let failAny = 1 - drawAny;
     let failSpecific = 1 - drawSpecific;
@@ -5221,7 +5281,13 @@ function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
     return calcNonRepeatEmpoweredFavoredSetMetrics(pool, selected);
   }
   const cap = getFavoredProgressCap(pool, selected);
-  const maxDraw = Math.max(cap * 4, 1200);
+  const hasOpenEndedMilestoneBonus =
+    pool.progressionType === "milestone" &&
+    (pool.milestones || []).length === 0 &&
+    Boolean(getExchangeBonusGiftConfig(pool));
+  const maxDraw = hasOpenEndedMilestoneBonus
+    ? Math.max(cap * 4, 10000)
+    : Math.max(cap * 4, 1200);
   const m = selected.length;
   const n = (pool.empoweredCards || []).length || 1;
   if (!m) return { anyExpected: 0, allExpected: 0, allProbAtCap: 0 };
@@ -5424,6 +5490,15 @@ function simulateDrawFavoredSetHitTimes(pool, selectedNames) {
         dist.forEach((v, k) => progressed.set(k, (progressed.get(k) || 0) + v));
       });
       next = progressed;
+      const bonusCfg = getExchangeBonusGiftConfig(pool);
+      if (bonusCfg && draw % bonusCfg.everyPulls === 0) {
+        next = applyRandomEmpowered(
+          next,
+          bonusCfg.chance,
+          getExchangeBonusGiftCandidates(pool, bonusCfg),
+          true
+        );
+      }
     } else if (pool.progressionType === "season_inherit") {
       const progressed = new Map();
       next.forEach((prob, key) => {
@@ -5758,7 +5833,9 @@ function calcMilestoneEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
   dist[0] = 1;
 
   for (let pull = 1; pull <= drawCount; pull += 1) {
-    const probs = [drawP, ...(rewardHitByPull.get(pull) || [])];
+    const bonusCfg = getExchangeBonusGiftConfig(pool);
+    const bonusP = bonusCfg && pull % bonusCfg.everyPulls === 0 ? bonusCfg.chance : 0;
+    const probs = [drawP, bonusP, ...(rewardHitByPull.get(pull) || [])];
     const incDist = buildIncrementDistribution(probs);
     const next = new Array(targetCount + 1).fill(0);
 
@@ -5775,6 +5852,32 @@ function calcMilestoneEmpoweredAtLeastCDF(pool, drawCount, targetCount) {
   }
 
   return clamp01(dist[targetCount]);
+}
+
+function calcMilestoneSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount) {
+  const names = pool.empoweredCards || [];
+  if (!names.includes(targetName)) return 0;
+
+  const empoweredCount = Math.max(1, names.length);
+  const drawSpecific = getBaseEmpoweredProbability(pool.poolConfig || []) / empoweredCount;
+  const bonusCfg = getExchangeBonusGiftConfig(pool);
+  const bonusCandidates = getExchangeBonusGiftCandidates(pool, bonusCfg);
+  const bonusSpecific =
+    bonusCfg && bonusCandidates.includes(targetName)
+      ? bonusCfg.chance / Math.max(1, bonusCandidates.length)
+      : 0;
+  const sources = [
+    { trials: drawCount, p: drawSpecific },
+    { trials: getExchangeBonusGiftCount(pool, drawCount), p: bonusSpecific },
+  ];
+
+  (pool.milestones || []).forEach((reward) => {
+    if ((reward.pulls || 0) > drawCount) return;
+    const hit = getMilestoneRewardHitProb(reward, pool, empoweredCount).specific;
+    if (hit > 0) sources.push({ trials: 1, p: hit });
+  });
+
+  return calcAtLeastFromIndependentSources(sources, 0, targetCount);
 }
 
 function calcChainEmpoweredAtLeastCDF(tierCount, targetCount) {
@@ -5928,6 +6031,8 @@ function getSpecificCountAtLeastProbabilityByDrawCount(drawCount, targetName, ta
     cdf = calcAccumulatedGuaranteeSpecificCountAtLeastCDF(pool, drawCount, targetCount);
   } else if (isShopPackagePool(pool)) {
     cdf = calcShopPackageSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
+  } else if (pool.progressionType === "milestone") {
+    cdf = calcMilestoneSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
   } else if (pool.progressionType === "exchange_badge") {
     cdf = calcExchangeSpecificCountAtLeastCDF(pool, drawCount, targetName, targetCount);
   } else if (isHallRoadPool(pool)) {
@@ -6196,6 +6301,8 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
       }
     } else {
       const pAny = getBaseEmpoweredProbability(pool.poolConfig || []);
+      const bonusCfg = getExchangeBonusGiftConfig(pool);
+      const bonusCandidates = getExchangeBonusGiftCandidates(pool, bonusCfg);
       const milestoneByPull = new Map(
         (pool.milestones || []).map((m) => [Number(m.pulls || 0), m])
       );
@@ -6203,6 +6310,9 @@ function simulateUniqueEmpoweredAtLeastCDF(progressCount, targetUniqueCount, run
       const hasSelected = Boolean(selectedCfg);
       for (let draw = 1; draw <= progressCount; draw += 1) {
         if (Math.random() < pAny) addRandomName(got, pool.empoweredCards || []);
+        if (bonusCfg && draw % bonusCfg.everyPulls === 0 && Math.random() < bonusCfg.chance) {
+          addRandomName(got, bonusCandidates);
+        }
         const reward = milestoneByPull.get(draw);
         if (!reward) continue;
         if (reward.type === "empowered_chance") {
@@ -12159,6 +12269,18 @@ function renderMilestonesTable() {
     tr.appendChild(tdLabel);
     tbody.appendChild(tr);
   });
+
+  const bonusGiftCfg = getExchangeBonusGiftConfig();
+  if (bonusGiftCfg) {
+    const tr = document.createElement("tr");
+    const tdPulls = document.createElement("td");
+    const tdLabel = document.createElement("td");
+    tdPulls.textContent = `每 ${bonusGiftCfg.everyPulls} 抽`;
+    tdLabel.textContent = bonusGiftCfg.label;
+    tr.appendChild(tdPulls);
+    tr.appendChild(tdLabel);
+    tbody.appendChild(tr);
+  }
 
   if (isHighlightTicketPool()) {
     const tr = document.createElement("tr");
