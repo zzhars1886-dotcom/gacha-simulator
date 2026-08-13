@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.08.09.1";
+  "2026.08.13.1";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -2189,6 +2189,39 @@ const POOLS = {
     bonusHitMode: "empowered_only",
     selectedCardCountForBonus: 0,
   },
+  attack_defense_balance_nonrepeat: {
+    poolType: "accumulated_nonrepeat_gift",
+    progressionType: "accumulated_nonrepeat",
+    name: "攻守平衡",
+    pricePerPull: 80,
+    finishCurrentTenAfterComplete: true,
+    targetPlayers: ["贝纳蒂亚", "奥利塞", "皮尔洛", "瓦拉内"],
+    featuredExpectationTarget: "瓦拉内",
+    poolConfig: [
+      { type: "empowered", label: "指定目标球员", probability: 0.05 / 151 },
+      { type: "star5", label: "五星普卡", probability: 0.05 * 150 / 151 },
+      { type: "star4", label: "四星普卡", probability: 0.3 },
+      { type: "star3", label: "三星普卡", probability: 0.65 },
+    ],
+    risingProbabilityConfig: {
+      guaranteePulls: 191,
+      boosts: [
+        { pulls: 0, multiplier: 1 },
+        { pulls: 30, multiplier: 2 },
+        { pulls: 60, multiplier: 3 },
+        { pulls: 90, multiplier: 5 },
+        { pulls: 120, multiplier: 8 },
+        { pulls: 150, multiplier: 10 },
+        { pulls: 160, multiplier: 12 },
+        { pulls: 170, multiplier: 15 },
+        { pulls: 180, multiplier: 50 },
+      ],
+    },
+    empoweredCards: ["贝纳蒂亚", "奥利塞", "皮尔洛", "瓦拉内"],
+    milestones: [],
+    bonusHitMode: "empowered_only",
+    selectedCardCountForBonus: 0,
+  },
   defense_spring_shop: {
     poolType: "shop_package",
     progressionType: "shop_package",
@@ -2292,6 +2325,7 @@ const POOL_TYPE_LABELS = {
 
 const POOL_CINEMATIC_ASSET_FOLDERS = {
   infinite_passion_nonrepeat: ["assets/无限热烈"],
+  attack_defense_balance_nonrepeat: ["assets/攻守平衡"],
   rooster_lions_star_pack: ["assets/雄鸡与三狮"],
   xinzai_jinxiu: ["assets/新载锦绣"],
   german_chariot_glory_box: ["assets/德国战车"],
@@ -2932,6 +2966,12 @@ const POOL_PLAYER_META = {
     内马尔: { type: "ST", position: "左边锋" },
     巴蒂斯图塔: { type: "史诗", position: "中锋" },
   },
+  attack_defense_balance_nonrepeat: {
+    贝纳蒂亚: { type: "史诗", position: "中后卫" },
+    奥利塞: { type: "ST", position: "前腰" },
+    皮尔洛: { type: "史诗", position: "后腰" },
+    瓦拉内: { type: "史诗", position: "中后卫" },
+  },
   number_eight_shirt_exchange: {
     "B.费尔南德斯": { type: "BT", position: "前腰" },
     德塞利: { type: "BT", position: "中后卫" },
@@ -3258,7 +3298,7 @@ function advanceRisingDistribution(states, draw, pool = getCurrentPool()) {
     const each = probability * hitProbability / missing.length;
     missing.forEach((name) => {
       let nextMask = mask | info.nameBits[name];
-      if ((nextMask & info.targetMask) === info.targetMask) {
+      if (pool.completionReward && (nextMask & info.targetMask) === info.targetMask) {
         nextMask |= info.nameBits[pool.completionReward];
       }
       const completed = (nextMask & info.targetMask) === info.targetMask;
@@ -3361,6 +3401,8 @@ function calcRisingFavoredSetMetrics(pool, selectedNames) {
   let allExpected = 0;
   let anyExpectedGold = 0;
   let allExpectedGold = 0;
+  let anyExpectedConsumedPulls = 0;
+  let allExpectedConsumedPulls = 0;
   let anyLowerPulls = null;
   let anyUpperPulls = null;
   let allLowerPulls = null;
@@ -3376,9 +3418,12 @@ function calcRisingFavoredSetMetrics(pool, selectedNames) {
     });
     const anyHitAtDraw = Math.max(0, any - previousAny);
     const allHitAtDraw = Math.max(0, all - previousAll);
-    const goldAtDraw = getPullCostForRange(0, draw, pool);
+    const consumedPulls = Math.ceil(draw / 10) * 10;
+    const goldAtDraw = getPullCostForRange(0, consumedPulls, pool);
     anyExpected += draw * anyHitAtDraw;
     allExpected += draw * allHitAtDraw;
+    anyExpectedConsumedPulls += consumedPulls * anyHitAtDraw;
+    allExpectedConsumedPulls += consumedPulls * allHitAtDraw;
     anyExpectedGold += goldAtDraw * anyHitAtDraw;
     allExpectedGold += goldAtDraw * allHitAtDraw;
     if (anyLowerPulls == null && any >= 0.025) anyLowerPulls = draw;
@@ -3401,14 +3446,18 @@ function calcRisingFavoredSetMetrics(pool, selectedNames) {
   return {
     anyExpected,
     allExpected,
+    anyExpectedConsumedPulls,
+    allExpectedConsumedPulls,
     anyExpectedGold,
     allExpectedGold,
     anyLowerPulls,
     anyUpperPulls,
     allLowerPulls,
     allUpperPulls,
-    allLowerGold: allLowerPulls == null ? null : getPullCostForRange(0, allLowerPulls, pool),
-    allUpperGold: allUpperPulls == null ? null : getPullCostForRange(0, allUpperPulls, pool),
+    allLowerConsumedPulls: allLowerPulls == null ? null : Math.ceil(allLowerPulls / 10) * 10,
+    allUpperConsumedPulls: allUpperPulls == null ? null : Math.ceil(allUpperPulls / 10) * 10,
+    allLowerGold: allLowerPulls == null ? null : getPullCostForRange(0, Math.ceil(allLowerPulls / 10) * 10, pool),
+    allUpperGold: allUpperPulls == null ? null : getPullCostForRange(0, Math.ceil(allUpperPulls / 10) * 10, pool),
     allProbAtCap: clamp01(previousAll),
   };
 }
@@ -6592,8 +6641,16 @@ function renderFavExpectedInfo() {
     }
     return `${formatExpectedDrawValue(expectedValue)}${setMetrics.unit}`;
   };
-  const anyText = toDisplayValue(setMetrics.anyExpected);
-  const allText = toDisplayValue(setMetrics.allExpected);
+  const anyText = toDisplayValue(
+    isAccumulatedNonRepeatPool() && setMetrics.anyExpectedConsumedPulls
+      ? setMetrics.anyExpectedConsumedPulls
+      : setMetrics.anyExpected
+  );
+  const allText = toDisplayValue(
+    isAccumulatedNonRepeatPool() && setMetrics.allExpectedConsumedPulls
+      ? setMetrics.allExpectedConsumedPulls
+      : setMetrics.allExpected
+  );
   const extra = `（${setMetrics.cap}${setMetrics.unit}内集齐概率 <span class="expected-value">${(
     (setMetrics.allProbAtCap || 0) * 100
   ).toFixed(2)}%</span>）`;
@@ -6604,7 +6661,7 @@ function renderFavExpectedInfo() {
     const goldText = Number.isFinite(setMetrics.allExpectedGold)
       ? `${Math.round(setMetrics.allExpectedGold).toLocaleString("zh-CN")}金币`
       : "无有限期望";
-    html += `；按特惠礼包折扣，集齐心仪期望花费 <span class="expected-value">${goldText}</span>`;
+    html += `；按本卡池十连价格，集齐心仪期望花费 <span class="expected-value">${goldText}</span>`;
   }
 
   if (isChainPool()) {
@@ -7939,7 +7996,7 @@ function unlockRisingRewardsIfNeeded() {
   const allCollected = targets.length > 0 && targets.every(
     (name) => Boolean(state.risingOwnedTargets?.[name])
   );
-  if (allCollected && !state.risingCompletionRewardGranted) {
+  if (allCollected && pool.completionReward && !state.risingCompletionRewardGranted) {
     state.risingCompletionRewardGranted = true;
     state.rewards.push({
       id: `infinite-complete-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
@@ -9011,11 +9068,28 @@ function rollRisingPull(source = "infinite-passion") {
     state.risingHitInCurrentTen = false;
   }
   if (isRisingPoolComplete(pool, state)) {
-    state.risingBatchRemaining = 0;
+    if (!pool.finishCurrentTenAfterComplete || state.totalPulls % 10 === 0) {
+      state.risingBatchRemaining = 0;
+    }
     state.risingPityProgress = 0;
     state.risingHitInCurrentTen = false;
   }
   return card;
+}
+
+function rollRisingCompletionFiller(source) {
+  const config = getCurrentRollPoolConfig().filter((item) => item.type !== "empowered");
+  const totalWeight = config.reduce((sum, item) => sum + Math.max(0, Number(item.probability) || 0), 0);
+  let roll = Math.random() * Math.max(totalWeight, 1);
+  let card = null;
+  for (const item of config) {
+    roll -= Math.max(0, Number(item.probability) || 0);
+    if (roll < 0) {
+      card = { type: item.type, name: item.label };
+      break;
+    }
+  }
+  recordSingleDraw(card || { type: "star3", name: "三星普卡" }, source);
 }
 
 function continueRisingBatch() {
@@ -9023,15 +9097,31 @@ function continueRisingBatch() {
   let changed = false;
   while ((Number(state.risingBatchRemaining) || 0) > 0) {
     if (isRisingPoolComplete()) {
-      state.risingBatchRemaining = 0;
-      break;
+      const pool = getCurrentPool();
+      const shouldFinishTen = pool.finishCurrentTenAfterComplete && state.totalPulls % 10 !== 0;
+      if (!shouldFinishTen) {
+        state.risingBatchRemaining = 0;
+        break;
+      }
+      if (!spendGoldForPulls(1)) {
+        state.risingBatchRemaining = 0;
+        break;
+      }
+      state.risingBatchRemaining -= 1;
+      rollRisingCompletionFiller(`${pool.name}十连补齐`);
+      changed = true;
+      if (state.totalPulls % 10 === 0) {
+        state.risingBatchRemaining = 0;
+        break;
+      }
+      continue;
     }
     if (!spendGoldForPulls(1)) {
       state.risingBatchRemaining = 0;
       break;
     }
     state.risingBatchRemaining -= 1;
-    const card = rollRisingPull("无限热烈指定抽取");
+    const card = rollRisingPull(`${getCurrentPool().name}指定抽取`);
     if (!card) {
       state.risingBatchRemaining = 0;
       break;
@@ -10643,8 +10733,13 @@ function renderProbabilities() {
       namesSpan.textContent =
         getRisingTargetPlayers(pool)
           .map((name) => owned.has(name) ? `${name}（已获得）` : name)
-          .join(" / ") +
-        `；集齐赠送${pool.completionReward}；礼包配菜${pool.fallbackPlayer}`;
+          .join(" / ");
+      if (pool.completionReward) {
+        namesSpan.textContent += `；集齐赠送${pool.completionReward}`;
+      }
+      if (pool.fallbackPlayer) {
+        namesSpan.textContent += `；礼包配菜${pool.fallbackPlayer}`;
+      }
     } else if (isChainPool()) {
       const pool = getCurrentPool();
       probabilitySectionTitle.textContent = "卡池球员名单";
@@ -11246,17 +11341,19 @@ function renderPityTracker() {
     const progress = Math.max(0, Number(state.risingPityProgress) || 0);
     const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 191);
     if (ownedCount >= targets.length) {
-      textEl.textContent = `4名指定目标已集齐，${pool.completionReward}赠礼已解锁。`;
+      textEl.textContent = pool.completionReward
+        ? `${targets.length}名指定目标已集齐，${pool.completionReward}赠礼已解锁。`
+        : `${targets.length}名指定目标已集齐，本池已完成。`;
       fillEl.style.width = "100%";
     } else if (state.risingHitInCurrentTen) {
       const pullsToBoundary = Math.max(0, 10 - (Math.max(0, Number(state.totalPulls) || 0) % 10));
       textEl.textContent =
-        `本十连已经命中；再补 ${pullsToBoundary} 抽后重置并停止，补抽不再触发191抽保底。`;
+        `本十连已经命中；再补 ${pullsToBoundary} 抽后重置并停止，补抽不再触发${cap}抽保底。`;
       fillEl.style.width = `${Math.min(100, progress / cap * 100)}%`;
     } else {
       const remain = Math.max(1, cap - progress);
       textEl.textContent =
-        `已获得 ${ownedCount}/4；当前爆率 ${formatRisingPercent(getCurrentRisingProbability(pool, state))}；` +
+        `已获得 ${ownedCount}/${targets.length}；当前爆率 ${formatRisingPercent(getCurrentRisingProbability(pool, state))}；` +
         `最迟再抽 ${remain} 次获得下一名不重复目标球员。`;
       fillEl.style.width = `${Math.min(100, progress / cap * 100)}%`;
     }
@@ -11749,7 +11846,21 @@ function renderRisingPoolSummary() {
   }
 
   const pool = getCurrentPool();
-  const firstMetrics = calcRisingFirstTargetOperationMetrics(pool);
+  const featuredTarget = pool.featuredExpectationTarget || "";
+  const featuredMetrics = featuredTarget
+    ? getFavoredSetExpectedMetrics([featuredTarget])
+    : null;
+  const firstMetrics = featuredMetrics
+    ? {
+        expectedHitPulls: featuredMetrics.allExpected,
+        expectedConsumedPulls: featuredMetrics.allExpectedConsumedPulls,
+        expectedGold: featuredMetrics.allExpectedGold,
+        lowerConsumedPulls: featuredMetrics.allLowerConsumedPulls,
+        upperConsumedPulls: featuredMetrics.allUpperConsumedPulls,
+        lowerGold: featuredMetrics.allLowerGold,
+        upperGold: featuredMetrics.allUpperGold,
+      }
+    : calcRisingFirstTargetOperationMetrics(pool);
   const metrics = getFavoredSetExpectedMetrics(getRisingTargetPlayers(pool));
   if (!metrics) {
     panel.classList.add("hidden");
@@ -11757,16 +11868,29 @@ function renderRisingPoolSummary() {
   }
 
   panel.classList.remove("hidden");
-  const expectedPulls = Math.round(metrics.allExpected);
+  const expectedPulls = Math.round(metrics.allExpectedConsumedPulls || metrics.allExpected);
   const expectedGold = Math.round(metrics.allExpectedGold);
-  const lowerPulls = Math.max(0, Number(metrics.allLowerPulls) || 0);
-  const upperPulls = Math.max(0, Number(metrics.allUpperPulls) || 0);
+  const lowerPulls = Math.max(0, Number(metrics.allLowerConsumedPulls || metrics.allLowerPulls) || 0);
+  const upperPulls = Math.max(0, Number(metrics.allUpperConsumedPulls || metrics.allUpperPulls) || 0);
   const lowerGold = Math.max(0, Number(metrics.allLowerGold) || 0);
   const upperGold = Math.max(0, Number(metrics.allUpperGold) || 0);
   const setSummaryText = (id, text) => {
     const node = document.getElementById(id);
     if (node) node.textContent = text;
   };
+
+  setSummaryText(
+    "risingSummaryFirstLabel",
+    featuredTarget ? `${featuredTarget}期望命中：` : "首名目标期望命中："
+  );
+  setSummaryText(
+    "risingSummaryFirstIntervalLabel",
+    featuredTarget ? `${featuredTarget} 95%实际消耗：` : "首名95%实际消耗："
+  );
+  setSummaryText(
+    "risingSummaryAllLabel",
+    `集齐${getRisingTargetPlayers(pool).length}名指定目标期望：`
+  );
 
   setSummaryText("risingSummaryFirstHit", `${firstMetrics.expectedHitPulls.toFixed(2)}抽`);
   setSummaryText("risingSummaryFirstConsumed", `${firstMetrics.expectedConsumedPulls.toFixed(2)}抽`);
@@ -12028,6 +12152,34 @@ function renderMilestonesTable() {
       },
       { pulls: "开完100包", text: "出现保底领取窗口；手动领取维埃拉，来源记录为“保底100个球星包”" },
     ];
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      const tdPulls = document.createElement("td");
+      const tdLabel = document.createElement("td");
+      tdPulls.textContent = row.pulls;
+      tdLabel.textContent = row.text;
+      tr.appendChild(tdPulls);
+      tr.appendChild(tdLabel);
+      tbody.appendChild(tr);
+    });
+    return;
+  }
+
+  if (isAccumulatedNonRepeatPool()) {
+    const pool = getCurrentPool();
+    const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 191);
+    const rows = [
+      { pulls: "每次十连", text: `${getPullCostForRange(0, 10, pool)}金币，仅可按十连抽取` },
+      { pulls: "目标球员", text: `${getRisingTargetPlayers(pool).length}人随机且不重复，剩余球员平分当前总爆率` },
+      { pulls: "概率重置", text: "十连内命中后补齐当前十连，随后概率进度重置并停止" },
+      { pulls: `${cap}抽保底`, text: "当前十连尚未命中时，保底获得一名剩余目标球员" },
+    ];
+    if (pool.completionReward) {
+      rows.push({ pulls: "集齐目标", text: `额外赠送${pool.completionReward}` });
+    }
+    (pool.specialOfferConfig?.rewards || []).forEach((reward) => {
+      rows.push({ pulls: `${reward.pulls}抽`, text: reward.label });
+    });
     rows.forEach((row) => {
       const tr = document.createElement("tr");
       const tdPulls = document.createElement("td");
@@ -12556,14 +12708,14 @@ function renderDrawPanelByPool() {
         const ownedCount = getRisingOwnedTargetNames().length;
         if (isRisingPoolComplete(pool, state)) {
           seasonRoundInfo.textContent =
-            `已抽：${state.totalPulls || 0}；已获得目标：4/4；本池已完成，不能继续抽取`;
+            `已抽：${state.totalPulls || 0}；已获得目标：${getRisingTargetPlayers(pool).length}/${getRisingTargetPlayers(pool).length}；本池已完成，不能继续抽取`;
         } else {
           const progress = Math.max(0, Number(state.risingPityProgress) || 0);
           const cap = Math.max(1, Number(getRisingProbabilityConfig(pool)?.guaranteePulls) || 191);
           const rate = getCurrentRisingProbability(pool, state);
           const nextCost = getPullCostForRange(state.totalPulls || 0, 10, pool);
           seasonRoundInfo.textContent =
-            `已抽：${state.totalPulls || 0}；已获得目标：${ownedCount}/4；` +
+            `已抽：${state.totalPulls || 0}；已获得目标：${ownedCount}/${getRisingTargetPlayers(pool).length}；` +
             `当前十连递增进度：${progress}/${cap}；当前爆率：${rate >= 1 ? "100%保底" : formatRisingPercent(rate)}；` +
             `下一次10抽：${nextCost}金币`;
         }
