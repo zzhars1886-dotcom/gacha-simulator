@@ -2,7 +2,7 @@
 const APP_VERSION =
   (document.currentScript &&
     new URL(document.currentScript.src, window.location.href).searchParams.get("v")) ||
-  "2026.08.13.1";
+  "2026.08.13.2";
 
 const COMMON_MILESTONE_PULLS = [
   20, 40, 60, 80, 100, 120, 140, 160, 180,
@@ -2259,6 +2259,7 @@ const POOLS = {
 
 const POOL_KEYS = Object.keys(POOLS);
 let activePoolKey =
+  (POOLS.attack_defense_balance_nonrepeat && "attack_defense_balance_nonrepeat") ||
   (POOLS.rugged_years_gift && "rugged_years_gift") ||
   (POOLS.edge_lock_chain_bundle && "edge_lock_chain_bundle") ||
   (POOLS.young_demon_exchange && "young_demon_exchange") ||
